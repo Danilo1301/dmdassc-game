@@ -1,0 +1,25 @@
+{
+  "scripts": {
+    "numtemcomodar_start": "node -r tsconfig-paths/register -r ts-node/register src/main.ts",
+    "start": "webpack --config webpack.config.js --watch",
+    "build": "webpack --config webpack.config.js",
+    "server:start": "nodemon -e ts,js --ignore static/ --exec ts-node -r tsconfig-paths/register server/index.ts"
+  },
+  "dependencies": {
+    "@geckos.io/phaser-on-nodejs": "^1.2.5",
+    "express": "^4.17.1",
+    "phaser": "^3.55.2",
+    "socket.io": "^4.2.0",
+    "socket.io-client": "^4.2.0",
+    "ts-loader": "^9.2.6",
+    "ts-node": "^10.2.1",
+    "tsconfig-paths": "^3.11.0",
+    "uuid": "^8.3.2",
+    "webpack": "^5.53.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.13",
+    "@types/socket.io": "^3.0.2",
+    "webpack-cli": "^4.8.0"
+  }
+}

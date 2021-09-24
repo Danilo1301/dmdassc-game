@@ -1,0 +1,110 @@
+import { EntityPlayer } from '@game/entities/player/EntityPlayer';
+import { Component } from '@game/entity/Component';
+import { Entity } from '@game/entity/Entity';
+import { SceneManager } from '@game/sceneManager/SceneManager';
+import { GameScene } from '@game/scenes/GameScene';
+import { Server } from '@game/server/Server';
+import { v4 as uuidv4 } from 'uuid';
+
+export interface ICreateEntityOptions {
+    id?: string
+}
+
+export class World {
+
+    public events = new Phaser.Events.EventEmitter();
+
+    private _id: string = "";
+    private _server: Server;
+    private _scene?: Phaser.Scene;
+    private _entities = new Phaser.Structs.Map<string, Entity>([]);
+
+    constructor(server: Server) {
+        this._server = server;
+
+        console.log(`[World] Created`);
+    }
+
+    public get id() { return this._id; }
+    public set id(value: string) { this._id = value; }
+    public get entities() { return this._entities.values(); }
+    public get scene() { return this._scene!; }
+    
+    public async init() {
+        await this.setupWorld();
+
+        //const player = <EntityPlayer>this.createEntity('', {});
+        //this.addEntity(player);
+        //console.log(player);
+    }
+
+    public update(delta: number) {
+        //console.log(`[World] Update`);
+
+        for (const entity of this.entities) entity.update(delta);
+    }
+
+    public createPlayer() {
+        const player = <EntityPlayer>this.createEntity('', {});
+        this.addEntity(player);
+        return player;
+    }
+
+    public createEntity(entityType: string, options: ICreateEntityOptions) {
+        //var constr = this.getEntityByName(entityType)
+        var constr = EntityPlayer;
+
+        if(!constr) throw new Error("Invalid Entity Type '" + entityType + "'");
+        
+        var id = options.id == undefined ? ("ENTITY-" + uuidv4()) : options.id
+
+        var entity = new constr(this);
+        entity.setId(id);
+
+        return entity
+    }
+
+    public hasEntity(id: any) {
+        return this._entities.has(id);
+    }
+
+    public getEntity(id: any) {
+        return this._entities.get(id);
+    }
+
+    public addEntity(entity: Entity, components?: Component[]) {
+        console.log('[World]', `Add entity ${entity.constructor.name}`);
+        this._entities.set(entity.id, entity);
+
+        if(components != undefined) {
+            for (const component of components) {
+                entity.addComponent(component);
+            }
+        }
+        
+        entity.start();
+        return entity;
+    }
+
+    private async setupWorld() {
+        const gameScene = GameScene.Instance;
+
+        if(gameScene) this._scene = gameScene;
+        else await this.createScene();
+
+        this.setupEvents();
+
+        console.log(`[World] Ready`)
+
+        this.events.emit('ready');
+    }
+
+    private async createScene() {
+        const phaser = await SceneManager.createPhaserInstance();
+        this._scene = phaser.scene.getScenes()[0];
+    }
+
+    private setupEvents() {
+        this._scene!.events.on('update', (time: number, delta: number) => this.update(delta));
+    }
+}
