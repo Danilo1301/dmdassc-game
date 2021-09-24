@@ -7,8 +7,13 @@ interface IPositionData {
 
 export class Position extends Component {
 
+    public canLerp: boolean = true;
+
+    private _targetX: number = 0
+    private _targetY: number = 0
     private _x: number = 0
     private _y: number = 0
+    private _lerpAmount: number = 0.4;
 
     constructor() {
         super();
@@ -25,8 +30,14 @@ export class Position extends Component {
     }
 
     public set(x: number, y: number) {
-        this._x = x;
-        this._y = y;
+
+        if(this.canLerp) {
+            this._targetX = x;
+            this._targetY = y;
+        } else {
+            this._x = x;
+            this._y = y;
+        }
     }
 
     public start() {
@@ -35,6 +46,11 @@ export class Position extends Component {
 
     public update(delta: number) {
         super.update(delta);
+
+        if(this.canLerp) {
+            this._x = Phaser.Math.Interpolation.Linear([this._x, this._targetX], this._lerpAmount);
+            this._y = Phaser.Math.Interpolation.Linear([this._y, this._targetY], this._lerpAmount);
+        }
     }
 
     public destroy() {

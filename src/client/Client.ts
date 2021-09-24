@@ -23,7 +23,7 @@ export class Client {
         this._packetSender = new PacketSender(socket);
         this._packetSender.receivePacketEvents.on('packet', (packet: IPacket) => this.onReceivePacket(packet));
 
-        setInterval(() => this.update(100), 100);
+        setInterval(() => this.update(30), 30);
     }
 
     public get id() { return this._id; }

@@ -79,6 +79,7 @@ export class Network {
                 if(!LocalPlayer.entity) {
                     LocalPlayer.entity = entity;
                     LocalPlayer.entity.getComponent(BasicMovement).enabled = true;
+                    LocalPlayer.entity.position.canLerp = false;
                 }
 
                 return;

@@ -1,12 +1,12 @@
 import { Component } from "@game/entity/Component";
 import { Entity } from "@game/entity/Entity";
+import { GameScene } from "@game/scenes/GameScene";
 import { Position } from "./Position";
 
 export class EntityDebug extends Component {
 
     public entity!: Entity;
 
-    private _positionComponent!: Position
     private _text?: Phaser.GameObjects.Text;
     private _lines: {[key: string]: string} = {};
 
@@ -17,8 +17,8 @@ export class EntityDebug extends Component {
     public start(): void {
         super.start();
 
-        this._positionComponent = this.entity.getComponent(Position);
-        this._text = this.entity.world.scene.add.text(100, 100, 'TEXT');
+        if(GameScene.Instance)
+            this._text = this.entity.world.scene.add.text(100, 100, 'TEXT');
     }
 
     public setLineText(lineId: string, text?: string) {
@@ -32,7 +32,7 @@ export class EntityDebug extends Component {
     public update(delta: number): void {
         super.update(delta);
 
-        const position = this._positionComponent;
+        const position = this.entity.position;
         const text = this._text;
 
         if(!position) return;
@@ -47,7 +47,7 @@ export class EntityDebug extends Component {
 
         const str = `${this.entity.constructor.name}\n${this.entity.id}\n${position.x}, ${position.y}\n${strLines}`;
 
-        text.setPosition(this._positionComponent.x, this._positionComponent.y);
+        text.setPosition(position.x, position.y);
         text.setText(str);
     }
 

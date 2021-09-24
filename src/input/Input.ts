@@ -1,15 +1,28 @@
 export class Input {
 
     private static _keys = new Map<number, boolean>();
+    private static _mousePosition = new Phaser.Math.Vector2();
+
+    public static get mousePosition() { return this._mousePosition; }
 
     public static setup(scene: Phaser.Scene) {
-        scene.input.keyboard.on('keydown', (e) => {
+        const input = scene.input;
+
+        input.keyboard.on('keydown', (e) => {
             this._keys.set(e.keyCode, true);
         })
 
-        scene.input.keyboard.on('keyup', (e) => {
+        input.keyboard.on('keyup', (e) => {
             this._keys.set(e.keyCode, false);
         })
+
+        input.addListener('pointermove', this.onPointerMove, this)
+    }
+
+    private static onPointerMove(pointer) {
+        const cursor = pointer;
+        this._mousePosition.x = cursor.x
+        this._mousePosition.y = cursor.y
     }
 
     public static getKeyDown(key: number | string)
