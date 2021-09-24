@@ -1,4 +1,5 @@
 import { BasicMovement } from "@game/entity/components/BasicMovement";
+import { PhysicBody } from "@game/entity/components/PhysicBody";
 import { Entity } from "@game/entity/Entity";
 import { World } from "@game/world/World";
 
@@ -7,7 +8,7 @@ export class EntityPlayer extends Entity {
     constructor(world: World) {
         super(world);
         
-        //this.addComponent(new PhysicBody);
+        this.addComponent(new PhysicBody());
         this.addComponent(new BasicMovement());
         //this.addComponent(new InputHandler());
 

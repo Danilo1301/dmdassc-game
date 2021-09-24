@@ -36,6 +36,8 @@ export class Server {
         this._clients.set(client.id, client);
 
         const entity = this.worlds[0].createPlayer();
+        entity.position.canLerp = true;
+        entity.position.lerpAmount = 0.7;
 
         client.entity = entity;
 

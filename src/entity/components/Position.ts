@@ -1,4 +1,5 @@
 import { Component } from "@game/entity/Component"
+import { PhysicBody } from "./PhysicBody";
 
 interface IPositionData {
     x?: number
@@ -8,12 +9,12 @@ interface IPositionData {
 export class Position extends Component {
 
     public canLerp: boolean = true;
+    public lerpAmount: number = 0.5;
 
     private _targetX: number = 0
     private _targetY: number = 0
     private _x: number = 0
     private _y: number = 0
-    private _lerpAmount: number = 0.4;
 
     constructor() {
         super();
@@ -37,6 +38,8 @@ export class Position extends Component {
         } else {
             this._x = x;
             this._y = y;
+
+            
         }
     }
 
@@ -48,9 +51,28 @@ export class Position extends Component {
         super.update(delta);
 
         if(this.canLerp) {
-            this._x = Phaser.Math.Interpolation.Linear([this._x, this._targetX], this._lerpAmount);
-            this._y = Phaser.Math.Interpolation.Linear([this._y, this._targetY], this._lerpAmount);
+            this._x = Phaser.Math.Interpolation.Linear([this._x, this._targetX], this.lerpAmount);
+            this._y = Phaser.Math.Interpolation.Linear([this._y, this._targetY], this.lerpAmount);
         }
+
+        
+            if(this.entity.hasComponent(PhysicBody)) {
+                const physicBody = this.entity.getComponent(PhysicBody);
+    
+                if(this.canLerp) {
+                    physicBody.setPosition(this._x, this._y);
+                } else {
+                    const pos = physicBody.body.position;
+    
+                    this._x = pos.x;
+                    this._y = pos.y;
+                }
+                
+            }
+        
+        
+        
+        
     }
 
     public destroy() {
