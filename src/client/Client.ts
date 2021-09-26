@@ -7,35 +7,78 @@ import { ServerInfo } from '@game/scenes/ServerListScene';
 import { Server } from '@game/server/Server';
 import { World } from '@game/world/World';
 import socketio from 'socket.io';
+import { EntityWatcher } from './EntityWatcher';
 
 export class Client {
 
     private _id: string;
     private _game: GameServer;
-    private _packetSender: PacketSender
+    private _socket: socketio.Socket;
+    private _packetSender: PacketSender;
+    private _entityWatcher: EntityWatcher;
     private _entity?: Entity;
     private _server?: Server;
     private _world?: World;
 
+
     constructor(game: GameServer, socket: socketio.Socket) {
         this._id = uuidv4();
         this._game = game;
+        this._socket = socket;
         this._packetSender = new PacketSender(socket);
         this._packetSender.receivePacketEvents.on('packet', (packet: IPacket) => this.onReceivePacket(packet));
+        this._entityWatcher = new EntityWatcher();
 
         setInterval(() => this.update(30), 30);
     }
 
     public get id() { return this._id; }
+    public get connected() { return this._socket.connected; }
     
     public get entity() { return this._entity!; }
     public set entity(entity: Entity) { this._entity = entity; }
 
     public update(delta: number) {
+        if(!this.connected) return;
+
         const world = this._world;
 
         if(!world) return;
 
+        const entityWatcher = this._entityWatcher;
+
+        for (const entity of world.entities) {
+            
+            if(!entityWatcher.hasEntity(entity.id)) {
+                entityWatcher.addEntity(entity.id, entity);
+            }
+        }
+
+        entityWatcher.update(delta);
+
+        for (const entity of world.entities) {
+            const newData = entityWatcher.getNewEntityData(entity.id);
+
+            let hasNewData = false;
+            for (const componentName in newData.components) {
+                hasNewData = true;
+
+                console.log(`[${componentName}]`, newData.components[componentName]);
+            }
+
+            if(hasNewData) {
+                const data: IPacketData_EntityData = {
+                    entityId: entity.id,
+                    entityType: entity.constructor.name,
+                    components: newData.components
+                }
+    
+                this.send(PacketType.ENTITY_DATA, data);
+            }
+        }
+        
+        /*
+        
         for (const entity of world.entities) {
             const data: IPacketData_EntityData = {
                 entityId: entity.id,
@@ -45,8 +88,8 @@ export class Client {
 
             this.send(PacketType.ENTITY_DATA, data);
         }
-
-        //console.log(world.entities.length)
+        
+        */
     }
 
     private onReceivePacket(packet: IPacket) {
@@ -73,7 +116,9 @@ export class Client {
 
         if(packet.type == PacketType.ENTITY_DATA) {
             const data: IPacketData_EntityData = packet.data;
-            this.entity.position.set(data.x, data.y);
+            const positionData = data.components['Position'];
+
+            this.entity.position.set(positionData.x, positionData.y);
         }
     }
 

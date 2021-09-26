@@ -1,9 +1,15 @@
 import { BaseEntity } from "./BaseEntity";
 
+export interface IComponentWatchOptions {
+    minDifference?: number
+}
+
 export class Component {
 
     public entity!: BaseEntity;
     public priority: number = 0;
+
+    public watchingKeys: {[key: string]: IComponentWatchOptions} = {};
 
     public get name() { return this.constructor.name; }
 
@@ -17,6 +23,10 @@ export class Component {
 
     public destroy() {
         console.log(`[Component : ${this.name}] Destroy`);
+    }
+
+    public watchDataKey(key: string, options: IComponentWatchOptions) {
+        this.watchingKeys[key] = options;
     }
 
     public toData(): any {}

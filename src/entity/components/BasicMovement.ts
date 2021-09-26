@@ -1,6 +1,7 @@
 import { Component } from "@game/entity/Component"
 import { Input } from "@game/input/Input";
 import { Entity } from "../Entity";
+import { InputHandler } from "./InputHandler";
 import { PhysicBody } from "./PhysicBody";
 
 export class BasicMovement extends Component {
@@ -8,15 +9,24 @@ export class BasicMovement extends Component {
     public entity!: Entity;
 
     public speed: number = 2;
-    public enabled: boolean = false;
+
+    private _inputHandler?: InputHandler;
+
+    public start() {
+        super.start();
+
+        this._inputHandler = this.entity.getComponent(InputHandler);
+    }
 
     public update(delta: number) {
         super.update(delta);
 
-        if(!this.enabled) return;
+        if(!this._inputHandler) return;
 
-        const horizontal = Input.getHorizontal();
-        const vertical = Input.getVertical();
+        const inputHandler = this._inputHandler;
+
+        const horizontal = inputHandler.horizontal;
+        const vertical = inputHandler.vertical;
 
         const entity = this.entity;
         
@@ -31,14 +41,10 @@ export class BasicMovement extends Component {
         );
         */
 
-        if(this.entity.hasComponent(PhysicBody)) {
-            const physicBody = this.entity.getComponent(PhysicBody);
-
-
-
+        if(entity.hasComponent(PhysicBody)) {
+            const physicBody = entity.getComponent(PhysicBody);
             physicBody.applyForce(Phaser.Math.Vector2.ZERO, move);
         }
 
-        
     }
 }

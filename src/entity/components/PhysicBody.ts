@@ -2,7 +2,6 @@ import { Component } from "@game/entity/Component"
 import { Entity } from "../Entity";
 
 export class PhysicBody extends Component {
-
     public entity!: Entity;
 
     private _body?: MatterJS.BodyType;
@@ -26,6 +25,11 @@ export class PhysicBody extends Component {
         this.createBody();
     }
 
+    public setOptions(options: MatterJS.IChamferableBodyDefinition) {
+        this._options = options;
+    }
+
+
     public createBody() { 
         const scene = this.entity.world.scene;
         const matter = scene.matter;
@@ -45,7 +49,10 @@ export class PhysicBody extends Component {
     }
 
     public setPosition(x: number, y: number) {
-        var body = this._body!;
+        var body = this._body;
+
+        if(!body) return;
+
         var scene =  this.entity.world.scene;
         var matter = scene.matter;
 

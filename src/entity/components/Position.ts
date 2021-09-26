@@ -8,7 +8,7 @@ interface IPositionData {
 
 export class Position extends Component {
 
-    public canLerp: boolean = true;
+    public canLerp: boolean = false;
     public lerpAmount: number = 0.5;
 
     private _targetX: number = 0
@@ -16,10 +16,14 @@ export class Position extends Component {
     private _x: number = 0
     private _y: number = 0
 
+    private _lastUpdatedPos: number = 0;
+
     constructor() {
         super();
 
         this.priority = -1000;
+        this.watchDataKey('x', {minDifference: 0.5});
+        this.watchDataKey('y', {minDifference: 0.5});
     }
     
     public get x(): number {
@@ -35,11 +39,21 @@ export class Position extends Component {
         if(this.canLerp) {
             this._targetX = x;
             this._targetY = y;
+
+            this._lastUpdatedPos = Date.now();
         } else {
             this._x = x;
             this._y = y;
 
-            
+            this.updatePhysicBodyPosition(x, y);
+        }
+    }
+
+
+    public updatePhysicBodyPosition(x: number, y: number) {
+        if(this.entity.hasComponent(PhysicBody)) {
+            const physicBody = this.entity.getComponent(PhysicBody);
+            physicBody.setPosition(x, y);
         }
     }
 
@@ -50,26 +64,53 @@ export class Position extends Component {
     public update(delta: number) {
         super.update(delta);
 
-        if(this.canLerp) {
-            this._x = Phaser.Math.Interpolation.Linear([this._x, this._targetX], this.lerpAmount);
-            this._y = Phaser.Math.Interpolation.Linear([this._y, this._targetY], this.lerpAmount);
+        if(this.entity.hasComponent(PhysicBody)) {
+            const physicBody = this.entity.getComponent(PhysicBody);
+
+            const body = physicBody.body;
+
+            if(body) {
+                this._x = body.position.x;
+                this._y = body.position.y;
+            }
         }
 
         
-            if(this.entity.hasComponent(PhysicBody)) {
-                const physicBody = this.entity.getComponent(PhysicBody);
-    
-                if(this.canLerp) {
-                    physicBody.setPosition(this._x, this._y);
-                } else {
-                    const pos = physicBody.body.position;
-    
-                    this._x = pos.x;
-                    this._y = pos.y;
-                }
+        if(this.canLerp) {
+
+            const time = Date.now() - this._lastUpdatedPos;
+            const t = Math.min(time, 2000);
+
+            let itf = 1 - (t / 2000);
+            //itf = Math.max(0.8, itf)
+            itf = this.lerpAmount
+
+
+            const newX = Phaser.Math.Interpolation.Linear([this.x, this._targetX], itf);
+            const newY = Phaser.Math.Interpolation.Linear([this.y, this._targetY], itf);
+
+            this.updatePhysicBodyPosition(newX, newY);
+
+        }
+
+        
+        /*
+        if(this.entity.hasComponent(PhysicBody)) {
+            const physicBody = this.entity.getComponent(PhysicBody);
+
+            if(this.canLerp) {
+                //this.updatePhysicBodyPosition();
+            } else {
                 
             }
-        
+
+            const pos = physicBody.body.position;
+
+            this._x = pos.x;
+            this._y = pos.y;
+            
+        }
+        */
         
         
         

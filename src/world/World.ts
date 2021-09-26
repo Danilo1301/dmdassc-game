@@ -1,14 +1,12 @@
+import { EntityObject } from '@game/entities/object/EntityObject';
 import { EntityPlayer } from '@game/entities/player/EntityPlayer';
 import { Component } from '@game/entity/Component';
 import { Entity } from '@game/entity/Entity';
+import { ICreateEntityOptions } from '@game/entityFactory/EntityFactory';
 import { SceneManager } from '@game/sceneManager/SceneManager';
 import { GameScene } from '@game/scenes/GameScene';
 import { Server } from '@game/server/Server';
 import { v4 as uuidv4 } from 'uuid';
-
-export interface ICreateEntityOptions {
-    id?: string
-}
 
 export class World {
 
@@ -45,21 +43,28 @@ export class World {
     }
 
     public createPlayer() {
-        const player = <EntityPlayer>this.createEntity('', {});
+        const player = <EntityPlayer>this.createEntity('EntityPlayer', {});
         this.addEntity(player);
         return player;
     }
 
+    public createObject() {
+        const object = <EntityObject>this.createEntity('EntityObject', {});
+        this.addEntity(object);
+        object.position.set(300, 300);
+        return object;
+    }
+
     public createEntity(entityType: string, options: ICreateEntityOptions) {
-        //var constr = this.getEntityByName(entityType)
-        var constr = EntityPlayer;
 
-        if(!constr) throw new Error("Invalid Entity Type '" + entityType + "'");
-        
-        var id = options.id == undefined ? ("ENTITY-" + uuidv4()) : options.id
+        console.log("Create")
 
-        var entity = new constr(this);
-        entity.setId(id);
+        const entity = this._server.entityFactory.createEntity(entityType, this, options);
+        entity.position.set(100, 100);
+
+        console.log("Created")
+
+        console.log(entity.world)
 
         return entity
     }
@@ -97,6 +102,12 @@ export class World {
         console.log(`[World] Ready`)
 
         this.events.emit('ready');
+    }
+
+    public setupDefaultWorld() {
+        this.createObject();
+        this.createObject();
+        this.createObject();
     }
 
     private async createScene() {

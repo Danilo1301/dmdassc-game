@@ -1,4 +1,5 @@
 import { BasicMovement } from "@game/entity/components/BasicMovement";
+import { InputHandler } from "@game/entity/components/InputHandler";
 import { GameClient } from "@game/game/GameClient";
 import { SceneManager } from "@game/sceneManager/SceneManager";
 import { GameScene } from "@game/scenes/GameScene";
@@ -39,11 +40,24 @@ export class Network {
 
         if(!entity) return;
 
+        const components = {};
+        
+        for (const component of entity.components) {
+            const data = component.toData();
+
+            if(!data) continue;
+            if(component.name != "Position") continue;
+
+            components[component.name] = data;
+        }
+
         const data: IPacketData_EntityData = {
             entityId: entity.id,
-            x: entity.position.x,
-            y: entity.position.y
+            entityType: entity.constructor.name,
+            components: components
         }
+
+        console.log(data)
 
         this.send(PacketType.ENTITY_DATA, data);
     }
@@ -68,8 +82,11 @@ export class Network {
             const world = this._game.servers[0].worlds[0];
 
             if(!world.hasEntity(data.entityId)) {
-                const entity = world.createEntity('', {id: data.entityId});
+                const entity = world.createEntity(data.entityType, {id: data.entityId});
                 world.addEntity(entity);
+
+                entity.position.canLerp = true;
+                entity.position.lerpAmount = 0.2;
             }
 
             const entity = world.getEntity(data.entityId);
@@ -78,14 +95,21 @@ export class Network {
 
                 if(!LocalPlayer.entity) {
                     LocalPlayer.entity = entity;
-                    LocalPlayer.entity.getComponent(BasicMovement).enabled = true;
+                    LocalPlayer.entity.getComponent(InputHandler).isControlledByPlayer = true;
                     LocalPlayer.entity.position.canLerp = false;
                 }
 
                 return;
             }
 
-            entity.position.set(data.x, data.y);
+            
+            for (const component of entity.components) {
+                if(!data.components[component.name]) continue;
+
+                component.fromData(data.components[component.name]);
+            }
+
+            //entity.position.set(data.x, data.y);
         }
     }
 

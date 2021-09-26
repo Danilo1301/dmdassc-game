@@ -22,7 +22,13 @@ export class GameServer extends Game {
 
         const server = this.createServer();
         const world = server.createWorld('world1');
+
+        world.events.on('ready', () => {
+            world.setupDefaultWorld();
+        })
+
         world.init();
+        
     }
 
     private onSocketConnect(socket: socketio.Socket) {
