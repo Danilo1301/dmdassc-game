@@ -1,4 +1,5 @@
 import { Component } from "@game/entity/Component"
+import { EntityDebug } from "./EntityDebug";
 import { PhysicBody } from "./PhysicBody";
 
 interface IPositionData {
@@ -17,6 +18,8 @@ export class Position extends Component {
     private _y: number = 0
 
     private _lastUpdatedPos: number = 0;
+    private _lastFixedPos: number = 0;
+    private _fixingPos: boolean = false;
 
     constructor() {
         super();
@@ -75,8 +78,18 @@ export class Position extends Component {
             }
         }
 
+        const now = Date.now();
+
+        if(now - this._lastFixedPos >= 10) {
+            if(!this._fixingPos) {
+                this._fixingPos = true;
+            }
+        }
+
+        this.entity.getComponent(EntityDebug).setLineText('fixpos', `${this._fixingPos}`)
+
         
-        if(this.canLerp) {
+        if(this.canLerp && this._fixingPos) {
 
             const time = Date.now() - this._lastUpdatedPos;
             const t = Math.min(time, 2000);
@@ -86,10 +99,27 @@ export class Position extends Component {
             itf = this.lerpAmount
 
 
-            const newX = Phaser.Math.Interpolation.Linear([this.x, this._targetX], itf);
-            const newY = Phaser.Math.Interpolation.Linear([this.y, this._targetY], itf);
+            const dist = Phaser.Math.Distance.BetweenPoints({x: this.x, y: this.y}, {x: this._targetX, y: this._targetY});
 
+            let newX = Phaser.Math.Interpolation.Linear([this.x, this._targetX], 0.25);
+            let newY = Phaser.Math.Interpolation.Linear([this.y, this._targetY], 0.25);
+
+            if(dist > 80) {
+                newX = this._targetX
+                newY = this._targetY
+
+                this._fixingPos = false;
+            } else {
+                if(dist < 1) {
+                    this._fixingPos = false;
+                    this._lastFixedPos = now;
+                } 
+
+                
+            }
             this.updatePhysicBodyPosition(newX, newY);
+
+            
 
         }
 
