@@ -8,6 +8,7 @@ import { Server } from '@game/server/Server';
 import { World } from '@game/world/World';
 import socketio from 'socket.io';
 import { EntityWatcher } from './EntityWatcher';
+import { InputHandler } from '@game/entity/components/InputHandler';
 
 export class Client {
 
@@ -29,7 +30,7 @@ export class Client {
         this._packetSender.receivePacketEvents.on('packet', (packet: IPacket) => this.onReceivePacket(packet));
         this._entityWatcher = new EntityWatcher();
 
-        setInterval(() => this.update(30), 30);
+        setInterval(() => this.update(16), 16);
     }
 
     public get id() { return this._id; }
@@ -63,7 +64,7 @@ export class Client {
             for (const componentName in newData.components) {
                 hasNewData = true;
 
-                console.log(`[${componentName}]`, newData.components[componentName]);
+                //console.log(`[${componentName}]`, newData.components[componentName]);
             }
 
             if(hasNewData) {
@@ -117,8 +118,13 @@ export class Client {
         if(packet.type == PacketType.ENTITY_DATA) {
             const data: IPacketData_EntityData = packet.data;
             const positionData = data.components['Position'];
+            const inputHandlerData = data.components['InputHandler'];
 
             this.entity.position.set(positionData.x, positionData.y);
+            
+            const inputHandler = this.entity.getComponent(InputHandler);
+            inputHandler.horizontal = inputHandlerData.h;
+            inputHandler.vertical = inputHandlerData.v;
         }
     }
 

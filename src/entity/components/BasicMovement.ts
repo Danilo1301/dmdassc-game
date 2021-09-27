@@ -30,9 +30,9 @@ export class BasicMovement extends Component {
 
         const entity = this.entity;
         
-        const speed = this.speed * 0.01;
+        const speed = this.speed * 0.01   *10;
 
-        const move = new Phaser.Math.Vector2(horizontal * speed * delta, vertical * speed * delta);
+        const move = new Phaser.Math.Vector2(horizontal * speed, vertical * speed);
 
         /*
         entity.position.set(

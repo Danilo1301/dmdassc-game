@@ -46,9 +46,10 @@ export class Network {
             const data = component.toData();
 
             if(!data) continue;
-            if(component.name != "Position") continue;
+            if(component.name == "Position" || component.name == "InputHandler") {
+                components[component.name] = data;
+            }
 
-            components[component.name] = data;
         }
 
         const data: IPacketData_EntityData = {
@@ -86,7 +87,7 @@ export class Network {
                 world.addEntity(entity);
 
                 entity.position.canLerp = true;
-                entity.position.lerpAmount = 0.2;
+                entity.position.lerpAmount = 0.3;
             }
 
             const entity = world.getEntity(data.entityId);

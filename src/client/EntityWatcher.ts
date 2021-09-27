@@ -27,6 +27,7 @@ export class EntityWatcher {
 
                 const componentData = component.toData();
 
+        
                 for (const key in component.watchingKeys) {
                     
                     const options = component.watchingKeys[key];
@@ -40,10 +41,16 @@ export class EntityWatcher {
                     const changeValue = () => {
                         data.components[component.name][key] = newValue;
 
+                        /*
                         if(!newData.components[component.name]) newData.components[component.name] = {};
                         newData.components[component.name][key] = newValue;
-                        
-                        //console.log(key, oldValue, '->', newValue)
+                        */
+                        newData.components[component.name] = data.components[component.name];
+                        //
+
+
+
+                        //console.log(component.name, key, oldValue, '->', newValue)
                     }
 
                     if(typeof newValue == "number") {
