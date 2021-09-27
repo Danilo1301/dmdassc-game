@@ -86,7 +86,7 @@ export class Position extends Component {
             }
         }
 
-        this.entity.getComponent(EntityDebug).setLineText('fixpos', `${this._fixingPos}`)
+        //this.entity.getComponent(EntityDebug).setLineText('fixpos', `${this._fixingPos}`)
 
         
         if(this.canLerp && this._fixingPos) {
@@ -94,15 +94,15 @@ export class Position extends Component {
             const time = Date.now() - this._lastUpdatedPos;
             const t = Math.min(time, 2000);
 
-            let itf = 1 - (t / 2000);
+            //let itf = 1 - (t / 2000);
             //itf = Math.max(0.8, itf)
-            itf = this.lerpAmount
+            //itf = this.lerpAmount
 
 
             const dist = Phaser.Math.Distance.BetweenPoints({x: this.x, y: this.y}, {x: this._targetX, y: this._targetY});
 
-            let newX = Phaser.Math.Interpolation.Linear([this.x, this._targetX], 0.25);
-            let newY = Phaser.Math.Interpolation.Linear([this.y, this._targetY], 0.25);
+            let newX = Phaser.Math.Interpolation.Linear([this.x, this._targetX], this.lerpAmount);
+            let newY = Phaser.Math.Interpolation.Linear([this.y, this._targetY], this.lerpAmount);
 
             if(dist > 80) {
                 newX = this._targetX

@@ -14,13 +14,11 @@ export class EntityPlayer extends Entity {
         this.addComponent(new BasicMovement());
         
 
-        /*
         const physicBody = this.getComponent(PhysicBody);
-        physicBody.addRectangle('default', 0, 0, 40, 40);
         physicBody.setOptions({
             frictionAir: 0.2,
-            mass: 100
+            mass: 100,
+            //inertia: Infinity
         })
-        */
     }
 }

@@ -45,7 +45,7 @@ export class EntityDebug extends Component {
             strLines += this._lines[key] + "\n";
         }
 
-        const str = `${this.entity.constructor.name}\n${this.entity.id}\n${position.x}, ${position.y}\n${strLines}`;
+        const str = `${this.entity.constructor.name}\n${position.x}, ${position.y}\n${strLines}`;
 
         text.setPosition(position.x, position.y);
         text.setText(str);

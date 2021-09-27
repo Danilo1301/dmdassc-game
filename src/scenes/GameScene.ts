@@ -27,6 +27,8 @@ export class GameScene extends Phaser.Scene {
         });
 
         world.init();
+
+        this.cameras.main.setBackgroundColor(0x286f1e);
     }
     
     update(time: number, delta: number) {

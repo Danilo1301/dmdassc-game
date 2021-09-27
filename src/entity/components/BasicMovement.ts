@@ -8,7 +8,8 @@ export class BasicMovement extends Component {
 
     public entity!: Entity;
 
-    public speed: number = 8;
+    public speed: number = 1.6;
+    public directional: boolean = true;
 
     private _inputHandler?: InputHandler;
 
@@ -30,9 +31,28 @@ export class BasicMovement extends Component {
 
         const entity = this.entity;
         
-        const speed = this.speed * 0.001;
+        const speed = this.speed;
 
         const move = new Phaser.Math.Vector2(horizontal * speed * delta, vertical * speed * delta);
+
+        if(this.directional) {
+            let angle = 0;
+
+            
+
+            if(entity.hasComponent(PhysicBody)) {
+                const physicBody = entity.getComponent(PhysicBody);
+                angle = physicBody.body.parent.angle;
+
+                const newAngle = angle + horizontal*0.05;
+                physicBody.setAngle(newAngle);
+            }
+
+            move.x = Math.cos(angle) * vertical * speed;
+            move.y = Math.sin(angle) * vertical * speed;
+
+            
+        }
 
         /*
         entity.position.set(
@@ -43,7 +63,7 @@ export class BasicMovement extends Component {
 
         if(entity.hasComponent(PhysicBody)) {
             const physicBody = entity.getComponent(PhysicBody);
-            physicBody.applyForce(Phaser.Math.Vector2.ZERO, move);
+            physicBody.setVelocity(move);// applyForce(Phaser.Math.Vector2.ZERO, move);
         }
 
     }

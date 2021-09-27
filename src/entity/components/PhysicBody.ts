@@ -11,8 +11,7 @@ export class PhysicBody extends Component {
     private _body?: MatterJS.BodyType;
     private _options: MatterJS.IChamferableBodyDefinition = {
         frictionAir: 0.2,
-        mass: 100,
-        inertia: Infinity,
+        mass: 100
     }
     private _targetAngle: number = 0;
 
@@ -86,6 +85,14 @@ export class PhysicBody extends Component {
         var matter = scene.matter;
 
         matter.body.applyForce(body, position, force);
+    }
+
+    public setVelocity(velocity: Phaser.Math.Vector2) {
+        var body = this._body!;
+        var scene =  this.entity.world.scene;
+        var matter = scene.matter;
+
+        matter.body.setVelocity(body, velocity);
     }
 
     public update(delta: number) {

@@ -58,7 +58,7 @@ export class Network {
             components: components
         }
 
-        console.log(data)
+        //console.log(data)
 
         this.send(PacketType.ENTITY_DATA, data);
     }
@@ -87,7 +87,7 @@ export class Network {
                 world.addEntity(entity);
 
                 entity.position.canLerp = true;
-                entity.position.lerpAmount = 0.5;
+                entity.position.lerpAmount = 0.2;
             }
 
             const entity = world.getEntity(data.entityId);
@@ -98,6 +98,8 @@ export class Network {
                     LocalPlayer.entity = entity;
                     LocalPlayer.entity.getComponent(InputHandler).isControlledByPlayer = true;
                     LocalPlayer.entity.position.canLerp = false;
+
+                    GameScene.Instance.cameras.main.startFollow(entity.position)
                 }
 
                 return;
