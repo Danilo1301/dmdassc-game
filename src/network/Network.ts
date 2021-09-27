@@ -87,7 +87,7 @@ export class Network {
                 world.addEntity(entity);
 
                 entity.position.canLerp = true;
-                entity.position.lerpAmount = 0.3;
+                entity.position.lerpAmount = 0.5;
             }
 
             const entity = world.getEntity(data.entityId);

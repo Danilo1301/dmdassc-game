@@ -31,6 +31,8 @@ export class Server {
         //console.log(`[Server] Update`);
 
         //this.clients.map(client => client.update(delta));
+
+        //this.worlds.map(map => map.update(delta));
     }
 
     public createWorld(id: string) {
@@ -45,7 +47,7 @@ export class Server {
 
         const entity = this.worlds[0].createPlayer();
         entity.position.canLerp = true;
-        entity.position.lerpAmount = 0.8;
+        entity.position.lerpAmount = 0.5;
 
         client.entity = entity;
 

@@ -37,7 +37,7 @@ export class World {
     }
 
     public update(delta: number) {
-        //console.log(`[World] Update`);
+        //console.log(`[World] Update ${delta}`);
 
         for (const entity of this.entities) entity.update(delta);
     }
@@ -116,6 +116,10 @@ export class World {
     }
 
     private setupEvents() {
-        this._scene!.events.on('update', (time: number, delta: number) => this.update(delta));
+
+        console.log("helo?")
+
+
+        this._scene!.events.on('update', (time: number, delta: number) => this.update(16.6666));
     }
 }

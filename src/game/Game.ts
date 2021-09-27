@@ -8,6 +8,9 @@ export class Game {
 
     public start() {
         console.log(`[Game] Start`);
+
+        //change
+        setInterval(() => this.updateServers(16), 16);
     }
 
     public createServer() {

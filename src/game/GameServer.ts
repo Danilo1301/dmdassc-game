@@ -16,8 +16,7 @@ export class GameServer extends Game {
 
         console.log(`[GameServer] Start`);
 
-        //change
-        setInterval(() => this.updateServers(16), 16);
+        
 
 
         const server = this.createServer();

@@ -77,6 +77,7 @@ export class PhysicBody extends Component {
         var matter = scene.matter;
 
         matter.body.setAngle(body, angle);
+        matter.body.setAngularVelocity(body, 0);
     }
 
     public applyForce(position: Phaser.Math.Vector2, force: Phaser.Math.Vector2) {
@@ -91,7 +92,7 @@ export class PhysicBody extends Component {
         super.update(delta);
 
         if(this.entity.position.canLerp) {
-            const newAngle = Phaser.Math.Interpolation.Linear([this.body.parent.angle, this._targetAngle], 0.5);
+            const newAngle = Phaser.Math.Interpolation.Linear([this.body.parent.angle, this._targetAngle], this.entity.position.lerpAmount);
 
             this.setAngle(newAngle);
         }

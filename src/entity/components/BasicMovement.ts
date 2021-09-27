@@ -8,7 +8,7 @@ export class BasicMovement extends Component {
 
     public entity!: Entity;
 
-    public speed: number = 2;
+    public speed: number = 8;
 
     private _inputHandler?: InputHandler;
 
@@ -30,9 +30,9 @@ export class BasicMovement extends Component {
 
         const entity = this.entity;
         
-        const speed = this.speed * 0.01   *10;
+        const speed = this.speed * 0.001;
 
-        const move = new Phaser.Math.Vector2(horizontal * speed, vertical * speed);
+        const move = new Phaser.Math.Vector2(horizontal * speed * delta, vertical * speed * delta);
 
         /*
         entity.position.set(
