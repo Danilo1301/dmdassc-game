@@ -8,8 +8,8 @@ export class BasicMovement extends Component {
 
     public entity!: Entity;
 
-    public speed: number = 1.6;
-    public directional: boolean = true;
+    public speed: number = 0.2;
+    public directional: boolean = false;
 
     private _inputHandler?: InputHandler;
 
