@@ -46,6 +46,7 @@ export class World {
     public createPlayer() {
         const player = <EntityPlayer>this.createEntity('EntityPlayer', {});
         this.addEntity(player);
+        player.position.set(200, 200);
         return player;
     }
 
@@ -133,14 +134,15 @@ export class World {
 
             if(crates < 3) this.createObject();
 
-            console.log("y", crates)
+            //console.log("y", crates)
 
         }, 500)
 
         this.createObject();
         this.createObject();
         this.createObject();
-        this.createVehicle();
+        this.createPlayer();
+        this.createPlayer();
     }
 
     private async createScene() {
