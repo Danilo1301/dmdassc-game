@@ -1,8 +1,30 @@
 import { Component } from "@game/entity/Component"
 import { Entity } from "../Entity";
 
-interface IPhysicBodyData {
-    angle?: number
+export enum PhysicBodyType {
+    RECTANGLE,
+    CIRCLE
+}
+
+class BodyPart {
+    public key: string;
+    public type: PhysicBodyType;
+    public x: number;
+    public y: number;
+
+    public width: number = 0;
+    public height: number = 0;
+
+    public radius: number = 0;
+
+    public body?: MatterJS.BodyType;
+
+    constructor(key: string, x: number, y: number, type: PhysicBodyType) {
+        this.key = key;
+        this.x = x;
+        this.y = y;
+        this.type = type;
+    }
 }
 
 export class PhysicBody extends Component {
@@ -13,24 +35,39 @@ export class PhysicBody extends Component {
         frictionAir: 0.2,
         mass: 100
     }
-    private _targetAngle: number = 0;
+
+    private _bodyParts = new Phaser.Structs.Map<string, BodyPart>([]);
 
     constructor() {
         super();
 
         this.priority = -1000;
-        this.watchDataKey('angle', {minDifference: 0.01});
-        //this.watchDataKey('velX', {minDifference: 0.1});
-        //this.watchDataKey('velY', {minDifference: 0.1});
 
     }
 
     public get body() { return this._body!; }
+    public get matter() { return this.entity.world.scene.matter; }
+    public get angle() { return this.body.parent.angle; }
 
     public start() {
         super.start();
 
         this.createBody();
+    }
+
+    public addRectangle(key: string, x: number, y: number, width: number, height: number) {
+        const bodyPart = new BodyPart(key, x, y, PhysicBodyType.RECTANGLE);
+        bodyPart.width = width;
+        bodyPart.height = height;
+        this._bodyParts.set(key, bodyPart);
+        return bodyPart;
+    }
+
+    public addCircle(key: string, x: number, y: number, radius: number) {
+        var bodyPart = new BodyPart(key, x, y, PhysicBodyType.CIRCLE);
+        bodyPart.radius = radius;
+        this._bodyParts.set(key, bodyPart);
+        return bodyPart;
     }
 
     public setOptions(options: MatterJS.IChamferableBodyDefinition) {
@@ -45,8 +82,13 @@ export class PhysicBody extends Component {
         const options: MatterJS.IChamferableBodyDefinition = Object.assign({}, this._options)
             
         const parts: MatterJS.BodyType[] = []
-        const body1 = matter.bodies.rectangle(0, 0, 30, 30, options);
-        parts.push(body1);
+        for (const bodyPart of this._bodyParts.values()) {
+            if(bodyPart.type == PhysicBodyType.RECTANGLE) bodyPart.body = matter.bodies.rectangle(bodyPart.x, bodyPart.y, bodyPart.width, bodyPart.height, options)
+            if(bodyPart.type == PhysicBodyType.CIRCLE) bodyPart.body = matter.bodies.circle(bodyPart.x, bodyPart.y, bodyPart.radius, options)
+
+            parts.push(bodyPart.body!)
+        }
+ 
         
         options.parts = parts;
     
@@ -99,9 +141,9 @@ export class PhysicBody extends Component {
         super.update(delta);
 
         if(this.entity.position.canLerp) {
-            const newAngle = Phaser.Math.Interpolation.Linear([this.body.parent.angle, this._targetAngle], this.entity.position.lerpAmount);
+            //const newAngle = Phaser.Math.Interpolation.Linear([this.body.parent.angle, this._targetAngle], this.entity.position.lerpAmount);
 
-            this.setAngle(newAngle);
+            //this.setAngle(newAngle);
         }
 
         //console.log(this.body.parent.angle)
@@ -111,24 +153,5 @@ export class PhysicBody extends Component {
 
     public destroy() {
         super.destroy();
-    }
-
-    public toData() {
-        const data: IPhysicBodyData = {
-            angle: this.body.parent.angle,
-            //velX: this.body.velocity.x,
-            //velY: this.body.velocity.y
-        }
-
-
-        return data
-    }
-
-    public fromData(data: IPhysicBodyData) {
-
-        if(data.angle) {
-            if(this.entity.position.canLerp) this._targetAngle = data.angle
-            else this.setAngle(data.angle)
-        }
     }
 }

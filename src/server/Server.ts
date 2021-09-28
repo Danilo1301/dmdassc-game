@@ -1,6 +1,7 @@
 import { Client } from '@game/client/Client';
 import { EntityObject } from '@game/entities/object/EntityObject';
 import { EntityPlayer } from '@game/entities/player/EntityPlayer';
+import { EntityVehicle } from '@game/entities/vehicle/EntityVehicle';
 import { EntityFactory } from '@game/entityFactory/EntityFactory';
 import { World } from '@game/world/World';
 import { v4 as uuidv4 } from 'uuid';
@@ -17,6 +18,7 @@ export class Server {
         this._entityFactory = new EntityFactory();
         this._entityFactory.registerEntity('EntityPlayer', EntityPlayer);
         this._entityFactory.registerEntity('EntityObject', EntityObject);
+        this._entityFactory.registerEntity('EntityVehicle', EntityVehicle);
 
         console.log(`[Server] Created`);
     }
@@ -45,7 +47,7 @@ export class Server {
     public handleClientConnection(client: Client, callback?: (success: boolean) => void) {
         this._clients.set(client.id, client);
 
-        const entity = this.worlds[0].createPlayer();
+        const entity = this.worlds[0].createVehicle();
         entity.position.canLerp = true;
         entity.position.lerpAmount = 0.8;
 

@@ -2,7 +2,7 @@ import { Component } from "@game/entity/Component"
 import { Input } from "@game/input/Input";
 import { Entity } from "../Entity";
 
-interface IInputHandlerData {
+export interface IInputHandlerData {
     h?: number
     v?: number
 }

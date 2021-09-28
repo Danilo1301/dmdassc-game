@@ -2,9 +2,10 @@ import { Component } from "@game/entity/Component"
 import { EntityDebug } from "./EntityDebug";
 import { PhysicBody } from "./PhysicBody";
 
-interface IPositionData {
+export interface IPositionData {
     x?: number
     y?: number
+    angle?: number
 }
 
 export class Position extends Component {
@@ -16,6 +17,8 @@ export class Position extends Component {
     private _targetY: number = 0
     private _x: number = 0
     private _y: number = 0
+    private _targetAngle: number = 0
+    private _angle: number = 0
 
     private _lastUpdatedPos: number = 0;
     private _lastFixedPos: number = 0;
@@ -27,6 +30,7 @@ export class Position extends Component {
         this.priority = -1000;
         this.watchDataKey('x', {minDifference: 0.05});
         this.watchDataKey('y', {minDifference: 0.05});
+        this.watchDataKey('angle', {minDifference: 0.05});
     }
     
     public get x(): number {
@@ -35,6 +39,10 @@ export class Position extends Component {
 
     public get y(): number {
         return this._y;
+    }
+
+    public get angle(): number {
+        return this._angle;
     }
 
     public set(x: number, y: number) {
@@ -52,11 +60,22 @@ export class Position extends Component {
         }
     }
 
+    public setAngle(angle: number) {
 
-    public updatePhysicBodyPosition(x: number, y: number) {
+        if(this.canLerp) {
+            this._targetAngle = angle;
+        } else {
+            this._angle = angle;
+        }
+    }
+
+
+    public updatePhysicBodyPosition(x: number, y: number, angle?: number) {
         if(this.entity.hasComponent(PhysicBody)) {
             const physicBody = this.entity.getComponent(PhysicBody);
             physicBody.setPosition(x, y);
+
+            if(angle != undefined) physicBody.setAngle(angle);
         }
     }
 
@@ -75,6 +94,7 @@ export class Position extends Component {
             if(body) {
                 this._x = body.position.x;
                 this._y = body.position.y;
+                this._angle = body.parent.angle;
             }
         }
 
@@ -86,7 +106,8 @@ export class Position extends Component {
             }
         }
 
-        //this.entity.getComponent(EntityDebug).setLineText('fixpos', `${this._fixingPos}`)
+        this.entity.getComponent(EntityDebug).setLineText('posangle', `${this.angle}`);
+
 
         
         if(this.canLerp && this._fixingPos) {
@@ -117,7 +138,11 @@ export class Position extends Component {
 
                 
             }
-            this.updatePhysicBodyPosition(newX, newY);
+
+            const angle = this._angle;
+            const newAngle = Phaser.Math.Interpolation.Linear([this._angle, this._targetAngle], this.lerpAmount);
+
+            this.updatePhysicBodyPosition(newX, newY, newAngle);
 
             
 
@@ -153,7 +178,8 @@ export class Position extends Component {
     public toData() {
         const data: IPositionData = {
             x: this.x,
-            y: this.y
+            y: this.y,
+            angle: this.angle
         }
 
         return data
@@ -166,5 +192,8 @@ export class Position extends Component {
         if(data.y) newpos.y = data.y
 
         this.set(newpos.x, newpos.y)
+
+        if(data.angle) this.setAngle(data.angle);
+
     }
 }

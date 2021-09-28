@@ -10,17 +10,20 @@ export class TestSprite extends Component {
 
     private _sprite?: Phaser.GameObjects.Sprite;
 
+    public texturename: string = "";
 
     constructor() {
         super();
+
+        this.priority = 1000;
     }
 
     public start(): void {
         super.start();
 
         if(GameScene.Instance) {
-            this._sprite = GameScene.Instance.add.sprite(0, 0, 'player_test');
-            this._sprite.setScale(0.3);
+            this._sprite = GameScene.Instance.add.sprite(0, 0, this.texturename);
+            ///this._sprite.setScale(0.3);
         }
         
     }
@@ -39,7 +42,7 @@ export class TestSprite extends Component {
         if(this.entity.hasComponent(PhysicBody)) {
             const physicBody = this.entity.getComponent(PhysicBody);
 
-            sprite.setAngle(Phaser.Math.RadToDeg(physicBody.body.parent.angle) + 90)
+            sprite.setAngle(Phaser.Math.RadToDeg(physicBody.body.parent.angle))
         }
 
         

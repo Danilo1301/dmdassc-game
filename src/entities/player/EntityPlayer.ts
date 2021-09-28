@@ -13,10 +13,13 @@ export class EntityPlayer extends Entity {
         this.addComponent(new PhysicBody());
         this.addComponent(new InputHandler());
         this.addComponent(new BasicMovement());
+
         this.addComponent(new TestSprite());
+        this.getComponent(TestSprite).texturename = `player_test`;
         
 
         const physicBody = this.getComponent(PhysicBody);
+        physicBody.addCircle('default', 0, 0, 15);
         physicBody.setOptions({
             frictionAir: 0.2,
             mass: 100,

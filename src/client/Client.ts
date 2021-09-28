@@ -8,7 +8,8 @@ import { Server } from '@game/server/Server';
 import { World } from '@game/world/World';
 import socketio from 'socket.io';
 import { EntityWatcher } from './EntityWatcher';
-import { InputHandler } from '@game/entity/components/InputHandler';
+import { IInputHandlerData, InputHandler } from '@game/entity/components/InputHandler';
+import { IPositionData } from '@game/entity/components/Position';
 
 export class Client {
 
@@ -117,14 +118,18 @@ export class Client {
 
         if(packet.type == PacketType.ENTITY_DATA) {
             const data: IPacketData_EntityData = packet.data;
-            const positionData = data.components['Position'];
-            const inputHandlerData = data.components['InputHandler'];
 
-            this.entity.position.set(positionData.x, positionData.y);
+            const entity = this._world!.getEntity(data.entityId);
+
+            const positionData = <IPositionData>data.components['Position'];
+            if(positionData.x != undefined && positionData.y != undefined) entity.position.set(positionData.x, positionData.y);
+            if(positionData.angle != undefined)  entity.position.setAngle(positionData.angle);
             
-            const inputHandler = this.entity.getComponent(InputHandler);
-            inputHandler.horizontal = inputHandlerData.h;
-            inputHandler.vertical = inputHandlerData.v;
+
+            const inputHandlerData = <IInputHandlerData>data.components['InputHandler'];
+            const inputHandler = entity.getComponent(InputHandler);
+            if(inputHandlerData.h != undefined) inputHandler.horizontal = inputHandlerData.h;
+            if(inputHandlerData.v != undefined) inputHandler.vertical = inputHandlerData.v;
         }
     }
 

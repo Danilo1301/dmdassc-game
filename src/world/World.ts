@@ -1,5 +1,6 @@
 import { EntityObject } from '@game/entities/object/EntityObject';
 import { EntityPlayer } from '@game/entities/player/EntityPlayer';
+import { EntityVehicle } from '@game/entities/vehicle/EntityVehicle';
 import { Component } from '@game/entity/Component';
 import { Entity } from '@game/entity/Entity';
 import { ICreateEntityOptions } from '@game/entityFactory/EntityFactory';
@@ -55,6 +56,13 @@ export class World {
         return object;
     }
 
+    public createVehicle() {
+        const e = <EntityVehicle>this.createEntity('EntityVehicle', {});
+        this.addEntity(e);
+        e.position.set(200, 300);
+        return e;
+    }
+
     public createEntity(entityType: string, options: ICreateEntityOptions) {
 
         console.log("Create")
@@ -105,9 +113,34 @@ export class World {
     }
 
     public setupDefaultWorld() {
+
+        setInterval(() => {
+
+            let crates = 0;
+
+            for (const entity of this.entities) {
+                if(entity instanceof EntityObject) {
+                    
+                    const distance = Phaser.Math.Distance.BetweenPoints({x: 300, y: 300}, {x: entity.position.x, y: entity.position.y})
+
+                    if(distance <= 400) {
+                        crates++;
+                    }
+
+                    
+                }
+            }
+
+            if(crates < 3) this.createObject();
+
+            console.log("y", crates)
+
+        }, 500)
+
         this.createObject();
         this.createObject();
         this.createObject();
+        this.createVehicle();
     }
 
     private async createScene() {
