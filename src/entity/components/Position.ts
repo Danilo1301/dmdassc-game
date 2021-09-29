@@ -108,7 +108,7 @@ export class Position extends Component {
             }
         }
 
-        this.entity.getComponent(EntityDebug).setLineText('posangle', `${this.angle}`);
+        //this.entity.getComponent(EntityDebug).setLineText('posangle', `${this.angle}`);
 
 
         
@@ -141,7 +141,7 @@ export class Position extends Component {
                 
             }
 
-            const angle = this._angle;
+
             const newAngle = Phaser.Math.Angle.RotateTo(this._angle, this._targetAngle, this.lerpAmount)
             this.updatePhysicBodyPosition(newX, newY, newAngle);
 

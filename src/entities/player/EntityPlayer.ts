@@ -19,7 +19,7 @@ export class EntityPlayer extends Entity {
         
 
         const physicBody = this.getComponent(PhysicBody);
-        physicBody.addCircle('default', 0, 0, 15);
+        physicBody.addCircle('default', 0, 0, 10);
         physicBody.setOptions({
             frictionAir: 0.2,
             mass: 100,

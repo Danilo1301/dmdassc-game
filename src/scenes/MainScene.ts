@@ -43,6 +43,7 @@ export class MainScene extends Phaser.Scene {
         });
 
         const btn2 = this.add.image(200, 500, 'test').setInteractive();
+        btn2.setAlpha(0.01)
 
         btn2.on('pointerup', () => {
             btn.destroy();
