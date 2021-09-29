@@ -35,6 +35,8 @@ export class GameScene extends Phaser.Scene {
         world.init();
 
         this.cameras.main.setBackgroundColor(0x286f1e);
+
+        this.add.text(0, 0, `(0,0)\nPress F to enter vehicle`);
     }
 
     private _key_f_state: boolean = false;
