@@ -7,17 +7,18 @@
   },
   "dependencies": {
     "@geckos.io/phaser-on-nodejs": "^1.2.5",
+    "@types/node": "^16.10.2",
     "express": "^4.17.1",
+    "nodemon": "^2.0.12",
     "phaser": "^3.55.2",
     "socket.io": "^4.2.0",
     "socket.io-client": "^4.2.0",
     "ts-loader": "^9.2.6",
     "ts-node": "^10.2.1",
     "tsconfig-paths": "^3.11.0",
+    "typescript": "^4.4.2",
     "uuid": "^8.3.2",
-    "webpack": "^5.53.0",
-    "nodemon": "^2.0.12",
-    "typescript": "^4.4.2"
+    "webpack": "^5.53.0"
   },
   "devDependencies": {
     "@types/express": "^4.17.13",

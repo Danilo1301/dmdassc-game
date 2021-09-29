@@ -1,7 +1,9 @@
+import { InputHandler } from "@game/entity/components/InputHandler";
 import { GameClient } from "@game/game/GameClient";
 import { Input } from "@game/input/Input";
 import { IPacketData_ServerList, PacketType } from "@game/network/Packet";
 import { SceneManager } from "@game/sceneManager/SceneManager";
+import { GameScene } from "./GameScene";
 import { ServerListScene } from "./ServerListScene";
 
 
@@ -33,8 +35,24 @@ export class MainScene extends Phaser.Scene {
 
         btn.on('pointerup', () => {
             btn.destroy();
+            btn2.destroy();
 
             SceneManager.startScene('ServerListScene', ServerListScene);
+
+            //this.startMultiplayer();
+        });
+
+        const btn2 = this.add.image(200, 500, 'test').setInteractive();
+
+        btn2.on('pointerup', () => {
+            btn.destroy();
+            btn2.destroy();
+
+            SceneManager.startScene('GameScene', GameScene);
+
+            SceneManager.game.servers[0].worlds[0].setupDefaultWorld();
+            SceneManager.game.servers[0].worlds[0].createVehicle().getComponent(InputHandler).isControlledByPlayer = true;
+
 
             //this.startMultiplayer();
         });

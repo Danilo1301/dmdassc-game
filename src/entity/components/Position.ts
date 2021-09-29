@@ -142,8 +142,7 @@ export class Position extends Component {
             }
 
             const angle = this._angle;
-            const newAngle = Phaser.Math.Interpolation.Linear([this._angle, this._targetAngle], this.lerpAmount);
-
+            const newAngle = Phaser.Math.Angle.RotateTo(this._angle, this._targetAngle, this.lerpAmount)
             this.updatePhysicBodyPosition(newX, newY, newAngle);
 
             

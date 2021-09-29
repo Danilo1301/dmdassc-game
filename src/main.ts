@@ -1,4 +1,3 @@
-import 'phaser';
 import { GameClient } from '@game/game/GameClient'
 
 function main() {

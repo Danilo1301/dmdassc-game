@@ -1,3 +1,4 @@
+import Phaser from 'phaser';
 import { Server } from "@game/server/Server";
 
 export class Game {

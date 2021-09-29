@@ -27,7 +27,7 @@ server.listen(port, () => console.log(`Express web server started: http://localh
 console.log("Starting geckos...")
 
 import '@geckos.io/phaser-on-nodejs'
-global['phaserOnNodeFPS'] = 30
+global['phaserOnNodeFPS'] = 60
 
 //
 

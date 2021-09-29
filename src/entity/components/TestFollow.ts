@@ -1,6 +1,5 @@
 import { Component } from "@game/entity/Component"
 import { Input } from "@game/input/Input";
-import { Math } from "phaser";
 import { Entity } from "../Entity";
 import { EntityDebug } from "./EntityDebug";
 import { InputHandler } from "./InputHandler";
@@ -39,11 +38,23 @@ export class TestFollow extends Component {
 
         if(this._followingEntity) {
 
-            const angle = Phaser.Math.Angle.BetweenPoints({x: this.entity.position.x, y: this.entity.position.y}, {x: this._followingEntity.position.x, y: this._followingEntity.position.y})
+            const angle = this.entity.position.angle;
             
-            this.entity.getComponent(EntityDebug).setLineText('followangle', `${angle}`);
+            const pos1 = {x: this.entity.position.x, y: this.entity.position.y};
+            const pos2 = {x: this._followingEntity.position.x, y: this._followingEntity.position.y};
 
-            this.entity.position.setAngle(angle)
+            const targetAngle = Math.atan2(pos2.y - pos1.y, pos2.x - pos1.x);
+
+            //const targetAngle = Math.PI/2 + Phaser.Math.Angle.BetweenPoints({x: this.entity.position.x, y: this.entity.position.y}, {x: this._followingEntity.position.x, y: this._followingEntity.position.y})
+
+            //console.log(angle, targetAngle);
+
+            const newAngle = Phaser.Math.Angle.RotateTo(angle, targetAngle, 0.1)
+
+            
+            this.entity.getComponent(EntityDebug).setLineText('followangle', `${newAngle}`);
+
+            this.entity.position.setAngle(newAngle)
 
             this._inputHandler.vertical = 1;
         }
