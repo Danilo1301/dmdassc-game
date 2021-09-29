@@ -75,9 +75,16 @@ export class Position extends Component {
     public updatePhysicBodyPosition(x: number, y: number, angle?: number) {
         if(this.entity.hasComponent(PhysicBody)) {
             const physicBody = this.entity.getComponent(PhysicBody);
+
+            this._x = x;
+            this._y = y;
+
             physicBody.setPosition(x, y);
 
-            if(angle != undefined) physicBody.setAngle(angle);
+            if(angle != undefined) {
+                this._angle = angle;
+                physicBody.setAngle(angle);
+            }
         }
     }
 
@@ -142,7 +149,8 @@ export class Position extends Component {
             }
 
 
-            const newAngle = Phaser.Math.Angle.RotateTo(this._angle, this._targetAngle, this.lerpAmount)
+            const newAngle = Phaser.Math.Angle.RotateTo(this._angle, this._targetAngle, 0.2)
+
             this.updatePhysicBodyPosition(newX, newY, newAngle);
 
             
