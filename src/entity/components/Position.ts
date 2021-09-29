@@ -5,7 +5,8 @@ import { PhysicBody } from "./PhysicBody";
 export interface IPositionData {
     x?: number
     y?: number
-    angle?: number
+    dir?: number
+    aimDir?: number
 }
 
 export class Position extends Component {
@@ -17,12 +18,12 @@ export class Position extends Component {
     private _targetY: number = 0
     private _x: number = 0
     private _y: number = 0
-    private _targetAngle: number = 0
-    private _angle: number = 0
 
-    private _lastUpdatedPos: number = 0;
-    private _lastFixedPos: number = 0;
-    private _fixingPos: boolean = false;
+    private _targetDirection: number = 0
+    private _direction: number = 0
+
+    private _targetAimDirection: number = 0
+    private _aimDirection: number = 0
 
     constructor() {
         super();
@@ -30,7 +31,8 @@ export class Position extends Component {
         this.priority = -1000;
         this.watchDataKey('x', {minDifference: 0.05});
         this.watchDataKey('y', {minDifference: 0.05});
-        this.watchDataKey('angle', {minDifference: 0.001});
+        this.watchDataKey('dir', {minDifference: 0.001});
+        this.watchDataKey('aimDir', {minDifference: 0.001});
     }
     
     public get x(): number {
@@ -41,17 +43,20 @@ export class Position extends Component {
         return this._y;
     }
 
-    public get angle(): number {
-        return this._angle;
+    public get direction(): number {
+        return this._direction;
     }
+
+    public get aimDirection(): number {
+        return this._aimDirection;
+    }
+
 
     public set(x: number, y: number) {
 
         if(this.canLerp) {
             this._targetX = x;
             this._targetY = y;
-
-            this._lastUpdatedPos = Date.now();
         } else {
             this._x = x;
             this._y = y;
@@ -60,16 +65,21 @@ export class Position extends Component {
         }
     }
 
-    public setAngle(angle: number) {
+    public setDirection(angle: number) {
 
         if(this.canLerp) {
-            this._targetAngle = angle;
+            this._targetDirection = angle;
         } else {
-            this._angle = angle;
+            this._direction = angle;
 
             this.updatePhysicBodyPosition(this.x, this.y, angle);
         }
     }
+
+    public setAimDirection(angle: number) {
+        this._aimDirection = angle;
+    }
+
 
 
     public updatePhysicBodyPosition(x: number, y: number, angle?: number) {
@@ -82,7 +92,7 @@ export class Position extends Component {
             physicBody.setPosition(x, y);
 
             if(angle != undefined) {
-                this._angle = angle;
+                this._direction = angle;
                 physicBody.setAngle(angle);
             }
         }
@@ -103,32 +113,13 @@ export class Position extends Component {
             if(body) {
                 this._x = body.position.x;
                 this._y = body.position.y;
-                this._angle = body.parent.angle;
+                this._direction = body.parent.angle;
             }
         }
 
         const now = Date.now();
 
-        if(now - this._lastFixedPos >= 10) {
-            if(!this._fixingPos) {
-                this._fixingPos = true;
-            }
-        }
-
-        //this.entity.getComponent(EntityDebug).setLineText('posangle', `${this.angle}`);
-
-
-        
-        if(this.canLerp && this._fixingPos) {
-
-            const time = Date.now() - this._lastUpdatedPos;
-            const t = Math.min(time, 2000);
-
-            //let itf = 1 - (t / 2000);
-            //itf = Math.max(0.8, itf)
-            //itf = this.lerpAmount
-
-
+        if(this.canLerp) {
             const dist = Phaser.Math.Distance.BetweenPoints({x: this.x, y: this.y}, {x: this._targetX, y: this._targetY});
 
             let newX = Phaser.Math.Interpolation.Linear([this.x, this._targetX], this.lerpAmount);
@@ -137,46 +128,13 @@ export class Position extends Component {
             if(dist > 80) {
                 newX = this._targetX
                 newY = this._targetY
-
-                this._fixingPos = false;
-            } else {
-                if(dist < 1) {
-                    this._fixingPos = false;
-                    this._lastFixedPos = now;
-                } 
-
-                
             }
 
-
-            const newAngle = Phaser.Math.Angle.RotateTo(this._angle, this._targetAngle, 0.2)
+            const newAngle = Phaser.Math.Angle.RotateTo(this._direction, this._targetDirection, 0.1)
 
             this.updatePhysicBodyPosition(newX, newY, newAngle);
-
-            
-
         }
 
-        
-        /*
-        if(this.entity.hasComponent(PhysicBody)) {
-            const physicBody = this.entity.getComponent(PhysicBody);
-
-            if(this.canLerp) {
-                //this.updatePhysicBodyPosition();
-            } else {
-                
-            }
-
-            const pos = physicBody.body.position;
-
-            this._x = pos.x;
-            this._y = pos.y;
-            
-        }
-        */
-        
-        
         
     }
 
@@ -188,7 +146,8 @@ export class Position extends Component {
         const data: IPositionData = {
             x: this.x,
             y: this.y,
-            angle: this.angle
+            dir: this.direction,
+            aimDir: this._aimDirection,
         }
 
         return data
@@ -202,7 +161,8 @@ export class Position extends Component {
 
         this.set(newpos.x, newpos.y)
 
-        if(data.angle) this.setAngle(data.angle);
+        if(data.dir) this.setDirection(data.dir);
+        if(data.aimDir) this.setAimDirection(data.aimDir);
 
     }
 }

@@ -47,7 +47,8 @@ export class Server {
     public handleClientConnection(client: Client, callback?: (success: boolean) => void) {
         this._clients.set(client.id, client);
 
-        const entity = this.worlds[0].createVehicle();
+        const entity = this.worlds[0].createPlayer();
+        //const entity = this.worlds[0].createVehicle();
         entity.position.canLerp = true;
         entity.position.lerpAmount = 0.8;
 

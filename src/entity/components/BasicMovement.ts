@@ -8,7 +8,7 @@ export class BasicMovement extends Component {
 
     public entity!: Entity;
 
-    public speed: number = 0.2;
+    public speed: number = 1;
     public directional: boolean = false;
 
     private _inputHandler?: InputHandler;
@@ -31,14 +31,12 @@ export class BasicMovement extends Component {
 
         const entity = this.entity;
         
-        const speed = this.speed;
+        const speed = this.speed / 100;
 
         const move = new Phaser.Math.Vector2(horizontal * speed * delta, vertical * speed * delta);
 
         if(this.directional) {
             let angle = 0;
-
-            
 
             if(entity.hasComponent(PhysicBody)) {
                 const physicBody = entity.getComponent(PhysicBody);
@@ -48,8 +46,8 @@ export class BasicMovement extends Component {
                 physicBody.setAngle(newAngle);
             }
 
-            move.x = Math.cos(angle) * vertical * speed;
-            move.y = Math.sin(angle) * vertical * speed;
+            move.x = Math.cos(angle) * vertical * speed * delta;
+            move.y = Math.sin(angle) * vertical * speed * delta;
 
             
         }
@@ -63,7 +61,8 @@ export class BasicMovement extends Component {
 
         if(entity.hasComponent(PhysicBody)) {
             const physicBody = entity.getComponent(PhysicBody);
-            physicBody.setVelocity(move);// applyForce(Phaser.Math.Vector2.ZERO, move);
+            //physicBody.setVelocity(move);
+            physicBody.applyForce(Phaser.Math.Vector2.ZERO, move);
         }
 
     }

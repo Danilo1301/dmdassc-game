@@ -2,6 +2,8 @@ import { EntityObject } from '@game/entities/object/EntityObject';
 import { EntityPlayer } from '@game/entities/player/EntityPlayer';
 import { EntityVehicle } from '@game/entities/vehicle/EntityVehicle';
 import { Component } from '@game/entity/Component';
+import { BasicMovement } from '@game/entity/components/BasicMovement';
+import { InputHandler } from '@game/entity/components/InputHandler';
 import { TestFollow } from '@game/entity/components/TestFollow';
 import { Entity } from '@game/entity/Entity';
 import { ICreateEntityOptions } from '@game/entityFactory/EntityFactory';
@@ -146,15 +148,21 @@ export class World {
 
         }, 500)
 
-        this.createObject();
-        this.createObject();
-        this.createObject();
-        this.createObject();
-        this.createPlayer();
-        this.createPlayer();
+        for (let i = 0; i < 4; i++) {
+            this.createObject();
+        }
 
         this.createVehicle().addComponent(new TestFollow())
-        this.createVehicle().addComponent(new TestFollow())
+        //this.createVehicle()//.addComponent(new TestFollow())
+        
+        for (let i = 0; i < 3; i++) {
+            const bot = this.createPlayer();
+        
+            bot.addComponent(new TestFollow())
+            bot.getComponent(BasicMovement).directional = true;
+        }
+        
+        
     }
 
     private async createScene() {
@@ -167,6 +175,6 @@ export class World {
         console.log("helo?")
 
 
-        this._scene!.events.on('update', (time: number, delta: number) => this.update(16.6666));
+        this._scene!.events.on('update', (time: number, delta: number) => this.update(delta));
     }
 }

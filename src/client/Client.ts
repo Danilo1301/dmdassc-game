@@ -135,7 +135,8 @@ export class Client {
 
             const positionData = <IPositionData>data.components['Position'];
             if(positionData.x != undefined && positionData.y != undefined) entity.position.set(positionData.x, positionData.y);
-            if(positionData.angle != undefined)  entity.position.setAngle(positionData.angle);
+            if(positionData.dir != undefined)  entity.position.setDirection(positionData.dir);
+            if(positionData.aimDir != undefined)  entity.position.setAimDirection(positionData.aimDir);
             
 
             const inputHandlerData = <IInputHandlerData>data.components['InputHandler'];

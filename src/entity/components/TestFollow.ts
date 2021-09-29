@@ -21,7 +21,7 @@ export class TestFollow extends Component {
         setInterval(() => {
 
             this._followingEntity = this.getRandomEntity();
-        }, 8000)
+        }, Math.random() * 3000 + 7000)
         this._followingEntity = this.getRandomEntity();
 
     }
@@ -38,7 +38,7 @@ export class TestFollow extends Component {
 
         if(this._followingEntity) {
 
-            const angle = this.entity.position.angle;
+            const angle = this.entity.position.direction;
             
             const pos1 = {x: this.entity.position.x, y: this.entity.position.y};
             const pos2 = {x: this._followingEntity.position.x, y: this._followingEntity.position.y};
@@ -54,7 +54,7 @@ export class TestFollow extends Component {
             
             this.entity.getComponent(EntityDebug).setLineText('followangle', `${newAngle}`);
 
-            this.entity.position.setAngle(newAngle)
+            this.entity.position.setDirection(newAngle)
 
             this._inputHandler.vertical = 1;
         }

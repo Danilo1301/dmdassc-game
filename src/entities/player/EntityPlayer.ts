@@ -23,7 +23,7 @@ export class EntityPlayer extends Entity {
         physicBody.setOptions({
             frictionAir: 0.2,
             mass: 100,
-            //inertia: Infinity
+            inertia: Infinity
         })
     }
 }

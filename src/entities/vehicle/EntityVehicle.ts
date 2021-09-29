@@ -22,7 +22,7 @@ export class EntityVehicle extends Entity {
         physicBody.addRectangle('default', 0, 0, 83, 37);
         physicBody.setOptions({
             frictionAir: 0.1,
-            mass: 100
+            mass: 400
         })
         
         
