@@ -66,6 +66,8 @@ export class Position extends Component {
             this._targetAngle = angle;
         } else {
             this._angle = angle;
+
+            this.updatePhysicBodyPosition(this.x, this.y, angle);
         }
     }
 

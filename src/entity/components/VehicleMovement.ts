@@ -45,14 +45,17 @@ export class VehicleMovement extends Component {
 
             
             const move = new Phaser.Math.Vector2();
-            const angle = physicBody.angle;
-
+            const angle = this.entity.position.angle;
+            
+      
             move.x = Math.cos(angle) * vertical * speed * 0.1;
             move.y = Math.sin(angle) * vertical * speed * 0.1;
 
             physicBody.matter.applyForce(physicBody.body, {x: move.x, y: move.y});
             physicBody.matter.setAngularVelocity(physicBody.body, horizontal * 0.1);
 
+
+            
         }
 
         //this._car?.thrust(vertical * delta * 0.001)

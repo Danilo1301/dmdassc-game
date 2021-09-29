@@ -2,6 +2,7 @@ import { EntityObject } from '@game/entities/object/EntityObject';
 import { EntityPlayer } from '@game/entities/player/EntityPlayer';
 import { EntityVehicle } from '@game/entities/vehicle/EntityVehicle';
 import { Component } from '@game/entity/Component';
+import { TestFollow } from '@game/entity/components/TestFollow';
 import { Entity } from '@game/entity/Entity';
 import { ICreateEntityOptions } from '@game/entityFactory/EntityFactory';
 import { SceneManager } from '@game/sceneManager/SceneManager';
@@ -120,7 +121,7 @@ export class World {
             let crates = 0;
 
             for (const entity of this.entities) {
-                if(entity instanceof EntityObject) {
+                //if(entity instanceof EntityObject) {
                     
                     const distance = Phaser.Math.Distance.BetweenPoints({x: 300, y: 300}, {x: entity.position.x, y: entity.position.y})
 
@@ -128,11 +129,12 @@ export class World {
                         crates++;
                     }
 
+                    if(distance > 500) entity.position.set(300, 300);
                     
-                }
+               // }
             }
 
-            if(crates < 3) this.createObject();
+            //if(crates < 3) this.createObject();
 
             //console.log("y", crates)
 
@@ -141,8 +143,12 @@ export class World {
         this.createObject();
         this.createObject();
         this.createObject();
+        this.createObject();
         this.createPlayer();
         this.createPlayer();
+
+        this.createVehicle().addComponent(new TestFollow())
+        this.createVehicle().addComponent(new TestFollow())
     }
 
     private async createScene() {
