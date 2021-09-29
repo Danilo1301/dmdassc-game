@@ -7,7 +7,7 @@ import { ServerInfo } from '@game/scenes/ServerListScene';
 import { Server } from '@game/server/Server';
 import { World } from '@game/world/World';
 import socketio from 'socket.io';
-import { EntityWatcher } from './EntityWatcher';
+import { EntityWatcher, IWatchEntityData } from './EntityWatcher';
 import { IInputHandlerData, InputHandler } from '@game/entity/components/InputHandler';
 import { IPositionData } from '@game/entity/components/Position';
 
@@ -40,6 +40,26 @@ export class Client {
     public get entity() { return this._entity!; }
     public set entity(entity: Entity) { this._entity = entity; }
 
+    private sendEntityData(entity: Entity, watchData: IWatchEntityData) {
+
+        let hasNewData = false;
+        for (const componentName in watchData.components) {
+            hasNewData = true;
+
+            //console.log(`[${componentName}]`, newData.components[componentName]);
+        }
+
+        if(hasNewData) {
+            const data: IPacketData_EntityData = {
+                entityId: entity.id,
+                entityType: entity.constructor.name,
+                components: watchData.components
+            }
+
+            this.send(PacketType.ENTITY_DATA, data);
+        }
+    }
+
     public update(delta: number) {
         if(!this.connected) return;
 
@@ -53,30 +73,19 @@ export class Client {
             
             if(!entityWatcher.hasEntity(entity.id)) {
                 entityWatcher.addEntity(entity.id, entity);
+                entityWatcher.updateEntityData(entity.id);
+
+                const data = entityWatcher.getEntityFullData(entity.id);
+                this.sendEntityData(entity, data);
             }
         }
 
         entityWatcher.update(delta);
 
         for (const entity of world.entities) {
-            const newData = entityWatcher.getNewEntityData(entity.id);
-
-            let hasNewData = false;
-            for (const componentName in newData.components) {
-                hasNewData = true;
-
-                //console.log(`[${componentName}]`, newData.components[componentName]);
-            }
-
-            if(hasNewData) {
-                const data: IPacketData_EntityData = {
-                    entityId: entity.id,
-                    entityType: entity.constructor.name,
-                    components: newData.components
-                }
-    
-                this.send(PacketType.ENTITY_DATA, data);
-            }
+            const data = entityWatcher.getNewEntityData(entity.id);
+        
+            this.sendEntityData(entity, data);
         }
         
         /*
