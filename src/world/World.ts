@@ -152,7 +152,9 @@ export class World {
             this.createObject();
         }
 
-        this.createVehicle().addComponent(new TestFollow())
+        this.createVehicle()
+        this.createVehicle()
+        this.createVehicle()
         //this.createVehicle()//.addComponent(new TestFollow())
         
         for (let i = 0; i < 3; i++) {

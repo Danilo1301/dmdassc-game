@@ -6,7 +6,7 @@ import { GameScene } from "@game/scenes/GameScene";
 import { ServerListScene } from "@game/scenes/ServerListScene";
 import { io, Socket } from "socket.io-client";
 import { LocalPlayer } from "./LocalPlayer";
-import { IPacket, IPacketData_ConnectToServerStatus, IPacketData_EntityData, IPacketData_ServerList, PacketType } from "./Packet";
+import { IPacket, IPacketData_ConnectToServerStatus, IPacketData_EntityData, IPacketData_Id, IPacketData_ServerList, PacketType } from "./Packet";
 import { PacketSender } from "./PacketSender";
 
 export class Network {
@@ -73,9 +73,14 @@ export class Network {
             const data: IPacketData_ConnectToServerStatus = packet.data;
            
             if(data.success) {
-                LocalPlayer.entityId = data.entityId!;
                 SceneManager.startScene('GameScene', GameScene);
             }
+        }
+
+        if(packet.type == PacketType.CONTROLL_ENTITY) {
+            const data: IPacketData_Id = packet.data;
+  
+            LocalPlayer.setControllingEntityId(data.id);
         }
 
         if(packet.type == PacketType.ENTITY_DATA) {
@@ -95,11 +100,7 @@ export class Network {
             if(data.entityId == LocalPlayer.entityId) {
 
                 if(!LocalPlayer.entity) {
-                    LocalPlayer.entity = entity;
-                    LocalPlayer.entity.getComponent(InputHandler).isControlledByPlayer = true;
-                    LocalPlayer.entity.position.canLerp = false;
-
-                    GameScene.Instance.cameras.main.startFollow(entity.position)
+                    LocalPlayer.beginControllEntity(entity);
                 }
 
                 return;

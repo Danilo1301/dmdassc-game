@@ -3,7 +3,12 @@ import { InputHandler } from "@game/entity/components/InputHandler";
 import { PhysicBody } from "@game/entity/components/PhysicBody";
 import { TestSprite } from "@game/entity/components/TestSprite";
 import { Entity } from "@game/entity/Entity";
+import { GameClient } from "@game/game/GameClient";
+import { Input } from "@game/input/Input";
+import { IPacketData_Id, PacketType } from "@game/network/Packet";
+import { SceneManager } from "@game/sceneManager/SceneManager";
 import { World } from "@game/world/World";
+import { EntityVehicle } from "../vehicle/EntityVehicle";
 
 
 export class EntityPlayer extends Entity {
@@ -26,4 +31,6 @@ export class EntityPlayer extends Entity {
             inertia: Infinity
         })
     }
+
+
 }

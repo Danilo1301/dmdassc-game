@@ -5,7 +5,9 @@ export enum PacketType {
     SERVER_LIST,
     CONNECT_TO_SERVER,
     CONNECT_TO_SERVER_STATUS,
-    ENTITY_DATA
+    ENTITY_DATA,
+    CONTROLL_ENTITY,
+    ENTER_VEHICLE
 }
 
 export interface IPacket {
@@ -21,10 +23,13 @@ export interface IPacketData_ConnectToServer {
     id: string
 }
 
+export interface IPacketData_Id {
+    id: string
+}
+
 export interface IPacketData_ConnectToServerStatus {
     serverId: string
     success: boolean
-    entityId?: string
     errorMessage?: string
 }
 

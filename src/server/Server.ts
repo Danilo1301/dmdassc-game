@@ -48,18 +48,21 @@ export class Server {
         this._clients.set(client.id, client);
 
         const entity = this.worlds[0].createPlayer();
-        //const entity = this.worlds[0].createVehicle();
-        entity.position.canLerp = true;
-        entity.position.lerpAmount = 0.8;
 
-        client.entity = entity;
+        //const entity = this.worlds[0].createVehicle();
+
+        //entity.position.lerpAmount = 0.8;
+
+        client.beginControllEntity(entity);
+        
+ 
 
         callback?.(true);
     }
 
     public handleClientDisconnect(client: Client) {
         const world = client.entity.world;
-        world.removeEntity(client.entity);
+        world.removeEntity(client.player);
 
         this._clients.delete(client.id);
     }

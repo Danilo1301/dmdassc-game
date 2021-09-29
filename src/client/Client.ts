@@ -1,5 +1,5 @@
 import { GameServer } from '@game/game/GameServer';
-import { IPacket, IPacketData_ConnectToServer, IPacketData_ConnectToServerStatus, IPacketData_EntityData, IPacketData_ServerList, PacketType } from '@game/network/Packet';
+import { IPacket, IPacketData_ConnectToServer, IPacketData_ConnectToServerStatus, IPacketData_EntityData, IPacketData_Id, IPacketData_ServerList, PacketType } from '@game/network/Packet';
 import { PacketSender } from '@game/network/PacketSender';
 import { v4 as uuidv4 } from 'uuid';
 import { Entity } from '@game/entity/Entity';
@@ -10,6 +10,7 @@ import socketio from 'socket.io';
 import { EntityWatcher, IWatchEntityData } from './EntityWatcher';
 import { IInputHandlerData, InputHandler } from '@game/entity/components/InputHandler';
 import { IPositionData } from '@game/entity/components/Position';
+import { EntityPlayer } from '@game/entities/player/EntityPlayer';
 
 export class Client {
 
@@ -21,7 +22,7 @@ export class Client {
     private _entity?: Entity;
     private _server?: Server;
     private _world?: World;
-
+    private _player?: EntityPlayer;
 
     constructor(game: GameServer, socket: socketio.Socket) {
         this._id = uuidv4();
@@ -40,6 +41,7 @@ export class Client {
     public get id() { return this._id; }
     public get connected() { return this._socket.connected; }
     
+    public get player() { return this._player!; }
     public get entity() { return this._entity!; }
     public set entity(entity: Entity) { this._entity = entity; }
 
@@ -131,7 +133,9 @@ export class Client {
         if(packet.type == PacketType.ENTITY_DATA) {
             const data: IPacketData_EntityData = packet.data;
 
-            const entity = this._world!.getEntity(data.entityId);
+            if(data.entityId != this.entity.id) return;
+
+            const entity = this.entity;
 
             const positionData = <IPositionData>data.components['Position'];
             if(positionData.x != undefined && positionData.y != undefined) entity.position.set(positionData.x, positionData.y);
@@ -144,6 +148,23 @@ export class Client {
             if(inputHandlerData.h != undefined) inputHandler.horizontal = inputHandlerData.h;
             if(inputHandlerData.v != undefined) inputHandler.vertical = inputHandlerData.v;
         }
+
+        if(packet.type == PacketType.ENTER_VEHICLE) {
+            const data: IPacketData_Id = packet.data;
+
+
+            console.log(data, this.player)
+
+            if(data.id == '') {
+                this.beginControllEntity(this._player!);
+
+                return;
+            }
+
+            const vehicle = this._world!.getEntity(data.id);
+
+            this.beginControllEntity(vehicle);
+        }
     }
 
     public connectToServer(id: string) {
@@ -154,7 +175,7 @@ export class Client {
         } 
 
         const self = this;
-        const sendData = () => self._packetSender.send(PacketType.CONNECT_TO_SERVER_STATUS, data);
+        const sendData = () => this.send(PacketType.CONNECT_TO_SERVER_STATUS, data);
 
         if(this._server != undefined) {
             data.errorMessage = `Already connected to a server`;
@@ -165,14 +186,36 @@ export class Client {
         server.handleClientConnection(this, (success) => {
             if(success) {
                 data.success = true;
-                data.entityId = this.entity.id;
-
+                
                 this._server = server;
                 this._world = this.entity.world;
             }
 
             sendData();
         });
+    }
+
+    public beginControllEntity(entity: Entity) {
+        if(this._player == undefined) this._player = entity as EntityPlayer;
+
+        if(this.entity) {
+
+            const inputHandler = this.entity.getComponent(InputHandler);
+            inputHandler.horizontal = 0;
+            inputHandler.vertical = 0;
+
+            this.entity.position.canLerp = false;
+            this._entity = undefined;
+        }
+
+        const data: IPacketData_Id = {
+            id: entity.id
+        }
+
+        this._entity = entity;
+        entity.position.canLerp = true;
+
+        this.send(PacketType.CONTROLL_ENTITY, data);
     }
     
     public send(packetType: PacketType, data?: any) {

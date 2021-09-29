@@ -12,7 +12,7 @@ export interface IPositionData {
 export class Position extends Component {
 
     public canLerp: boolean = false;
-    public lerpAmount: number = 0.5;
+    public lerpAmount: number = 0.8;
 
     private _targetX: number = 0
     private _targetY: number = 0
