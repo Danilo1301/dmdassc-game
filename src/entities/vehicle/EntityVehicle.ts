@@ -19,7 +19,7 @@ export class EntityVehicle extends Entity {
         this.getComponent(TestSprite).texturename = `car`;
 
         const physicBody = this.getComponent(PhysicBody);
-        physicBody.addRectangle('default', 0, 0, 50, 22);
+        physicBody.addRectangle('default', 0, 0, 83, 37);
         physicBody.setOptions({
             frictionAir: 0.1,
             mass: 100

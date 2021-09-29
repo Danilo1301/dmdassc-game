@@ -32,6 +32,9 @@ export class Client {
         this._entityWatcher = new EntityWatcher();
 
         setInterval(() => this.update(16), 16);
+
+        this._socket.on('disconnect', () => this.onDisconnect());
+        this.onConnect();
     }
 
     public get id() { return this._id; }
@@ -173,5 +176,15 @@ export class Client {
     
     public send(packetType: PacketType, data?: any) {
         this._packetSender.send(packetType, data);
+    }
+
+    public onConnect() {
+        console.log("conn")
+    }
+
+    public onDisconnect() {
+        console.log("descc")
+
+        if(this._server) this._server.handleClientDisconnect(this);
     }
 }

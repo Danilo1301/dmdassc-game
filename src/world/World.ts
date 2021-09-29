@@ -101,6 +101,12 @@ export class World {
         return entity;
     }
 
+    public removeEntity(entity: Entity) {
+        console.log('[World]', `Remove entity ${entity.constructor.name}`);
+        this._entities.delete(entity.id);
+        entity.destroy();
+    }
+
     private async setupWorld() {
         const gameScene = GameScene.Instance;
 

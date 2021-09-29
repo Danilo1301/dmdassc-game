@@ -55,4 +55,11 @@ export class Server {
 
         callback?.(true);
     }
+
+    public handleClientDisconnect(client: Client) {
+        const world = client.entity.world;
+        world.removeEntity(client.entity);
+
+        this._clients.delete(client.id);
+    }
 }

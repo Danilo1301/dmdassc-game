@@ -30,7 +30,7 @@ export class Position extends Component {
         this.priority = -1000;
         this.watchDataKey('x', {minDifference: 0.05});
         this.watchDataKey('y', {minDifference: 0.05});
-        this.watchDataKey('angle', {minDifference: 0.05});
+        this.watchDataKey('angle', {minDifference: 0.001});
     }
     
     public get x(): number {

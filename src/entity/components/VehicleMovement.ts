@@ -8,6 +8,7 @@ export class VehicleMovement extends Component {
 
     public entity!: Entity;
     public speed: number = 1;
+    public pwr: number = 0;
 
     private _inputHandler?: InputHandler;
 
@@ -40,6 +41,15 @@ export class VehicleMovement extends Component {
         const entity = this.entity;
         const speed = this.speed;
 
+        if(vertical == 0) {
+            this.pwr = Phaser.Math.Interpolation.Linear([this.pwr, 0], 0.05);
+        } else {
+            this.pwr += vertical * 0.02;
+
+        }
+
+        if(this.pwr > 2) this.pwr = 2
+
         if(this.entity.hasComponent(PhysicBody)) {
             const physicBody = this.entity.getComponent(PhysicBody);
 
@@ -48,11 +58,15 @@ export class VehicleMovement extends Component {
             const angle = this.entity.position.angle;
             
       
-            move.x = Math.cos(angle) * vertical * speed * 0.1;
-            move.y = Math.sin(angle) * vertical * speed * 0.1;
+            move.x = Math.cos(angle) * speed * 0.1 * this.pwr;
+            move.y = Math.sin(angle) * speed * 0.1 * this.pwr;
 
-            physicBody.matter.applyForce(physicBody.body, {x: move.x, y: move.y});
-            physicBody.matter.setAngularVelocity(physicBody.body, horizontal * 0.1);
+   
+            if(physicBody.body.speed < 10)
+                physicBody.matter.applyForce(physicBody.body, {x: move.x, y: move.y});
+
+            if(horizontal != 0)
+                physicBody.matter.setAngularVelocity(physicBody.body, horizontal * 0.05);
 
 
             
