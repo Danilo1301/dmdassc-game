@@ -1,10 +1,12 @@
 import { EntityObject } from '@game/entities/object/EntityObject';
 import { EntityPlayer } from '@game/entities/player/EntityPlayer';
+import { EntityProjectile } from '@game/entities/projectile/EntityProjectile';
 import { EntityVehicle } from '@game/entities/vehicle/EntityVehicle';
 import { Component } from '@game/entity/Component';
 import { BasicMovement } from '@game/entity/components/BasicMovement';
 import { InputHandler } from '@game/entity/components/InputHandler';
 import { TestFollow } from '@game/entity/components/TestFollow';
+import { TestSpawnProjectile } from '@game/entity/components/TestSpawnProjectile';
 import { Entity } from '@game/entity/Entity';
 import { ICreateEntityOptions } from '@game/entityFactory/EntityFactory';
 import { SceneManager } from '@game/sceneManager/SceneManager';
@@ -44,6 +46,14 @@ export class World {
         //console.log(`[World] Update ${delta}`);
 
         for (const entity of this.entities) entity.update(delta);
+    }
+
+    public spawnProjectile(position: Phaser.Math.Vector2, angle: number) {
+        const projectile = <EntityProjectile>this.createEntity('EntityProjectile', {});
+        this.addEntity(projectile);
+        projectile.position.set(position.x, position.y);
+        projectile.position.setDirection(angle);
+        return projectile;
     }
 
     public createPlayer() {
@@ -131,13 +141,13 @@ export class World {
             for (const entity of this.entities) {
                 //if(entity instanceof EntityObject) {
                     
-                    const distance = Phaser.Math.Distance.BetweenPoints({x: 300, y: 300}, {x: entity.position.x, y: entity.position.y})
+                    const distance = Phaser.Math.Distance.BetweenPoints({x: 0, y: 0}, {x: entity.position.x, y: entity.position.y})
 
                     if(distance <= 400) {
                         crates++;
                     }
 
-                    if(distance > 500) entity.position.set(300, 300);
+                    if(distance > 500 && !(entity instanceof EntityProjectile )) entity.position.set(0, 0);
                     
                // }
             }
@@ -162,8 +172,19 @@ export class World {
         
             bot.addComponent(new TestFollow())
             bot.getComponent(BasicMovement).directional = true;
+
+            if(i == 0) {
+                bot.addComponent(new TestSpawnProjectile())
+
+            }
         }
         
+
+        setInterval(() => {
+
+            //this.spawnProjectile(new Phaser.Math.Vector2(0, 0), Phaser.Math.DegToRad(45));
+
+        }, 1500)
         
     }
 

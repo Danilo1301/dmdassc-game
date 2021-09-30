@@ -1,6 +1,7 @@
 import { Client } from '@game/client/Client';
 import { EntityObject } from '@game/entities/object/EntityObject';
 import { EntityPlayer } from '@game/entities/player/EntityPlayer';
+import { EntityProjectile } from '@game/entities/projectile/EntityProjectile';
 import { EntityVehicle } from '@game/entities/vehicle/EntityVehicle';
 import { EntityFactory } from '@game/entityFactory/EntityFactory';
 import { World } from '@game/world/World';
@@ -19,6 +20,7 @@ export class Server {
         this._entityFactory.registerEntity('EntityPlayer', EntityPlayer);
         this._entityFactory.registerEntity('EntityObject', EntityObject);
         this._entityFactory.registerEntity('EntityVehicle', EntityVehicle);
+        this._entityFactory.registerEntity('EntityProjectile', EntityProjectile);
 
         console.log(`[Server] Created`);
     }

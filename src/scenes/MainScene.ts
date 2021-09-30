@@ -23,6 +23,7 @@ export class MainScene extends Phaser.Scene {
         this.load.image('player_test', 'player_test.png');
         this.load.image('car', 'car.png');
         this.load.image('crate', 'crate.png');
+        this.load.image('bullet', 'bullet.png');
     }
 
     create() {

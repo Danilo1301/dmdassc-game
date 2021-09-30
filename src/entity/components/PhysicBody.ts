@@ -153,5 +153,7 @@ export class PhysicBody extends Component {
 
     public destroy() {
         super.destroy();
+
+        this.matter.world.remove(this.body);
     }
 }

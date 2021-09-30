@@ -87,12 +87,13 @@ export class Network {
             const data: IPacketData_EntityData = packet.data;
             const world = this._game.servers[0].worlds[0];
 
+            let newEntity = false;
+
             if(!world.hasEntity(data.entityId)) {
                 const entity = world.createEntity(data.entityType, {id: data.entityId});
                 world.addEntity(entity);
 
-                entity.position.canLerp = true;
-                entity.position.lerpAmount = 0.2;
+                newEntity = true;
             }
 
             const entity = world.getEntity(data.entityId);
@@ -111,6 +112,11 @@ export class Network {
                 if(!data.components[component.name]) continue;
 
                 component.fromData(data.components[component.name]);
+            }
+
+            if(newEntity) {
+                entity.position.canLerp = true;
+                entity.position.lerpAmount = 0.2;
             }
 
             //entity.position.set(data.x, data.y);
