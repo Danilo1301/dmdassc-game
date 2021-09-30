@@ -129,24 +129,8 @@ export class World {
 
     public setupDefaultWorld() {
 
-        const bot = this.createPlayer();
-        bot.addComponent(new TestFollow())
-        bot.getComponent(BasicMovement).directional = true;
-
-        setInterval(() => {
-
-            bot.getComponent(PlayerBehaviour)._test = `TEST ${Math.random()}`
-
-        }, 1000)
-
-        this.createVehicle()
-
-        this.createVehicle()
-
-
-        return;
-
-
+       
+       
         setInterval(() => {
 
             let crates = 0;
@@ -189,7 +173,16 @@ export class World {
             if(i == 0) {
                 bot.addComponent(new TestSpawnProjectile())
 
+                
             }
+
+            setInterval(() => {
+
+                bot.getComponent(PlayerBehaviour)._test = `test ${Phaser.Math.RND.integerInRange(0, 10000)}`
+    
+            }, 1000)
+
+            
         }
         
 

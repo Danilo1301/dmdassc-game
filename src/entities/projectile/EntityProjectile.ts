@@ -27,7 +27,7 @@ export class EntityProjectile extends Entity {
         })
 
         this.getComponent(BasicMovement).directional = true;
-        this.getComponent(BasicMovement).speed = 0.01;
+        this.getComponent(BasicMovement).speed = 0.02;
 
         this.getComponent(InputHandler).vertical = 1;
         

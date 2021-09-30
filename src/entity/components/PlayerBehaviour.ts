@@ -76,7 +76,12 @@ export class PlayerBehaviour extends Component {
 
         if(data.buttonDown !== undefined) {
 
-            if(data.buttonDown === true) this.entity.world.spawnProjectile(new Phaser.Math.Vector2(), 0);
+            if(data.buttonDown === true) {
+                const position = new Phaser.Math.Vector2(this.entity.position.x, this.entity.position.y);
+                const angle = this.entity.position.aimDirection;
+
+                this.entity.world.spawnProjectile(position, angle);
+            }
         }
     }
 }

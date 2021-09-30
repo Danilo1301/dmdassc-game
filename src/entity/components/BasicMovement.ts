@@ -56,8 +56,10 @@ export class BasicMovement extends Component {
 
             const targetAngle = Phaser.Math.Angle.RotateTo(this.entity.position.direction, angle - Math.PI, 0.2)
 
-            if(move.length() > 0) {
-                this.entity.position.setDirection( targetAngle );
+            if(!this.entity.position.canLerp) {
+                if(move.length() > 0) {
+                    this.entity.position.setDirection( targetAngle );
+                }
             }
 
             

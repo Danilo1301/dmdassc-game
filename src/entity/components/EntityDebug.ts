@@ -53,8 +53,8 @@ export class EntityDebug extends Component {
         }
 
         let str = `${this.entity.constructor.name}\n${Math.round(position.x)}, ${Math.round(position.y)}\n${strLines}`;
-        str += `\nd ${this.entity.position.direction}`
-        str += `\naim d ${this.entity.position.aimDirection}`
+        //str += `\nd ${this.entity.position.direction}`
+        //str += `\naim d ${this.entity.position.aimDirection}`
 
         text.setPosition(position.x, position.y);
         text.setText(str);
