@@ -50,6 +50,19 @@ export class BasicMovement extends Component {
             move.y = Math.sin(angle) * vertical * speed * delta;
 
             
+        } else {
+
+            const angle = Phaser.Math.Angle.BetweenPoints(move, {x: 0, y: 0});
+
+            const targetAngle = Phaser.Math.Angle.RotateTo(this.entity.position.direction, angle - Math.PI, 0.2)
+
+            if(move.length() > 0) {
+                this.entity.position.setDirection( targetAngle );
+            }
+
+            
+
+            //console.log(move)
         }
 
         /*

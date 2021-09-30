@@ -43,7 +43,7 @@ export class TestFollow extends Component {
             const pos1 = {x: this.entity.position.x, y: this.entity.position.y};
             const pos2 = {x: this._followingEntity.position.x, y: this._followingEntity.position.y};
 
-            const targetAngle = Math.atan2(pos2.y - pos1.y, pos2.x - pos1.x);
+            const targetAngle = Phaser.Math.Angle.BetweenPoints(pos1, pos2);
 
             //const targetAngle = Math.PI/2 + Phaser.Math.Angle.BetweenPoints({x: this.entity.position.x, y: this.entity.position.y}, {x: this._followingEntity.position.x, y: this._followingEntity.position.y})
 

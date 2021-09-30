@@ -56,7 +56,10 @@ export class VehicleMovement extends Component {
             if(physicBody.body.speed < 10)
                 physicBody.matter.applyForce(physicBody.body, {x: move.x, y: move.y});
 
-            physicBody.matter.setAngularVelocity(physicBody.body, horizontal * 0.05);
+        
+            if(horizontal != 0) physicBody.matter.setAngularVelocity(physicBody.body, horizontal * 0.05);
+            
+
 
             //if(horizontal != 0)
                 //physicBody.matter.setAngularVelocity(physicBody.body, horizontal * 0.05);

@@ -11,6 +11,7 @@ import { EntityWatcher, IWatchEntityData } from './EntityWatcher';
 import { IInputHandlerData, InputHandler } from '@game/entity/components/InputHandler';
 import { IPositionData } from '@game/entity/components/Position';
 import { EntityPlayer } from '@game/entities/player/EntityPlayer';
+import { PlayerBehaviour } from '@game/entity/components/PlayerBehaviour';
 
 export class Client {
 
@@ -147,13 +148,16 @@ export class Client {
             const inputHandler = entity.getComponent(InputHandler);
             if(inputHandlerData.h != undefined) inputHandler.horizontal = inputHandlerData.h;
             if(inputHandlerData.v != undefined) inputHandler.vertical = inputHandlerData.v;
+
+            
+            if(data.components['PlayerBehaviour']) {
+      
+                entity.getComponent(PlayerBehaviour).fromData(data.components['PlayerBehaviour'])
+            }
         }
 
         if(packet.type == PacketType.ENTER_VEHICLE) {
             const data: IPacketData_Id = packet.data;
-
-
-            console.log(data, this.player)
 
             if(data.id == '') {
                 this.beginControllEntity(this._player!);

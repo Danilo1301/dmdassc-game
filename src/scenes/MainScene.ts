@@ -1,6 +1,7 @@
 import { InputHandler } from "@game/entity/components/InputHandler";
 import { GameClient } from "@game/game/GameClient";
 import { Input } from "@game/input/Input";
+import { LocalPlayer } from "@game/network/LocalPlayer";
 import { IPacketData_ServerList, PacketType } from "@game/network/Packet";
 import { SceneManager } from "@game/sceneManager/SceneManager";
 import { GameScene } from "./GameScene";
@@ -31,6 +32,7 @@ export class MainScene extends Phaser.Scene {
 
         Input.setup(this);
         window['Input'] = Input;
+        window['LocalPlayer'] = LocalPlayer;
 
         const btn = this.add.image(200, 100, 'test').setInteractive();
 

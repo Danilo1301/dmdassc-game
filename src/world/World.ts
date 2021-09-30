@@ -5,6 +5,7 @@ import { EntityVehicle } from '@game/entities/vehicle/EntityVehicle';
 import { Component } from '@game/entity/Component';
 import { BasicMovement } from '@game/entity/components/BasicMovement';
 import { InputHandler } from '@game/entity/components/InputHandler';
+import { PlayerBehaviour } from '@game/entity/components/PlayerBehaviour';
 import { TestFollow } from '@game/entity/components/TestFollow';
 import { TestSpawnProjectile } from '@game/entity/components/TestSpawnProjectile';
 import { Entity } from '@game/entity/Entity';
@@ -79,14 +80,8 @@ export class World {
 
     public createEntity(entityType: string, options: ICreateEntityOptions) {
 
-        console.log("Create")
-
         const entity = this._server.entityFactory.createEntity(entityType, this, options);
         entity.position.set(100, 100);
-
-        console.log("Created")
-
-        console.log(entity.world)
 
         return entity
     }
@@ -133,6 +128,24 @@ export class World {
     }
 
     public setupDefaultWorld() {
+
+        const bot = this.createPlayer();
+        bot.addComponent(new TestFollow())
+        bot.getComponent(BasicMovement).directional = true;
+
+        setInterval(() => {
+
+            bot.getComponent(PlayerBehaviour)._test = `TEST ${Math.random()}`
+
+        }, 1000)
+
+        this.createVehicle()
+
+        this.createVehicle()
+
+
+        return;
+
 
         setInterval(() => {
 
@@ -194,10 +207,6 @@ export class World {
     }
 
     private setupEvents() {
-
-        console.log("helo?")
-
-
         this._scene!.events.on('update', (time: number, delta: number) => this.update(delta));
     }
 }

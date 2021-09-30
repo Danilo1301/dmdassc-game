@@ -14,7 +14,7 @@ export class Component {
     public get name() { return this.constructor.name; }
 
     public start() {
-        console.log(`[Component : ${this.name}] Start`);
+        //console.log(`[Component : ${this.name}] Start`);
     }
 
     public update(delta: number) {
@@ -22,7 +22,7 @@ export class Component {
     }
 
     public destroy() {
-        console.log(`[Component : ${this.name}] Destroy`);
+        //console.log(`[Component : ${this.name}] Destroy`);
     }
 
     public watchDataKey(key: string, options: IComponentWatchOptions) {

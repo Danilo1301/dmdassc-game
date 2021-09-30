@@ -8,6 +8,7 @@ export class EntityDebug extends Component {
     public entity!: Entity;
 
     private _text?: Phaser.GameObjects.Text;
+    private _aimDirLine?: Phaser.GameObjects.Graphics;
     private _lines: {[key: string]: string} = {};
 
     constructor() {
@@ -17,8 +18,14 @@ export class EntityDebug extends Component {
     public start(): void {
         super.start();
 
-        if(GameScene.Instance)
-            this._text = this.entity.world.scene.add.text(100, 100, 'TEXT');
+        if(GameScene.Instance) {
+
+            const scene = this.entity.world.scene;
+
+            this._text = scene.add.text(100, 100, 'TEXT');
+
+            this._aimDirLine = scene.add.graphics();
+        }
     }
 
     public setLineText(lineId: string, text?: string) {
@@ -45,16 +52,33 @@ export class EntityDebug extends Component {
             strLines += this._lines[key] + "\n";
         }
 
-        const str = `${this.entity.constructor.name}\n${Math.round(position.x)}, ${Math.round(position.y)}\n${strLines}`;
+        let str = `${this.entity.constructor.name}\n${Math.round(position.x)}, ${Math.round(position.y)}\n${strLines}`;
+        str += `\nd ${this.entity.position.direction}`
+        str += `\naim d ${this.entity.position.aimDirection}`
 
         text.setPosition(position.x, position.y);
         text.setText(str);
-        text.setDepth(1000)
+        text.setDepth(1000);
+
+        if(!this._aimDirLine) return;
+
+        const aimDirLine = this._aimDirLine;
+
+        const linePos = {
+            x: 40 * Math.cos(position.aimDirection),
+            y: 40 * Math.sin(position.aimDirection)
+        }
+
+        aimDirLine.clear();
+        //aimDirLine.fillStyle(0xff0000);
+        aimDirLine.lineBetween(0, 0, linePos.x, linePos.y);
+        aimDirLine.setPosition(position.x, position.y);
     }
 
     public destroy(): void {
         super.destroy();
 
         this._text?.destroy();
+        this._aimDirLine?.destroy();
     }
 }

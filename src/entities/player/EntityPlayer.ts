@@ -1,6 +1,7 @@
 import { BasicMovement } from "@game/entity/components/BasicMovement";
 import { InputHandler } from "@game/entity/components/InputHandler";
 import { PhysicBody } from "@game/entity/components/PhysicBody";
+import { PlayerBehaviour } from "@game/entity/components/PlayerBehaviour";
 import { TestSprite } from "@game/entity/components/TestSprite";
 import { Entity } from "@game/entity/Entity";
 import { GameClient } from "@game/game/GameClient";
@@ -18,6 +19,8 @@ export class EntityPlayer extends Entity {
         this.addComponent(new PhysicBody());
         this.addComponent(new InputHandler());
         this.addComponent(new BasicMovement());
+
+        this.addComponent(new PlayerBehaviour());
 
         this.addComponent(new TestSprite());
         this.getComponent(TestSprite).texturename = `player_test`;

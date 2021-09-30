@@ -79,6 +79,10 @@ export class EntityWatcher {
 
                     }
                     
+                } else if(typeof newValue == "string") {
+                    if(oldValue != newValue) changeValue();
+                } else if(typeof newValue == "boolean") {
+                    if(oldValue != newValue) changeValue();
                 } else {
                     //changeValue();
                 }

@@ -14,7 +14,7 @@ export const config: Phaser.Types.Core.GameConfig = {
         matter: {
             debug: {
                 showBounds: false,
-                showBody: false, //true
+                showBody: true, //true
                 showAxes: false,
                 showPositions: false,
                 showVelocity: true, //true

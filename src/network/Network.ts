@@ -46,9 +46,11 @@ export class Network {
             const data = component.toData();
 
             if(!data) continue;
-            if(component.name == "Position" || component.name == "InputHandler") {
-                components[component.name] = data;
-            }
+
+            if(component.name == "Position" ||
+                component.name == "InputHandler" ||
+                component.name == "PlayerBehaviour"
+            ) components[component.name] = data;
 
         }
 
@@ -81,6 +83,15 @@ export class Network {
             const data: IPacketData_Id = packet.data;
   
             LocalPlayer.setControllingEntityId(data.id);
+
+            try {
+                const world = this._game.servers[0].worlds[0];
+                LocalPlayer.beginControllEntity(world.getEntity(data.id));
+            } catch (error) {
+                
+            }
+          
+
         }
 
         if(packet.type == PacketType.ENTITY_DATA) {
