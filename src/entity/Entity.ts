@@ -11,6 +11,8 @@ export class Entity extends BaseEntity {
 
     private _id: string;
 
+    public syncTime: number = 0;
+
     constructor(world: World) {
         super();
 

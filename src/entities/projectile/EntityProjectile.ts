@@ -38,6 +38,8 @@ export class EntityProjectile extends Entity {
             this.world.removeEntity(this);
 
         }, 2000);
+
+        this.syncTime = 1000;
     }
 
     public update(delta: number) {

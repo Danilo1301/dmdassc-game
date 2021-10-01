@@ -95,7 +95,7 @@ export class World {
     }
 
     public addEntity(entity: Entity, components?: Component[]) {
-        console.log('[World]', `Add entity ${entity.constructor.name}`);
+        //console.log('[World]', `Add entity ${entity.constructor.name}`);
         this._entities.set(entity.id, entity);
 
         if(components != undefined) {
@@ -109,7 +109,7 @@ export class World {
     }
 
     public removeEntity(entity: Entity) {
-        console.log('[World]', `Remove entity ${entity.constructor.name}`);
+        //console.log('[World]', `Remove entity ${entity.constructor.name}`);
         this._entities.delete(entity.id);
         entity.destroy();
     }

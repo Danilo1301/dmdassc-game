@@ -24,6 +24,8 @@ export class Position extends Component {
     private _targetDirection: number = 0
     private _targetAimDirection: number = 0
 
+    public lastReceivedNetworkData: number = 0;
+
     constructor() {
         super();
 
@@ -78,6 +80,8 @@ export class Position extends Component {
     public update(delta: number) {
         super.update(delta);
 
+       
+
         if(this.entity.hasComponent(PhysicBody)) {
             const physicBody = this.entity.getComponent(PhysicBody);
             const body = physicBody.body;
@@ -90,14 +94,21 @@ export class Position extends Component {
         }        
 
         if(this.canLerp) {
+            const t = Date.now() - this.lastReceivedNetworkData;
+
+            //console.log(t)
+
             const distance = Phaser.Math.Distance.Between(this._x, this._y, this._targetX, this._targetY);
     
-            if(distance > 40) {
-                this._x = this._targetX;
-                this._y = this._targetY;
-            } else {
-                this._x = Phaser.Math.Interpolation.Linear([this._x, this._targetX], 0.5);
-                this._y = Phaser.Math.Interpolation.Linear([this._y, this._targetY], 0.5);
+            if(t < 20) {
+
+                if(distance > 40) {
+                    this._x = this._targetX;
+                    this._y = this._targetY;
+                } else {
+                    this._x = Phaser.Math.Interpolation.Linear([this._x, this._targetX], 0.5);
+                    this._y = Phaser.Math.Interpolation.Linear([this._y, this._targetY], 0.5);
+                }
             }
             
 

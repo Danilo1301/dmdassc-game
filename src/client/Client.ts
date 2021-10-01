@@ -1,5 +1,5 @@
 import { GameServer } from '@game/game/GameServer';
-import { IPacket, IPacketData_ConnectToServer, IPacketData_ConnectToServerStatus, IPacketData_EntityData, IPacketData_Id, IPacketData_ServerList, PacketType } from '@game/network/Packet';
+import { IPacket, IPacketData_ConnectToServer, IPacketData_ConnectToServerStatus, IPacketData_EntityData, IPacketData_Id, IPacketData_ServerList, IPacketData_SetServerPacketSendDelay, PacketType } from '@game/network/Packet';
 import { PacketSender } from '@game/network/PacketSender';
 import { v4 as uuidv4 } from 'uuid';
 import { Entity } from '@game/entity/Entity';
@@ -24,6 +24,10 @@ export class Client {
     private _server?: Server;
     private _world?: World;
     private _player?: EntityPlayer;
+    private _entitiesSyncTime = new Phaser.Structs.Map<string, number>([]);
+
+    private _sendPacketDelay: number = 30;
+    private _lastSentPackets: number = 0;
 
     constructor(game: GameServer, socket: socketio.Socket) {
         this._id = uuidv4();
@@ -33,7 +37,7 @@ export class Client {
         this._packetSender.receivePacketEvents.on('packet', (packet: IPacket) => this.onReceivePacket(packet));
         this._entityWatcher = new EntityWatcher();
 
-        setInterval(() => this.update(16), 16);
+        setInterval(() => this.update(1), 1);
 
         this._socket.on('disconnect', () => this.onDisconnect());
         this.onConnect();
@@ -47,6 +51,14 @@ export class Client {
     public set entity(entity: Entity) { this._entity = entity; }
 
     private sendEntityData(entity: Entity, watchData: IWatchEntityData) {
+    
+        const now = Date.now();
+
+        if(this._entitiesSyncTime.has(entity.id)) {
+            const t = this._entitiesSyncTime.get(entity.id);
+
+            if(now - t <= entity.syncTime) return;
+        }
 
         let hasNewData = false;
         for (const componentName in watchData.components) {
@@ -63,6 +75,8 @@ export class Client {
             }
 
             this.send(PacketType.ENTITY_DATA, data);
+
+            this._entitiesSyncTime.set(entity.id, now);
         }
     }
 
@@ -85,6 +99,10 @@ export class Client {
                 this.sendEntityData(entity, data);
             }
         }
+
+        const now = Date.now();
+        if(now - this._lastSentPackets <= this._sendPacketDelay) return
+        this._lastSentPackets = now;
 
         entityWatcher.update(delta);
 
@@ -154,6 +172,8 @@ export class Client {
       
                 entity.getComponent(PlayerBehaviour).fromData(data.components['PlayerBehaviour'])
             }
+
+            entity.position.lastReceivedNetworkData = Date.now();
         }
 
         if(packet.type == PacketType.ENTER_VEHICLE) {
@@ -168,6 +188,12 @@ export class Client {
             const vehicle = this._world!.getEntity(data.id);
 
             this.beginControllEntity(vehicle);
+        }
+
+        if(packet.type == PacketType.SET_SERVER_PACKET_SEND_DELAY) {
+            const data: IPacketData_SetServerPacketSendDelay = packet.data;
+
+            this._sendPacketDelay = data.delay;
         }
     }
 
