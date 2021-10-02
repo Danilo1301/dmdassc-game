@@ -25,7 +25,7 @@ export class EntityWatcher {
         this._entitiesData.set(entityId, {components: {}});
         this._entitiesNewData.set(entityId, {components: {}});
 
-        console.log(`[EntityWatcher] Entity ${entity.id} added`);
+        //console.log(`[EntityWatcher] Entity ${entity.id} added`);
     }
 
     public updateEntityData(entityId: string) {

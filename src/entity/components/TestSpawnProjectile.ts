@@ -8,16 +8,32 @@ export class TestSpawnProjectile extends Component {
 
     public entity!: Entity;
 
+    public enabled: boolean = false;
+
+    private _lastShot: number = 0;
+
     public start() {
         super.start();
-       
-        setInterval(() => {
+    }
 
-            const position = new Phaser.Math.Vector2(this.entity.position.x, this.entity.position.y);
-            const angle = this.entity.position.direction;
+    public update(delta: number) {
+        super.update(delta);
 
-            this.entity.world.spawnProjectile(position, angle);
+        if(!this.enabled) return;
 
-        }, 500)
+        const now = Date.now();
+
+        if(now - this._lastShot >= 500) {
+            this._lastShot = now;
+
+            this.spawnProjectile();
+        }
+    }
+
+    public spawnProjectile() {
+        const position = new Phaser.Math.Vector2(this.entity.position.x, this.entity.position.y);
+        const angle = this.entity.position.aimDirection;
+
+        this.entity.world.spawnProjectile(position, angle);
     }
 }

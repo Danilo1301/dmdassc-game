@@ -59,6 +59,7 @@ export class EntityDebug extends Component {
         text.setPosition(position.x, position.y);
         text.setText(str);
         text.setDepth(1000);
+        text.setFontSize(10)
 
         if(!this._aimDirLine) return;
 

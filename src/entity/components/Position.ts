@@ -1,4 +1,5 @@
 import { Component } from "@game/entity/Component"
+import { Entity } from "../Entity";
 import { EntityDebug } from "./EntityDebug";
 import { PhysicBody } from "./PhysicBody";
 
@@ -11,6 +12,7 @@ export interface IPositionData {
 
 export class Position extends Component {
 
+    public entity!: Entity;
     public canLerp: boolean = false;
     public lerpAmount: number = 0.8;
 
@@ -100,7 +102,7 @@ export class Position extends Component {
 
             const distance = Phaser.Math.Distance.Between(this._x, this._y, this._targetX, this._targetY);
     
-            if(t < 20) {
+            if(t < 20 || this.entity.syncTime === 0) {
 
                 if(distance > 40) {
                     this._x = this._targetX;
@@ -113,7 +115,7 @@ export class Position extends Component {
             
 
             this._direction = Phaser.Math.Angle.RotateTo(this._direction, this._targetDirection, 0.2);
-            this._aimDirection = Phaser.Math.Angle.RotateTo(this._aimDirection, this._targetAimDirection, 0.8);
+            this._aimDirection = Phaser.Math.Angle.RotateTo(this._aimDirection, this._targetAimDirection, 1);
 
             this.updatePhysicBody();
         }

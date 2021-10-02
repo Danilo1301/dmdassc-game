@@ -164,23 +164,19 @@ export class World {
         this.createVehicle()
         //this.createVehicle()//.addComponent(new TestFollow())
         
-        for (let i = 0; i < 3; i++) {
+        for (let i = 0; i < 4; i++) {
             const bot = this.createPlayer();
         
             bot.addComponent(new TestFollow())
             bot.getComponent(BasicMovement).directional = true;
 
-            if(i == 0) {
-                bot.addComponent(new TestSpawnProjectile())
+            if(i == 0 || i == 1) {
+                bot.getComponent(TestSpawnProjectile).enabled = true;
 
                 
             }
 
-            setInterval(() => {
-
-                bot.getComponent(PlayerBehaviour)._test = `test ${Phaser.Math.RND.integerInRange(0, 10000)}`
-    
-            }, 1000)
+            bot.getComponent(PlayerBehaviour)._test = `[BOT]`
 
             
         }

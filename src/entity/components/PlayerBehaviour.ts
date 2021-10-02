@@ -5,6 +5,7 @@ import { SceneManager } from "@game/sceneManager/SceneManager";
 import { GameScene } from "@game/scenes/GameScene";
 import { EntityDebug } from "./EntityDebug";
 import { InputHandler } from "./InputHandler";
+import { TestSpawnProjectile } from "./TestSpawnProjectile";
 
 export interface IPlayerData {
     test?: string
@@ -76,12 +77,7 @@ export class PlayerBehaviour extends Component {
 
         if(data.buttonDown !== undefined) {
 
-            if(data.buttonDown === true) {
-                const position = new Phaser.Math.Vector2(this.entity.position.x, this.entity.position.y);
-                const angle = this.entity.position.aimDirection;
-
-                this.entity.world.spawnProjectile(position, angle);
-            }
+            this.entity.getComponent(TestSpawnProjectile).enabled = data.buttonDown;
         }
     }
 }
