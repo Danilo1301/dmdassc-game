@@ -32,6 +32,8 @@ export class Network {
         
         if(location.host.includes('localhost')) address = `${location.protocol}//${location.host}/api/game`;
 
+        console.log(`[Network] Address: (${address})`)
+
         const socket = this._socket = io(address, {
             path: '/socket',
             autoConnect: false,
