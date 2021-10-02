@@ -26,7 +26,12 @@ export class Network {
     constructor(game: GameClient) {
         this._game = game;
 
-        const address = `${location.protocol}//${location.host}/api/game`;
+        //https://dmdassc-game.glitch.me/
+        
+        let address = `https://dmdassc-game.glitch.me/api/game`;
+        
+        if(location.host.includes('localhost')) address = `${location.protocol}//${location.host}/api/game`;
+
         const socket = this._socket = io(address, {
             path: '/socket',
             autoConnect: false,

@@ -18,7 +18,10 @@ export class MainScene extends Phaser.Scene {
 
         console.log(`[MainScene] Preload`)
 
-        this.load.setPath('/static/assets/');
+        let address = `https://dmdassc-game.glitch.me/assets/`;
+        if(location.host.includes('localhost')) address = `/assets/`;
+
+        this.load.setPath(address);
         this.load.image('test', 'test.png');
         this.load.image('player', 'player.png');
         this.load.image('player_test', 'player_test.png');

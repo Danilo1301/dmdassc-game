@@ -17,8 +17,9 @@ io.attach(server, {
     cors: { origin: '*' }
 });
 
-app.use('/static', express.static(path.join(__dirname, "..", "static")));
-app.get("*", (req, res) => res.sendFile(path.join(__dirname, "..", "static", "game", "index.html")) );
+app.use(express.static(path.join(__dirname, "..", "public")));
+//app.use('/static', express.static(path.join(__dirname, "..", "static")));
+//app.get("*", (req, res) => res.sendFile(path.join(__dirname, "..", "static", "game", "index.html")) );
 
 server.listen(port, () => console.log(`Express web server started: http://localhost:${port}`));
 
