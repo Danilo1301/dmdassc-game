@@ -51,8 +51,9 @@ export class EntityDebug extends Component {
         for (const key in this._lines) {
             strLines += this._lines[key] + "\n";
         }
-
-        let str = `${this.entity.constructor.name}\n${Math.round(position.x)}, ${Math.round(position.y)}\n${strLines}`;
+        let str = ``;
+        //str += `${this.entity.constructor.name}`;
+        str += `\n${Math.round(position.x)}, ${Math.round(position.y)}\n${strLines}`;
         //str += `\nd ${this.entity.position.direction}`
         //str += `\naim d ${this.entity.position.aimDirection}`
 

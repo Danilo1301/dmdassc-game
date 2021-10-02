@@ -55,6 +55,7 @@ export class TestFollow extends Component {
             this.entity.getComponent(EntityDebug).setLineText('followangle', `${newAngle}`);
 
             this.entity.position.setDirection(newAngle)
+            this.entity.position.setAimDirection(newAngle)
 
             this._inputHandler.vertical = 1;
         }

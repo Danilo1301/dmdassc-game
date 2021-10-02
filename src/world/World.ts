@@ -164,13 +164,13 @@ export class World {
         this.createVehicle()
         //this.createVehicle()//.addComponent(new TestFollow())
         
-        for (let i = 0; i < 4; i++) {
+        for (let i = 0; i < 3; i++) {
             const bot = this.createPlayer();
         
             bot.addComponent(new TestFollow())
             bot.getComponent(BasicMovement).directional = true;
 
-            if(i == 0 || i == 1) {
+            if(i == 0) {
                 bot.getComponent(TestSpawnProjectile).enabled = true;
 
                 
