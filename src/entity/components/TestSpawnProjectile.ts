@@ -1,8 +1,6 @@
 import { Component } from "@game/entity/Component"
-import { Input } from "@game/input/Input";
 import { Entity } from "../Entity";
-import { InputHandler } from "./InputHandler";
-import { PhysicBody } from "./PhysicBody";
+import { ProjectileBehaviour } from "./ProjectileBehaviour";
 
 export class TestSpawnProjectile extends Component {
 
@@ -34,6 +32,7 @@ export class TestSpawnProjectile extends Component {
         const position = new Phaser.Math.Vector2(this.entity.position.x, this.entity.position.y);
         const angle = this.entity.position.aimDirection;
 
-        this.entity.world.spawnProjectile(position, angle);
+        const projectile = this.entity.world.spawnProjectile(position, angle);
+        projectile.getComponent(ProjectileBehaviour).ownerId = this.entity.id;
     }
 }

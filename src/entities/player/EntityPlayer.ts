@@ -1,4 +1,5 @@
 import { BasicMovement } from "@game/entity/components/BasicMovement";
+import { Health } from "@game/entity/components/Health";
 import { InputHandler } from "@game/entity/components/InputHandler";
 import { PhysicBody } from "@game/entity/components/PhysicBody";
 import { PlayerBehaviour } from "@game/entity/components/PlayerBehaviour";
@@ -20,6 +21,7 @@ export class EntityPlayer extends Entity {
         this.addComponent(new PhysicBody());
         this.addComponent(new InputHandler());
         this.addComponent(new BasicMovement());
+        this.addComponent(new Health());
 
         this.addComponent(new PlayerBehaviour());
 

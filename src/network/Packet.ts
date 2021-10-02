@@ -38,6 +38,7 @@ export interface IPacketData_EntityData {
     entityId: string
     entityType: string
     components: {[component: string]: {[key: string]: any}}
+    forceUpdate?: boolean
 }
 
 export interface IPacketData_SetServerPacketSendDelay {

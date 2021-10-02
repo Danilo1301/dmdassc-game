@@ -1,4 +1,5 @@
 import { BasicMovement } from "@game/entity/components/BasicMovement";
+import { Health } from "@game/entity/components/Health";
 import { PhysicBody } from "@game/entity/components/PhysicBody";
 import { TestSprite } from "@game/entity/components/TestSprite";
 import { Entity } from "@game/entity/Entity";
@@ -10,6 +11,9 @@ export class EntityObject extends Entity {
         super(world);
         
         this.addComponent(new PhysicBody());
+
+
+        this.addComponent(new Health());
 
         this.addComponent(new TestSprite());
         this.getComponent(TestSprite).texturename = `crate`;
