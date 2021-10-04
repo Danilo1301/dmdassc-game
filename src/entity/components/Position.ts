@@ -28,6 +28,8 @@ export class Position extends Component {
 
     public lastReceivedNetworkData: number = 0;
 
+    public skipSmallLerp: boolean = false;
+
     constructor() {
         super();
 
@@ -104,16 +106,17 @@ export class Position extends Component {
     
             if(t < 20 || this.entity.syncTime === 0) {
 
-                let posLerp = 0.3;
+                let posLerp = 0.2;
 
-                if(distance > 200) {
-                    posLerp = 1;
-                } else if(distance > 20) {
+                if(distance > 30 && this.skipSmallLerp == false) {
                     posLerp = 0.8;
-                } else {
-                    posLerp = 0.3;
-                    
                 }
+
+                if(distance > 300) {
+                    posLerp = 1;
+                }
+
+                
 
                 this._x = Phaser.Math.Interpolation.Linear([this._x, this._targetX], posLerp);
                 this._y = Phaser.Math.Interpolation.Linear([this._y, this._targetY], posLerp);

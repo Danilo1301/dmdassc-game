@@ -45,7 +45,8 @@ export class EntityProjectile extends Entity {
 
         }, 2000);
 
-        this.syncTime = 1000;
+        this.syncTime = 200;
+        this.position.skipSmallLerp = true;
     }
 
     public update(delta: number) {
