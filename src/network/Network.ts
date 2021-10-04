@@ -124,6 +124,8 @@ export class Network {
             const world = this._game.servers[0].worlds[0];
 
             let newEntity = false;
+            
+            
 
             if(!world.hasEntity(data.entityId)) {
                 const entity = world.createEntity(data.entityType, {id: data.entityId});
@@ -134,28 +136,34 @@ export class Network {
 
             const entity = world.getEntity(data.entityId);
 
+            
+            
+            entity.position.lastReceivedNetworkData = Date.now();
+            
+            for (const component of entity.components) {
+                if(!data.components[component.name]) continue;
+                
+                component.fromData(data.components[component.name]);
+            }
+            
             if(data.entityId == LocalPlayer.entityId) {
 
                 if(!LocalPlayer.entity) {
                     LocalPlayer.beginControllEntity(entity);
                 }
 
-                return;
+
+            } else {
+                if(newEntity) {
+                    entity.position.canLerp = true;
+                    entity.position.lerpAmount = 0.2;
+                }
             }
 
-            entity.position.lastReceivedNetworkData = Date.now();
 
             
-            for (const component of entity.components) {
-                if(!data.components[component.name]) continue;
 
-                component.fromData(data.components[component.name]);
-            }
-
-            if(newEntity) {
-                entity.position.canLerp = true;
-                entity.position.lerpAmount = 0.2;
-            }
+            
 
             //entity.position.set(data.x, data.y);
         }

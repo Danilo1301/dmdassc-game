@@ -48,10 +48,9 @@ export class PlayerBehaviour extends Component {
         const angle = Phaser.Math.Angle.BetweenPoints(Input.mousePosition, pos);
 
         this.entity.position.setAimDirection(angle + Math.PI);
-
-
-        //console.log(SceneManager.phaser.scale.gameSize)
     }
+
+    
 
     public destroy(): void {
         super.destroy();

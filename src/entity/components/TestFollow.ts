@@ -1,3 +1,4 @@
+import { EntityProjectile } from "@game/entities/projectile/EntityProjectile";
 import { Component } from "@game/entity/Component"
 import { Input } from "@game/input/Input";
 import { Entity } from "../Entity";
@@ -27,7 +28,7 @@ export class TestFollow extends Component {
     }
 
     public getRandomEntity() {
-        const entities: Entity[] = this.entity.world.entities.filter(e => e != this.entity);
+        const entities: Entity[] = this.entity.world.entities.filter(e => e != this.entity && !(e instanceof EntityProjectile));
         return entities[Phaser.Math.RND.integerInRange(0, entities.length-1)];
     }
 
@@ -57,7 +58,17 @@ export class TestFollow extends Component {
             this.entity.position.setDirection(newAngle)
             this.entity.position.setAimDirection(newAngle)
 
-            this._inputHandler.vertical = 1;
+            const distance = Phaser.Math.Distance.BetweenPoints(pos1, pos2);
+
+            if(distance > 100) { 
+                this._inputHandler.vertical = 1;
+            } else {
+                if(distance < 80) {
+                    this._inputHandler.vertical = -1;
+                } else {
+                    this._inputHandler.vertical = 0;
+                }
+            }
         }
 
 

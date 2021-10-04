@@ -170,11 +170,9 @@ export class World {
             bot.addComponent(new TestFollow())
             bot.getComponent(BasicMovement).directional = true;
 
-            if(i == 0) {
-                bot.getComponent(TestSpawnProjectile).enabled = true;
-
-                
-            }
+            //if(i == 0) {
+                bot.getComponent(TestSpawnProjectile).enabled = true 
+            //}
 
             bot.getComponent(PlayerBehaviour)._test = `[BOT]`
 

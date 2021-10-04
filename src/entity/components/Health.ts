@@ -52,6 +52,21 @@ export class Health extends Component {
         }
     }
 
+    public takeDamage(amount: number) {
+
+        if(this.entity.position.canLerp) return;
+
+        this._health -= amount;
+
+        if(this._health <= 0) {
+            this._health = 100;
+
+            this.entity.position.set(0, 0);
+
+            this.entity.forceUpdateData = true;
+        }
+    }
+
     public destroy(): void {
         super.destroy();
     }

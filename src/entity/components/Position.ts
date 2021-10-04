@@ -127,8 +127,10 @@ export class Position extends Component {
 
         const physicBody = this.entity.getComponent(PhysicBody);
 
+        if(!physicBody.body) return;
+
         physicBody.setPosition(this._x, this._y);
-        physicBody.setAngle(this._direction);
+        physicBody.setAngle( this._direction );
         
     }
     

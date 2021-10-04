@@ -7,6 +7,8 @@ export class EntityDebug extends Component {
 
     public entity!: Entity;
 
+    public visible: boolean = true;
+
     private _text?: Phaser.GameObjects.Text;
     private _aimDirLine?: Phaser.GameObjects.Graphics;
     private _lines: {[key: string]: string} = {};
@@ -18,7 +20,7 @@ export class EntityDebug extends Component {
     public start(): void {
         super.start();
 
-        if(GameScene.Instance) {
+        if(GameScene.Instance && this.visible) {
 
             const scene = this.entity.world.scene;
 

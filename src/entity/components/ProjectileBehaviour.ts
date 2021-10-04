@@ -36,18 +36,14 @@ export class ProjectileBehaviour extends Component {
             if(distance < 10) {
                 this.entity.world.removeEntity(this.entity);
 
-                console.log("hit")
+                //console.log("hit")
 
                 if(entity.hasComponent(Health)) {
                     const healthComponent = entity.getComponent(Health);
 
-                    healthComponent.health -= 17;
+                    healthComponent.takeDamage(17);
 
-                    if(healthComponent.health <= 0) {
-                        healthComponent.health = 100;
-
-                        entity.position.set(0, 0);
-                    }
+                    
                 }
             }
         }

@@ -13,6 +13,8 @@ export class Entity extends BaseEntity {
 
     public syncTime: number = 0;
 
+    public forceUpdateData: boolean = false;
+
     constructor(world: World) {
         super();
 

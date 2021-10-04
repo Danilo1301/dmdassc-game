@@ -4,6 +4,11 @@ import { Entity } from "../Entity";
 import { InputHandler } from "./InputHandler";
 import { PhysicBody } from "./PhysicBody";
 
+export interface IBasicMovementData {
+    speed?: number
+    directional?: boolean
+}
+
 export class BasicMovement extends Component {
 
     public entity!: Entity;
@@ -13,9 +18,14 @@ export class BasicMovement extends Component {
 
     private _inputHandler?: InputHandler;
 
+    constructor() {
+        super();
+        this.watchDataKey('speed', {});
+        this.watchDataKey('directional', {});
+    }
+
     public start() {
         super.start();
-
         this._inputHandler = this.entity.getComponent(InputHandler);
     }
 
@@ -25,7 +35,6 @@ export class BasicMovement extends Component {
         if(!this._inputHandler) return;
 
         const inputHandler = this._inputHandler;
-
         const horizontal = inputHandler.horizontal;
         const vertical = inputHandler.vertical;
 
@@ -48,12 +57,9 @@ export class BasicMovement extends Component {
 
             move.x = Math.cos(angle) * vertical * speed * delta;
             move.y = Math.sin(angle) * vertical * speed * delta;
-
             
         } else {
-
             const angle = Phaser.Math.Angle.BetweenPoints(move, {x: 0, y: 0});
-
             const targetAngle = Phaser.Math.Angle.RotateTo(this.entity.position.direction, angle - Math.PI, 0.2)
 
             if(!this.entity.position.canLerp) {
@@ -61,10 +67,6 @@ export class BasicMovement extends Component {
                     this.entity.position.setDirection( targetAngle );
                 }
             }
-
-            
-
-            //console.log(move)
         }
 
         /*
@@ -80,5 +82,18 @@ export class BasicMovement extends Component {
             physicBody.applyForce(Phaser.Math.Vector2.ZERO, move);
         }
 
+    }
+
+    public toData() {
+        const data: IBasicMovementData = {
+            directional: this.directional,
+            speed: this.speed
+        };
+        return data;
+    }
+
+    public fromData(data: IBasicMovementData) {
+        if(data.directional !== undefined) this.directional = data.directional;
+        if(data.speed !== undefined) this.speed = data.speed;
     }
 }

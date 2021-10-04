@@ -1,4 +1,5 @@
 import { BasicMovement } from "@game/entity/components/BasicMovement";
+import { EntityDebug } from "@game/entity/components/EntityDebug";
 import { InputHandler } from "@game/entity/components/InputHandler";
 import { PhysicBody } from "@game/entity/components/PhysicBody";
 import { ProjectileBehaviour } from "@game/entity/components/ProjectileBehaviour";
@@ -31,10 +32,11 @@ export class EntityProjectile extends Entity {
         })
 
         this.getComponent(BasicMovement).directional = true;
-        this.getComponent(BasicMovement).speed = 0.02;
+        this.getComponent(BasicMovement).speed = 0.04;
 
         this.getComponent(InputHandler).vertical = 1;
         
+        this.getComponent(EntityDebug).visible = false;
         
 
         setTimeout(() => {

@@ -74,6 +74,24 @@ export class Client {
                 components: watchData.components
             }
 
+            if(this._entity == entity) {
+
+                if(entity.forceUpdateData) {
+                    entity.forceUpdateData = false;
+                } else {
+                    delete data.components['Position'];
+                }
+
+                
+
+                /*
+                if(entity.forceUpdateData) {
+                    data.forceUpdate = true;
+                    entity.forceUpdateData = false;
+                }
+                */
+            }
+
             this.send(PacketType.ENTITY_DATA, data);
 
             this._entitiesSyncTime.set(entity.id, now);
