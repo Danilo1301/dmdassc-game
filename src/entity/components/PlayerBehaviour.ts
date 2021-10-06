@@ -5,6 +5,7 @@ import { SceneManager } from "@game/sceneManager/SceneManager";
 import { GameScene } from "@game/scenes/GameScene";
 import { EntityDebug } from "./EntityDebug";
 import { InputHandler } from "./InputHandler";
+import { PhysicBody } from "./PhysicBody";
 import { TestSpawnProjectile } from "./TestSpawnProjectile";
 
 export interface IPlayerData {
@@ -29,8 +30,26 @@ export class PlayerBehaviour extends Component {
         this.watchDataKey('buttonDown', {});
     }
 
+    public raycast(bodies, start, r, dist){
+
+        const Matter: any = Phaser.Physics.Matter['Matter'];
+
+        var normRay = Matter.Vector.normalise(r);
+        var ray = normRay;
+        for(var i = 0; i < dist; i++){
+          ray = Matter.Vector.mult(normRay, i);
+          ray = Matter.Vector.add(start, ray);
+          var bod = Matter.Query.point(bodies, ray)[0];
+          if(bod){
+            return {point: ray, body: bod};
+          }
+        }
+        return;
+      }
+
     public update(delta: number): void {
         super.update(delta);
+
 
         this.entity.getComponent(EntityDebug).setLineText('testpbh', this._test)
 
@@ -79,4 +98,5 @@ export class PlayerBehaviour extends Component {
             this.entity.getComponent(TestSpawnProjectile).enabled = data.buttonDown;
         }
     }
+    
 }

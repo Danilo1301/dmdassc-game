@@ -1,3 +1,4 @@
+import { BulletTrace } from "@game/bulletTrace/BulletTrace";
 import { EntityPlayer } from "@game/entities/player/EntityPlayer";
 import { EntityVehicle } from "@game/entities/vehicle/EntityVehicle";
 import { InputHandler } from "@game/entity/components/InputHandler";
@@ -42,6 +43,8 @@ export class GameScene extends Phaser.Scene {
     private _key_f_state: boolean = false;
     
     update(time: number, delta: number) {
+
+        BulletTrace.update(delta);
 
         const keyDown = Input.getKeyDown(70);
 

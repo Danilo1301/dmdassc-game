@@ -1,6 +1,9 @@
+import { EntityPlayer } from "@game/entities/player/EntityPlayer";
 import { Component } from "@game/entity/Component";
 import { Entity } from "@game/entity/Entity";
 import { GameScene } from "@game/scenes/GameScene";
+import { PhysicBody } from "./PhysicBody";
+import { PlayerBehaviour } from "./PlayerBehaviour";
 import { Position } from "./Position";
 
 export class EntityDebug extends Component {
@@ -36,6 +39,42 @@ export class EntityDebug extends Component {
             return;
         }
         this._lines[lineId] = text;
+    }
+
+    public raycast(bodies, start, r, dist){
+
+        const Matter: any = Phaser.Physics.Matter['Matter'];
+
+        var normRay = Matter.Vector.normalise(r);
+        var ray = normRay;
+        for(var i = 0; i < dist; i++){
+          ray = Matter.Vector.mult(normRay, i);
+          ray = Matter.Vector.add(start, ray);
+          var bod = Matter.Query.point(bodies, ray)[0];
+          if(bod){
+            return {point: ray, body: bod};
+          }
+        }
+        return;
+      }
+
+    public doRaycast(start: any, r: any) {
+        const entities = this.entity.world.entities.filter(entity => {
+
+            if(entity == this.entity) return;
+            if(!entity.hasComponent(PhysicBody)) return false;
+
+            const body = entity.getComponent(PhysicBody);
+
+            if(!body) return false;
+
+            return true;
+        })
+
+        const bodies = entities.map(e => e.getComponent(PhysicBody).body);
+        const result = this.raycast(bodies, start, r, 100);
+
+        return result;
     }
 
     public update(delta: number): void {
@@ -74,9 +113,55 @@ export class EntityDebug extends Component {
         }
 
         aimDirLine.clear();
-        //aimDirLine.fillStyle(0xff0000);
+        aimDirLine.lineStyle(2, 0x0000ff);
         aimDirLine.lineBetween(0, 0, linePos.x, linePos.y);
         aimDirLine.setPosition(position.x, position.y);
+
+        if(this.entity.constructor.name != 'EntityPlayer') return;
+
+        //if(!(this.entity.hasComponent(PlayerBehaviour))) return;
+
+        const Matter: any = Phaser.Physics.Matter['Matter'];
+
+        const start = new Matter.Vector.create( this.entity.position.x, this.entity.position.y );
+        start.x = this.entity.position.x;
+        start.y = this.entity.position.y;
+
+        const angle = this.entity.position.aimDirection
+
+        const r = new Matter.Vector.create( Math.cos(angle), Math.sin(angle) );
+        const normRay = Matter.Vector.normalise(r);
+
+        let ray = Matter.Vector.mult(normRay, 100);
+        ray = Matter.Vector.add(start, ray);
+
+
+        const result = this.doRaycast(start, r);
+
+ 
+        aimDirLine.lineStyle(3, result ? 0x00ff00 : 0xff0000)
+        aimDirLine.lineBetween(
+            start.x - this.entity.position.x,
+            start.y - this.entity.position.y,
+            ray.x - this.entity.position.x,
+            ray.y - this.entity.position.y
+        );
+
+
+        /*
+        const r = new Matter.Vector.create( 1, 0 );
+
+        
+        
+        const normRay = Matter.Vector.normalise(r);
+        var ray = normRay;
+        const point = Matter.Vector.add(ray, start);
+
+        ray = Matter.Vector.mult(normRay, 100);
+        const end = Matter.Vector.add(start, ray);
+ 
+        const result = this.raycast(bodies, start, r, 100);
+        */
     }
 
     public destroy(): void {

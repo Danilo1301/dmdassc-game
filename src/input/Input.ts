@@ -1,7 +1,9 @@
 export class Input {
+    public static events = new Phaser.Events.EventEmitter();
 
     private static _keys = new Map<number, boolean>();
     private static _mousePosition = new Phaser.Math.Vector2();
+    private static _mouseDown: boolean = false;
 
     public static get mousePosition() { return this._mousePosition; }
 
@@ -10,19 +12,36 @@ export class Input {
 
         input.keyboard.on('keydown', (e) => {
             this._keys.set(e.keyCode, true);
+
+            this.events.emit('input_changed');
         })
 
         input.keyboard.on('keyup', (e) => {
             this._keys.set(e.keyCode, false);
+
+            this.events.emit('input_changed');
         })
 
         input.addListener('pointermove', this.onPointerMove, this)
+
+        input.addListener('pointerdown', (e) => {
+            this._mouseDown = true;
+
+            this.events.emit('input_changed');
+        })
+        input.addListener('pointerup', (e) => {
+            this._mouseDown = false;
+
+            this.events.emit('input_changed');
+        })
     }
 
     private static onPointerMove(pointer) {
         const cursor = pointer;
         this._mousePosition.x = cursor.x
         this._mousePosition.y = cursor.y
+        
+        this.events.emit('input_changed');
     }
 
     public static getKeyDown(key: number | string)
@@ -73,5 +92,9 @@ export class Input {
         */
 
         return vertical
+    }
+
+    public static getMouseDown() {
+        return this._mouseDown;
     }
 }

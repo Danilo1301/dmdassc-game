@@ -34,5 +34,6 @@ export class TestSpawnProjectile extends Component {
 
         const projectile = this.entity.world.spawnProjectile(position, angle);
         projectile.getComponent(ProjectileBehaviour).ownerId = this.entity.id;
+        
     }
 }

@@ -1,5 +1,5 @@
 import { GameServer } from '@game/game/GameServer';
-import { IPacket, IPacketData_ConnectToServer, IPacketData_ConnectToServerStatus, IPacketData_EntityData, IPacketData_Id, IPacketData_ServerList, IPacketData_SetServerPacketSendDelay, PacketType } from '@game/network/Packet';
+import { IPacket, IPacketData_ConnectToServer, IPacketData_ConnectToServerStatus, IPacketData_EntityData, IPacketData_Id, IPacketData_InputData, IPacketData_ServerList, IPacketData_SetServerPacketSendDelay, PacketType } from '@game/network/Packet';
 import { PacketSender } from '@game/network/PacketSender';
 import { v4 as uuidv4 } from 'uuid';
 import { Entity } from '@game/entity/Entity';
@@ -12,6 +12,7 @@ import { IInputHandlerData, InputHandler } from '@game/entity/components/InputHa
 import { IPositionData } from '@game/entity/components/Position';
 import { EntityPlayer } from '@game/entities/player/EntityPlayer';
 import { PlayerBehaviour } from '@game/entity/components/PlayerBehaviour';
+import { Input } from '@game/input/Input';
 
 export class Client {
 
@@ -20,7 +21,6 @@ export class Client {
     private _socket: socketio.Socket;
     private _packetSender: PacketSender;
     private _entityWatcher: EntityWatcher;
-    private _entity?: Entity;
     private _server?: Server;
     private _world?: World;
     private _player?: EntityPlayer;
@@ -47,11 +47,20 @@ export class Client {
     public get connected() { return this._socket.connected; }
     
     public get player() { return this._player!; }
-    public get entity() { return this._entity!; }
-    public set entity(entity: Entity) { this._entity = entity; }
+
+    public setPlayer(player: EntityPlayer) {
+        this._player = player;
+    }
+    //public get entity() { return this._entity!; }
+    //public set entity(entity: Entity) { this._entity = entity; }
 
     private sendEntityData(entity: Entity, watchData: IWatchEntityData) {
     
+        
+        if(entity.dontSync) return;
+
+    
+
         const now = Date.now();
 
         if(this._entitiesSyncTime.has(entity.id)) {
@@ -67,14 +76,18 @@ export class Client {
             //console.log(`[${componentName}]`, newData.components[componentName]);
         }
 
+        const nd = this._entityWatcher.getNewEntityEData(entity.id);
+        if(nd != '') hasNewData = true;
+
         if(hasNewData) {
             const data: IPacketData_EntityData = {
                 entityId: entity.id,
                 entityType: entity.constructor.name,
-                components: watchData.components
+                components: watchData.components,
+                entityData: nd
             }
 
-            if(this._entity == entity) {
+            if(this._player == entity) {
 
                 if(entity.forceUpdateData) {
                     entity.forceUpdateData = false;
@@ -146,6 +159,16 @@ export class Client {
     }
 
     private onReceivePacket(packet: IPacket) {
+
+        if(packet.type == PacketType.INPUT_DATA) {
+            const data: IPacketData_InputData = packet.data;
+            const entity = this.player;
+
+            if(!entity.hasComponent(InputHandler)) return;
+
+            console.log("got data")
+        }
+
         if(packet.type == PacketType.REQUEST_SERVER_LIST) {
 
             const servers = this._game.servers.map(server => {
@@ -168,6 +191,8 @@ export class Client {
         }
 
         if(packet.type == PacketType.ENTITY_DATA) {
+
+            /*
             const data: IPacketData_EntityData = packet.data;
 
             if(data.entityId != this.entity.id) return;
@@ -190,8 +215,10 @@ export class Client {
       
                 entity.getComponent(PlayerBehaviour).fromData(data.components['PlayerBehaviour'])
             }
-
+            
             entity.position.lastReceivedNetworkData = Date.now();
+            */
+
         }
 
         if(packet.type == PacketType.ENTER_VEHICLE) {
@@ -236,7 +263,7 @@ export class Client {
                 data.success = true;
                 
                 this._server = server;
-                this._world = this.entity.world;
+                this._world = this.player.world;
             }
 
             sendData();
@@ -246,7 +273,7 @@ export class Client {
     public beginControllEntity(entity: Entity) {
         if(this._player == undefined) this._player = entity as EntityPlayer;
 
-        if(this.entity) {
+        if(this.player) {
 
             const inputHandler = this.entity.getComponent(InputHandler);
             inputHandler.horizontal = 0;

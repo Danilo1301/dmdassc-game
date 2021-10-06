@@ -18,6 +18,8 @@ export class TestSprite extends Component {
         this.priority = 1000;
     }
 
+    public get sprite() { return this._sprite; }
+
     public start(): void {
         super.start();
 
@@ -38,11 +40,12 @@ export class TestSprite extends Component {
         if(!sprite) return;
         
         sprite.setPosition(position.x, position.y)
+        sprite.setAngle(Phaser.Math.RadToDeg(this.entity.position.direction))
 
         if(this.entity.hasComponent(PhysicBody)) {
             const physicBody = this.entity.getComponent(PhysicBody);
 
-            sprite.setAngle(Phaser.Math.RadToDeg(physicBody.body.parent.angle))
+            //sprite.setAngle(Phaser.Math.RadToDeg(this.entity.position.direction))
         }
 
         

@@ -1,4 +1,3 @@
-import { BaseEntity } from "@game/entity/BaseEntity";
 import { Entity } from "@game/entity/Entity";
 
 export interface IWatchEntityData {
@@ -6,9 +5,12 @@ export interface IWatchEntityData {
 }
 
 export class EntityWatcher {
-    private _entities = new Phaser.Structs.Map<string, BaseEntity>([]);
+    private _entities = new Phaser.Structs.Map<string, Entity>([]);
     private _entitiesData = new Phaser.Structs.Map<string, IWatchEntityData>([]);
     private _entitiesNewData = new Phaser.Structs.Map<string, IWatchEntityData>([]);
+
+    private _entitiesEData = new Phaser.Structs.Map<string, string>([]);
+    private _entitiesNewEData = new Phaser.Structs.Map<string, string>([]);
 
     public update(delta: number) {
         for (const entityId of this._entities.keys()) {
@@ -25,11 +27,27 @@ export class EntityWatcher {
         this._entitiesData.set(entityId, {components: {}});
         this._entitiesNewData.set(entityId, {components: {}});
 
+        this._entitiesEData.set(entityId, "");
+        this._entitiesNewEData.set(entityId, "");
+
         //console.log(`[EntityWatcher] Entity ${entity.id} added`);
     }
 
     public updateEntityData(entityId: string) {
         const entity = this._entities.get(entityId);
+
+        this._entitiesNewEData.set(entityId, '');
+
+        const edata = JSON.stringify(entity.entityData);
+
+        if(edata) {
+            if(edata != this._entitiesEData.get(entityId)) {
+                this._entitiesEData.set(entityId, edata);
+                this._entitiesNewEData.set(entityId, edata);
+            }
+        }
+        
+
 
         const data = this._entitiesData.get(entityId);
         const newData = this._entitiesNewData.get(entityId);
@@ -93,6 +111,10 @@ export class EntityWatcher {
 
     public getNewEntityData(entityId: string) {
         return this._entitiesNewData.get(entityId)
+    }
+
+    public getNewEntityEData(entityId: string) {
+        return this._entitiesNewEData.get(entityId)
     }
 
     public getEntityFullData(entityId: string): any {

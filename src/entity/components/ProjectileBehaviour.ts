@@ -1,4 +1,5 @@
 import { EntityProjectile } from "@game/entities/projectile/EntityProjectile";
+import { EntityWeapon } from "@game/entities/weapon/EntityWeapon";
 import { Component } from "@game/entity/Component";
 import { Entity } from "@game/entity/Entity";
 import { Health } from "./Health";
@@ -29,6 +30,7 @@ export class ProjectileBehaviour extends Component {
         for (const entity of this.entity.world.entities) {
 
             if(entity instanceof EntityProjectile) continue;
+            if(entity instanceof EntityWeapon) continue;
             if(this.entity.getComponent(ProjectileBehaviour).ownerId == entity.id) continue;
             
             const distance = Phaser.Math.Distance.BetweenPoints(this.entity.position, entity.position);

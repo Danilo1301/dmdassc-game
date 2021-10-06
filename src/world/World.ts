@@ -78,6 +78,12 @@ export class World {
         return e;
     }
 
+    public spawnEntity(entityType: string, options: ICreateEntityOptions) {
+        const e = this.createEntity(entityType, options);
+        this.addEntity(e);
+        return e;
+    }
+
     public createEntity(entityType: string, options: ICreateEntityOptions) {
 
         const entity = this._server.entityFactory.createEntity(entityType, this, options);
@@ -161,12 +167,15 @@ export class World {
 
         this.createVehicle()
         this.createVehicle()
-        this.createVehicle()
-        //this.createVehicle()//.addComponent(new TestFollow())
+        //this.createVehicle()
+        //this.createVehicle().addComponent(new TestFollow())
         
         for (let i = 0; i < 3; i++) {
+            
             const bot = this.createPlayer();
         
+            bot.entityData.test1 = `from server`;
+
             bot.addComponent(new TestFollow())
             bot.getComponent(BasicMovement).directional = true;
 

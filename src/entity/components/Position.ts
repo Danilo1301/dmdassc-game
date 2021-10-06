@@ -13,9 +13,10 @@ export interface IPositionData {
 export class Position extends Component {
 
     public entity!: Entity;
+    
     public canLerp: boolean = false;
     public lerpAmount: number = 0.8;
-
+  
     private _x: number = 0
     private _y: number = 0
     private _direction: number = 0
@@ -29,6 +30,7 @@ export class Position extends Component {
     public lastReceivedNetworkData: number = 0;
 
     public skipSmallLerp: boolean = false;
+    public skipDirectionLerp: boolean = false;
 
     constructor() {
         super();
@@ -126,6 +128,8 @@ export class Position extends Component {
             const d = Math.abs(Math.abs(this._direction) - Math.abs(this._targetDirection));
             let dirLerp = 0.05;
             if(d > 0.2) dirLerp = 1;
+
+            if(this.skipDirectionLerp) dirLerp = 0.3;
 
             this._direction = Phaser.Math.Angle.RotateTo(this._direction, this._targetDirection, dirLerp);
 

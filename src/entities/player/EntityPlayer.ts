@@ -5,6 +5,7 @@ import { PhysicBody } from "@game/entity/components/PhysicBody";
 import { PlayerBehaviour } from "@game/entity/components/PlayerBehaviour";
 import { TestSpawnProjectile } from "@game/entity/components/TestSpawnProjectile";
 import { TestSprite } from "@game/entity/components/TestSprite";
+import { WeaponComponent } from "@game/entity/components/WeaponComponent";
 import { Entity } from "@game/entity/Entity";
 import { GameClient } from "@game/game/GameClient";
 import { Input } from "@game/input/Input";
@@ -13,8 +14,16 @@ import { SceneManager } from "@game/sceneManager/SceneManager";
 import { World } from "@game/world/World";
 import { EntityVehicle } from "../vehicle/EntityVehicle";
 
+interface IEntityData {
+    test1: string
+}
 
 export class EntityPlayer extends Entity {
+
+    public entityData: IEntityData = {
+        test1: "helo"
+    }
+
     constructor(world: World) {
         super(world);
         
@@ -24,6 +33,7 @@ export class EntityPlayer extends Entity {
         this.addComponent(new Health());
 
         this.addComponent(new PlayerBehaviour());
+        this.addComponent(new WeaponComponent());
 
         this.addComponent(new TestSprite());
         this.getComponent(TestSprite).texturename = `player_test`;
@@ -38,7 +48,8 @@ export class EntityPlayer extends Entity {
             mass: 100,
             inertia: Infinity
         })
-    }
 
+        this.position.skipDirectionLerp = true;
+    }
 
 }

@@ -20,10 +20,14 @@ export class GameClient extends Game {
 
         console.log(`[GameClient] Start`);
 
+        this.initScene();
+
+
+
         this.network.connect(() => {
             console.log(`[Network] Connected? ${this.network.connected}`);
 
-            this.initScene();
+
         });
     }
 

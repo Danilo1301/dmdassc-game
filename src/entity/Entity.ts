@@ -6,6 +6,8 @@ import { EntityDebug } from "./components/EntityDebug";
 
 export class Entity extends BaseEntity {
 
+    public entityData: any;
+
     public world: World;
     public position: Position;
 
@@ -14,6 +16,7 @@ export class Entity extends BaseEntity {
     public syncTime: number = 0;
 
     public forceUpdateData: boolean = false;
+    public dontSync: boolean = false;
 
     constructor(world: World) {
         super();
@@ -31,5 +34,11 @@ export class Entity extends BaseEntity {
 
     public setId(id: string) {
         this._id = id;
+    }
+
+    public start() {
+        super.start();
+
+        if(this.entityData) console.log(this.entityData)
     }
 }

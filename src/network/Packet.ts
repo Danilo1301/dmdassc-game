@@ -8,7 +8,8 @@ export enum PacketType {
     ENTITY_DATA,
     CONTROLL_ENTITY,
     ENTER_VEHICLE,
-    SET_SERVER_PACKET_SEND_DELAY
+    SET_SERVER_PACKET_SEND_DELAY,
+    INPUT_DATA
 }
 
 export interface IPacket {
@@ -39,6 +40,16 @@ export interface IPacketData_EntityData {
     entityType: string
     components: {[component: string]: {[key: string]: any}}
     forceUpdate?: boolean
+    entityData?: string
+}
+
+export interface IPacketData_InputData {
+    horizontal?: number
+    vertical?: number
+    direction?: number
+    x?: number
+    y?: number
+    mouse1?: boolean
 }
 
 export interface IPacketData_SetServerPacketSendDelay {

@@ -63,7 +63,7 @@ export class TestFollow extends Component {
             if(distance > 100) { 
                 this._inputHandler.vertical = 1;
             } else {
-                if(distance < 80) {
+                if(distance < 30) {
                     this._inputHandler.vertical = -1;
                 } else {
                     this._inputHandler.vertical = 0;
