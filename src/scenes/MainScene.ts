@@ -1,5 +1,4 @@
 import { BulletTrace } from "@game/bulletTrace/BulletTrace";
-import { InputHandler } from "@game/entity/components/InputHandler";
 import { GameClient } from "@game/game/GameClient";
 import { Input } from "@game/input/Input";
 import { LocalPlayer } from "@game/network/LocalPlayer";
@@ -8,15 +7,9 @@ import { SceneManager } from "@game/sceneManager/SceneManager";
 import { GameScene } from "./GameScene";
 import { ServerListScene } from "./ServerListScene";
 
-
 export class MainScene extends Phaser.Scene {
 
-    public startMultiplayer() {
-        
-    }
-
-    preload() {
-
+    public preload() {
         console.log(`[MainScene] Preload`)
         console.log(`[MainScene] Assets path: (${'assets/'})`)
 
@@ -29,10 +22,9 @@ export class MainScene extends Phaser.Scene {
         this.load.image('bullet', 'bullet.png');
     }
 
-    create() {
+    public create() {
         console.log(`[MainScene] Create`);
 
-        Input.setup(this);
         window['Input'] = Input;
         window['LocalPlayer'] = LocalPlayer;
         window['BulletTrace'] = BulletTrace;
@@ -44,8 +36,6 @@ export class MainScene extends Phaser.Scene {
             btn2.destroy();
 
             SceneManager.startScene('ServerListScene', ServerListScene);
-
-            //this.startMultiplayer();
         });
 
         const btn2 = this.add.image(200, 500, 'test').setInteractive();
@@ -64,18 +54,15 @@ export class MainScene extends Phaser.Scene {
             btn2.destroy();
 
             SceneManager.startScene('GameScene', GameScene);
+            GameScene.setupGame(true, false)
 
-            SceneManager.game.servers[0].worlds[0].setupDefaultWorld();
-            SceneManager.game.servers[0].worlds[0].createPlayer().getComponent(InputHandler).isControlledByPlayer = true;
+            const world = SceneManager.game.servers[0].worlds[0];
+            world.setupDefaultWorld();
 
-
-
-            //this.startMultiplayer();
+            //SceneManager.game.servers[0].worlds[0].createPlayer().getComponent(InputHandler).isControlledByPlayer = true;
         });
     }
     
-
-    
-    update(time: number, delta: number) {
+    public update(time: number, delta: number) {
     }
 }

@@ -1,81 +1,74 @@
-import { EntityObject } from '@game/entities/object/EntityObject';
-import { EntityPlayer } from '@game/entities/player/EntityPlayer';
-import { EntityProjectile } from '@game/entities/projectile/EntityProjectile';
-import { EntityVehicle } from '@game/entities/vehicle/EntityVehicle';
-import { Component } from '@game/entity/Component';
-import { BasicMovement } from '@game/entity/components/BasicMovement';
-import { InputHandler } from '@game/entity/components/InputHandler';
-import { PlayerBehaviour } from '@game/entity/components/PlayerBehaviour';
-import { TestFollow } from '@game/entity/components/TestFollow';
-import { TestSpawnProjectile } from '@game/entity/components/TestSpawnProjectile';
+import { EntityPlayer } from '@game/entity/EntityPlayer';
+import { Component } from '@game/entity/component/Component';
+
 import { Entity } from '@game/entity/Entity';
 import { ICreateEntityOptions } from '@game/entityFactory/EntityFactory';
 import { SceneManager } from '@game/sceneManager/SceneManager';
 import { GameScene } from '@game/scenes/GameScene';
 import { Server } from '@game/server/Server';
 import { v4 as uuidv4 } from 'uuid';
+import { DataWatcher } from '@game/dataWatcher/DataWatcher';
+import { FollowComponent } from '@game/entity/component/FollowComponent';
+import { EntityObject } from '@game/entity/EntityObject';
+import { WeaponComponent } from '@game/entity/component/WeaponComponent';
 
 export class World {
 
     public events = new Phaser.Events.EventEmitter();
 
+    
     private _id: string = "";
     private _server: Server;
     private _scene?: Phaser.Scene;
     private _entities = new Phaser.Structs.Map<string, Entity>([]);
-
+    
     constructor(server: Server) {
         this._server = server;
-
+        
         console.log(`[World] Created`);
     }
-
+    
     public get id() { return this._id; }
     public set id(value: string) { this._id = value; }
     public get entities() { return this._entities.values(); }
     public get scene() { return this._scene!; }
+    public get server() { return this._server!; }
+    public get isHost() { return this.server.isHost; }
     
     public async init() {
         await this.setupWorld();
-
-        //const player = <EntityPlayer>this.createEntity('', {});
-        //this.addEntity(player);
-        //console.log(player);
     }
 
     public update(delta: number) {
         //console.log(`[World] Update ${delta}`);
 
+        for (const entity of this.entities) entity.preupdate(delta);
         for (const entity of this.entities) entity.update(delta);
+        for (const entity of this.entities) entity.postupdate(delta);
     }
 
-    public spawnProjectile(position: Phaser.Math.Vector2, angle: number) {
-        const projectile = <EntityProjectile>this.createEntity('EntityProjectile', {});
-        this.addEntity(projectile);
-        projectile.position.set(position.x, position.y);
-        projectile.position.setDirection(angle);
-        return projectile;
-    }
-
-    public createPlayer() {
+    public spawnPlayer(color?: number) {
         const player = <EntityPlayer>this.createEntity('EntityPlayer', {});
+
+        player.setPosition(200, 200);
+
+        //player.data.spawnedFromServer = true;
+
+        //player.data.test = [{id: 'test_entity', count: 12}];
+        setInterval(() => {
+            //player.data.test[0].count = (Phaser.Math.RND.integerInRange(0, 10000));
+            
+        }, 3000)
+        setInterval(() => {
+            //player.data.position.x += (Phaser.Math.RND.integerInRange(1, 3));
+            //player.data.position.y = (Phaser.Math.RND.integerInRange(100, 600));
+        }, 1620)
+
+        player.setColor(Phaser.Math.RND.integerInRange(0, 0xffffff));
+
+        if(color != undefined) player.setColor(color);
         this.addEntity(player);
-        player.position.set(200, 200);
         return player;
-    }
-
-    public createObject() {
-        const object = <EntityObject>this.createEntity('EntityObject', {});
-        this.addEntity(object);
-        object.position.set(300, 300);
-        return object;
-    }
-
-    public createVehicle() {
-        const e = <EntityVehicle>this.createEntity('EntityVehicle', {});
-        this.addEntity(e);
-        e.position.set(200, 300);
-        return e;
     }
 
     public spawnEntity(entityType: string, options: ICreateEntityOptions) {
@@ -85,9 +78,8 @@ export class World {
     }
 
     public createEntity(entityType: string, options: ICreateEntityOptions) {
-
         const entity = this._server.entityFactory.createEntity(entityType, this, options);
-        entity.position.set(100, 100);
+        //entity.position.set(100, 100);
 
         return entity
     }
@@ -134,67 +126,26 @@ export class World {
     }
 
     public setupDefaultWorld() {
+        
+        for (let i = 0; i < 1; i++) {
+            const player = this.spawnPlayer();
+            player.addComponent(new FollowComponent())
+            player.getComponent(WeaponComponent).autoShot = true;
+            
+        }
 
-       
-       
-        setInterval(() => {
+        for (let i = 0; i < 2; i++) {
+            const object = <EntityObject>this.spawnEntity('EntityObject', {});
 
-            let crates = 0;
-
-            for (const entity of this.entities) {
-                //if(entity instanceof EntityObject) {
-                    
-                    const distance = Phaser.Math.Distance.BetweenPoints({x: 0, y: 0}, {x: entity.position.x, y: entity.position.y})
-
-                    if(distance <= 400) {
-                        crates++;
-                    }
-
-                    if(distance > 500 && !(entity instanceof EntityProjectile )) entity.position.set(0, 0);
-                    
-               // }
+            if(i == 0) {
+                const c = <WeaponComponent>object.addComponent(new WeaponComponent());
+                c.autoShot = true;
+                
             }
-
-            //if(crates < 3) this.createObject();
-
-            //console.log("y", crates)
-
-        }, 500)
-
-        for (let i = 0; i < 4; i++) {
-            this.createObject();
-        }
-
-        this.createVehicle()
-        this.createVehicle()
-        //this.createVehicle()
-        //this.createVehicle().addComponent(new TestFollow())
-        
-        for (let i = 0; i < 3; i++) {
-            
-            const bot = this.createPlayer();
-        
-            bot.entityData.test1 = `from server`;
-
-            bot.addComponent(new TestFollow())
-            bot.getComponent(BasicMovement).directional = true;
-
-            //if(i == 0) {
-                bot.getComponent(TestSpawnProjectile).enabled = true 
-            //}
-
-            bot.getComponent(PlayerBehaviour)._test = `[BOT]`
-
+            //object.addComponent(new FollowComponent())
             
         }
-        
 
-        setInterval(() => {
-
-            //this.spawnProjectile(new Phaser.Math.Vector2(0, 0), Phaser.Math.DegToRad(45));
-
-        }, 1500)
-        
     }
 
     private async createScene() {

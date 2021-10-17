@@ -1,5 +1,6 @@
-import { BasicMovement } from "@game/entity/components/BasicMovement";
-import { InputHandler } from "@game/entity/components/InputHandler";
+
+import { EntitySyncComponent } from "@game/entity/component/EntitySyncComponent";
+import { InputHandlerComponent } from "@game/entity/component/InputHandlerComponent";
 import { Entity } from "@game/entity/Entity";
 import { GameClient } from "@game/game/GameClient";
 import { Input } from "@game/input/Input";
@@ -8,7 +9,7 @@ import { GameScene } from "@game/scenes/GameScene";
 import { ServerListScene } from "@game/scenes/ServerListScene";
 import { io, Socket } from "socket.io-client";
 import { LocalPlayer } from "./LocalPlayer";
-import { IPacket, IPacketData_ConnectToServerStatus, IPacketData_EntityData, IPacketData_Id, IPacketData_InputData, IPacketData_ServerList, IPacketData_SetServerPacketSendDelay, PacketType } from "./Packet";
+import { IPacket, IPacketData_ComponentEvent, IPacketData_ConnectToServerStatus, IPacketData_EntityData, IPacketData_Id, IPacketData_InputData, IPacketData_ServerList, IPacketData_SetServerPacketSendDelay, PacketType } from "./Packet";
 import { PacketSender } from "./PacketSender";
 
 export class Network {
@@ -55,60 +56,8 @@ export class Network {
     public get connected() { return this._socket.connected; }
 
     public update(delta: number) {
-
-
-        const entity = LocalPlayer.entity;
-
-        if(this._hasInputChanged) {
-            const inputData: IPacketData_InputData = {
-                horizontal: Input.getHorizontal(),
-                vertical: Input.getVertical(),
-                mouse1: Input.getMouseDown()
-            }
-
-            if(entity) inputData.direction = entity.position.aimDirection;
-
-            this.send(PacketType.INPUT_DATA, inputData);
-
-            this._bytesSent += this.getDataSize(inputData);
-        }
-        this._hasInputChanged = false;
-
-
-
         
-
-        if(!entity) return;
-
-        const components = {};
-        
-        const now = Date.now();
-        if(now - this._lastSentPackets <= this._sendPacketDelay) return
-        this._lastSentPackets = now;
-
-        for (const component of entity.components) {
-            const data = component.toData();
-
-            if(!data) continue;
-
-            if(component.name == "Position" ||
-                component.name == "InputHandler" ||
-                component.name == "PlayerBehaviour"
-            ) components[component.name] = data;
-
-        }
-
-        const data: IPacketData_EntityData = {
-            entityId: entity.id,
-            entityType: entity.constructor.name,
-            components: components
-        }
-
-        //console.log(data)
-
-        this.send(PacketType.ENTITY_DATA, data);
-
-        this._bytesSent += this.getDataSize(data);
+   
     }
 
     private getDataSize(data: any) {
@@ -130,74 +79,45 @@ export class Network {
            
             if(data.success) {
                 SceneManager.startScene('GameScene', GameScene);
+                GameScene.setupGame(false, true)
             }
-        }
-
-        if(packet.type == PacketType.CONTROLL_ENTITY) {
-            const data: IPacketData_Id = packet.data;
-  
-            LocalPlayer.setControllingEntityId(data.id);
-
-            try {
-                const world = this._game.servers[0].worlds[0];
-                LocalPlayer.beginControllEntity(world.getEntity(data.id));
-            } catch (error) {
-                
-            }
-          
-
         }
 
         if(packet.type == PacketType.ENTITY_DATA) {
             const data: IPacketData_EntityData = packet.data;
             const world = this._game.servers[0].worlds[0];
 
-            let newEntity = false;
-            
             let entity: Entity | undefined;
+            let isNewEntity: boolean = false;
 
             if(!world.hasEntity(data.entityId)) {
                 entity = world.createEntity(data.entityType, {id: data.entityId});
-                newEntity = true;
+                isNewEntity = true;
             }
 
             if(!entity) entity = world.getEntity(data.entityId);
 
-            if(data.entityData) entity.entityData = JSON.parse(data.entityData);
-            
+            if(data.entityData) entity.mergeData(data.entityData);
 
-            if(newEntity) world.addEntity(entity);
-            
-            entity.position.lastReceivedNetworkData = Date.now();
-            
-            for (const component of entity.components) {
-                if(!data.components[component.name]) continue;
-                
-                component.fromData(data.components[component.name]);
-            }
-            
-
-            if(data.entityId == LocalPlayer.entityId) {
-
-                if(!LocalPlayer.entity) {
-                    LocalPlayer.beginControllEntity(entity);
-                }
-
-
-            } else {
-                if(newEntity) {
-                    entity.position.canLerp = true;
-                    entity.position.lerpAmount = 0.2;
-                }
+            if(isNewEntity) {
+                entity.addComponent(new EntitySyncComponent());
+                world.addEntity(entity);
             }
 
-            
+        }
 
-            
+        if(packet.type == PacketType.CONTROLL_ENTITY) {
+            const data: IPacketData_Id = packet.data;
 
-            
+            LocalPlayer.entityId = data.id;
+        }
 
-            //entity.position.set(data.x, data.y);
+        if(packet.type == PacketType.COMPONENT_EVENT) {
+            const data: IPacketData_ComponentEvent = packet.data;
+            const world = this._game.servers[0].worlds[0];
+
+            const entity = world.getEntity(data.entityId);
+            entity.events.emit('component_event', data.componentName, data.eventName, data.data)
         }
     }
 

@@ -1,7 +1,6 @@
 import { GameClient } from "@game/game/GameClient";
 import { IPacketData_ConnectToServer, PacketType } from "@game/network/Packet";
 import { SceneManager } from "@game/sceneManager/SceneManager";
-import { GameScene } from "./GameScene";
 
 export interface ServerInfo {
     id: string
@@ -18,9 +17,10 @@ export class ServerListScene extends Phaser.Scene {
 
     constructor() {
         super({});
-
         ServerListScene.Instance = this;
     }
+
+    public get network() { return (SceneManager.game as GameClient).network; }
 
     public updateServersList(servers: ServerInfo[]) {
         this._servers = servers;
@@ -50,25 +50,20 @@ export class ServerListScene extends Phaser.Scene {
     public connectToServer(id: string) {
         console.log(`[ServerListScene] Connecting to ${id}...`)
 
-        const network = this.getNetwork();
+        const network = this.network;
         const data: IPacketData_ConnectToServer = {id: id};
 
         network.send(PacketType.CONNECT_TO_SERVER, data);
     }
 
-    private getNetwork() {
-        const game = SceneManager.game as GameClient;
-        return game.network;
-    }
-
-    preload() {
+    public preload() {
         console.log(`[ServerListScene] Preload`)
     }
 
-    create() {
+    public create() {
         console.log(`[ServerListScene] Create`);
 
-        const network = this.getNetwork();
+        const network = this.network;
 
         network.send(PacketType.REQUEST_SERVER_LIST);
     }

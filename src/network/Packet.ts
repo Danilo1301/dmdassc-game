@@ -9,7 +9,9 @@ export enum PacketType {
     CONTROLL_ENTITY,
     ENTER_VEHICLE,
     SET_SERVER_PACKET_SEND_DELAY,
-    INPUT_DATA
+    INPUT_DATA,
+    WEAPON_SHOT,
+    COMPONENT_EVENT
 }
 
 export interface IPacket {
@@ -38,9 +40,7 @@ export interface IPacketData_ConnectToServerStatus {
 export interface IPacketData_EntityData {
     entityId: string
     entityType: string
-    components: {[component: string]: {[key: string]: any}}
-    forceUpdate?: boolean
-    entityData?: string
+    entityData?: any
 }
 
 export interface IPacketData_InputData {
@@ -54,4 +54,15 @@ export interface IPacketData_InputData {
 
 export interface IPacketData_SetServerPacketSendDelay {
     delay: number
+}
+
+export interface IPacketData_WeaponShot {
+    entityHit?: string
+}
+
+export interface IPacketData_ComponentEvent {
+    entityId: string
+    componentName: string
+    eventName: string
+    data: any
 }

@@ -1,15 +1,18 @@
 import { Client } from '@game/client/Client';
-import { EntityObject } from '@game/entities/object/EntityObject';
-import { EntityPlayer } from '@game/entities/player/EntityPlayer';
-import { EntityProjectile } from '@game/entities/projectile/EntityProjectile';
-import { EntityVehicle } from '@game/entities/vehicle/EntityVehicle';
-import { EntityWeapon } from '@game/entities/weapon/EntityWeapon';
+import { FollowComponent } from '@game/entity/component/FollowComponent';
+import { WeaponComponent } from '@game/entity/component/WeaponComponent';
+import { EntityBulletTracer } from '@game/entity/EntityBulletTracer';
+import { EntityObject } from '@game/entity/EntityObject';
+import { EntityPlayer } from '@game/entity/EntityPlayer';
+import { EntityWeapon } from '@game/entity/EntityWeapon';
 import { EntityFactory } from '@game/entityFactory/EntityFactory';
 import { World } from '@game/world/World';
 import { v4 as uuidv4 } from 'uuid';
 
 export class Server {
 
+    public isHost: boolean = true;
+    public isOnline: boolean = false;
     private _id: string;
     private _worlds = new Phaser.Structs.Map<string, World>([]);
     private _clients = new Phaser.Structs.Map<string, Client>([]);
@@ -19,10 +22,18 @@ export class Server {
         this._id = uuidv4();
         this._entityFactory = new EntityFactory();
         this._entityFactory.registerEntity('EntityPlayer', EntityPlayer);
+        this._entityFactory.registerEntity('EntityBulletTracer', EntityBulletTracer);
+        this._entityFactory.registerEntity('EntityWeapon', EntityWeapon);
         this._entityFactory.registerEntity('EntityObject', EntityObject);
+
+        this._entityFactory.registerComponent('WeaponComponent', WeaponComponent);
+        this._entityFactory.registerComponent('FollowComponent', FollowComponent);
+
+        /*
         this._entityFactory.registerEntity('EntityVehicle', EntityVehicle);
         this._entityFactory.registerEntity('EntityProjectile', EntityProjectile);
         this._entityFactory.registerEntity('EntityWeapon', EntityWeapon);
+        */
 
         console.log(`[Server] Created`);
     }
@@ -51,21 +62,17 @@ export class Server {
     public handleClientConnection(client: Client, callback?: (success: boolean) => void) {
         this._clients.set(client.id, client);
 
-        const entity = this.worlds[0].createPlayer();
+        const entity = this.worlds[0].spawnPlayer();
 
-        //const entity = this.worlds[0].createVehicle();
-
-        //entity.position.lerpAmount = 0.8;
-
-        client.beginControllEntity(entity);
         
- 
 
+        client.setPlayer(entity);
+        
         callback?.(true);
     }
 
     public handleClientDisconnect(client: Client) {
-        const world = client.entity.world;
+        const world = client.player.world;
         world.removeEntity(client.player);
 
         this._clients.delete(client.id);

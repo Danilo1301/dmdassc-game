@@ -1,5 +1,5 @@
 import { GameServer } from '@game/game/GameServer';
-import { IPacket, IPacketData_ConnectToServer, IPacketData_ConnectToServerStatus, IPacketData_EntityData, IPacketData_Id, IPacketData_InputData, IPacketData_ServerList, IPacketData_SetServerPacketSendDelay, PacketType } from '@game/network/Packet';
+import { IPacket, IPacketData_ComponentEvent, IPacketData_ConnectToServer, IPacketData_ConnectToServerStatus, IPacketData_EntityData, IPacketData_Id, IPacketData_InputData, IPacketData_ServerList, IPacketData_SetServerPacketSendDelay, IPacketData_WeaponShot, PacketType } from '@game/network/Packet';
 import { PacketSender } from '@game/network/PacketSender';
 import { v4 as uuidv4 } from 'uuid';
 import { Entity } from '@game/entity/Entity';
@@ -7,12 +7,9 @@ import { ServerInfo } from '@game/scenes/ServerListScene';
 import { Server } from '@game/server/Server';
 import { World } from '@game/world/World';
 import socketio from 'socket.io';
-import { EntityWatcher, IWatchEntityData } from './EntityWatcher';
-import { IInputHandlerData, InputHandler } from '@game/entity/components/InputHandler';
-import { IPositionData } from '@game/entity/components/Position';
-import { EntityPlayer } from '@game/entities/player/EntityPlayer';
-import { PlayerBehaviour } from '@game/entity/components/PlayerBehaviour';
-import { Input } from '@game/input/Input';
+import { EntityPlayer } from '@game/entity/EntityPlayer';
+import { EntityWatcher } from '@game/dataWatcher/EntityWatcher';
+import { IWeaponShotData, WeaponComponent } from '@game/entity/component/WeaponComponent';
 
 export class Client {
 
@@ -20,14 +17,17 @@ export class Client {
     private _game: GameServer;
     private _socket: socketio.Socket;
     private _packetSender: PacketSender;
-    private _entityWatcher: EntityWatcher;
+    //private _entityWatcher: EntityWatcher;
     private _server?: Server;
     private _world?: World;
+    //private _entitiesSyncTime = new Phaser.Structs.Map<string, number>([]);
+    
     private _player?: EntityPlayer;
-    private _entitiesSyncTime = new Phaser.Structs.Map<string, number>([]);
 
-    private _sendPacketDelay: number = 30;
+    private _sendPacketsDelay: number = 30;
     private _lastSentPackets: number = 0;
+
+    private _entities = new Phaser.Structs.Map<string, EntityWatcher>([]);
 
     constructor(game: GameServer, socket: socketio.Socket) {
         this._id = uuidv4();
@@ -35,7 +35,7 @@ export class Client {
         this._socket = socket;
         this._packetSender = new PacketSender(socket);
         this._packetSender.receivePacketEvents.on('packet', (packet: IPacket) => this.onReceivePacket(packet));
-        this._entityWatcher = new EntityWatcher();
+        //this._entityWatcher = new EntityWatcher();
 
         setInterval(() => this.update(1), 1);
 
@@ -50,65 +50,14 @@ export class Client {
 
     public setPlayer(player: EntityPlayer) {
         this._player = player;
-    }
-    //public get entity() { return this._entity!; }
-    //public set entity(entity: Entity) { this._entity = entity; }
 
-    private sendEntityData(entity: Entity, watchData: IWatchEntityData) {
-    
-        
-        if(entity.dontSync) return;
-
-    
-
-        const now = Date.now();
-
-        if(this._entitiesSyncTime.has(entity.id)) {
-            const t = this._entitiesSyncTime.get(entity.id);
-
-            if(now - t <= entity.syncTime) return;
+        const data: IPacketData_Id = {
+            id: player.id,
         }
 
-        let hasNewData = false;
-        for (const componentName in watchData.components) {
-            hasNewData = true;
+        this.send(PacketType.CONTROLL_ENTITY, data);
 
-            //console.log(`[${componentName}]`, newData.components[componentName]);
-        }
 
-        const nd = this._entityWatcher.getNewEntityEData(entity.id);
-        if(nd != '') hasNewData = true;
-
-        if(hasNewData) {
-            const data: IPacketData_EntityData = {
-                entityId: entity.id,
-                entityType: entity.constructor.name,
-                components: watchData.components,
-                entityData: nd
-            }
-
-            if(this._player == entity) {
-
-                if(entity.forceUpdateData) {
-                    entity.forceUpdateData = false;
-                } else {
-                    delete data.components['Position'];
-                }
-
-                
-
-                /*
-                if(entity.forceUpdateData) {
-                    data.forceUpdate = true;
-                    entity.forceUpdateData = false;
-                }
-                */
-            }
-
-            this.send(PacketType.ENTITY_DATA, data);
-
-            this._entitiesSyncTime.set(entity.id, now);
-        }
     }
 
     public update(delta: number) {
@@ -118,59 +67,63 @@ export class Client {
 
         if(!world) return;
 
-        const entityWatcher = this._entityWatcher;
-
-        for (const entity of world.entities) {
-            
-            if(!entityWatcher.hasEntity(entity.id)) {
-                entityWatcher.addEntity(entity.id, entity);
-                entityWatcher.updateEntityData(entity.id);
-
-                const data = entityWatcher.getEntityFullData(entity.id);
-                this.sendEntityData(entity, data);
-            }
-        }
-
         const now = Date.now();
-        if(now - this._lastSentPackets <= this._sendPacketDelay) return
-        this._lastSentPackets = now;
 
-        entityWatcher.update(delta);
+        if(now - this._lastSentPackets >= this._sendPacketsDelay) {
+            this._lastSentPackets = now;
 
-        for (const entity of world.entities) {
-            const data = entityWatcher.getNewEntityData(entity.id);
+            for (const entity of world.entities) {
+            
+                if(entity.dontSync) continue;
+
+                if(!this._entities.has(entity.id)) {
+                    this._entities.set(entity.id, new EntityWatcher(entity));
+
+                    //X
+                    entity.events.on('component_event', (a, b, c) => {
+
+                        const data: IPacketData_ComponentEvent = {
+                            entityId: entity.id,
+                            componentName: a,
+                            eventName: b,
+                            data: c
+                        }
+                
+                        this.send(PacketType.COMPONENT_EVENT, data);
+            
         
-            this.sendEntityData(entity, data);
-        }
-        
-        /*
-        
-        for (const entity of world.entities) {
-            const data: IPacketData_EntityData = {
-                entityId: entity.id,
-                x: entity.position.x,
-                y: entity.position.y
+                    })
+                }
+    
+                const entityWatcher = this._entities.get(entity.id);
+                
+                entityWatcher.process();
+                const newData = entityWatcher.getNewData();
+    
+                if(newData) {
+                    this.sendEntityData(entity, newData);
+                }
             }
-
-            this.send(PacketType.ENTITY_DATA, data);
         }
+
         
-        */
+    }
+
+    private sendEntityData(entity: Entity, entityData: any) { 
+        //console.log(entity.id, 'newData:', entityData);
+
+        const data: IPacketData_EntityData = {
+            entityId: entity.id,
+            entityType: entity.name,
+            entityData: entityData
+        }
+
+        this.send(PacketType.ENTITY_DATA, data);
     }
 
     private onReceivePacket(packet: IPacket) {
 
-        if(packet.type == PacketType.INPUT_DATA) {
-            const data: IPacketData_InputData = packet.data;
-            const entity = this.player;
-
-            if(!entity.hasComponent(InputHandler)) return;
-
-            console.log("got data")
-        }
-
         if(packet.type == PacketType.REQUEST_SERVER_LIST) {
-
             const servers = this._game.servers.map(server => {
                 const serverInfo: ServerInfo = {
                     id: server.id,
@@ -190,55 +143,77 @@ export class Client {
             this.connectToServer(data.id);
         }
 
-        if(packet.type == PacketType.ENTITY_DATA) {
-
-            /*
-            const data: IPacketData_EntityData = packet.data;
-
-            if(data.entityId != this.entity.id) return;
-
-            const entity = this.entity;
-
-            const positionData = <IPositionData>data.components['Position'];
-            if(positionData.x != undefined && positionData.y != undefined) entity.position.set(positionData.x, positionData.y);
-            if(positionData.dir != undefined)  entity.position.setDirection(positionData.dir);
-            if(positionData.aimDir != undefined)  entity.position.setAimDirection(positionData.aimDir);
-            
-
-            const inputHandlerData = <IInputHandlerData>data.components['InputHandler'];
-            const inputHandler = entity.getComponent(InputHandler);
-            if(inputHandlerData.h != undefined) inputHandler.horizontal = inputHandlerData.h;
-            if(inputHandlerData.v != undefined) inputHandler.vertical = inputHandlerData.v;
-
-            
-            if(data.components['PlayerBehaviour']) {
-      
-                entity.getComponent(PlayerBehaviour).fromData(data.components['PlayerBehaviour'])
-            }
-            
-            entity.position.lastReceivedNetworkData = Date.now();
-            */
-
-        }
-
-        if(packet.type == PacketType.ENTER_VEHICLE) {
-            const data: IPacketData_Id = packet.data;
-
-            if(data.id == '') {
-                this.beginControllEntity(this._player!);
-
-                return;
-            }
-
-            const vehicle = this._world!.getEntity(data.id);
-
-            this.beginControllEntity(vehicle);
-        }
-
         if(packet.type == PacketType.SET_SERVER_PACKET_SEND_DELAY) {
             const data: IPacketData_SetServerPacketSendDelay = packet.data;
 
-            this._sendPacketDelay = data.delay;
+            this._sendPacketsDelay = data.delay;
+        }
+
+        if(packet.type == PacketType.ENTITY_DATA) {
+            const data: IPacketData_EntityData = packet.data;
+
+     
+            if(data.entityData) {
+                const position = data.entityData.position;
+
+                if(position) {
+                    const newPosition = {x: this.player.position.x, y: this.player.position.y};
+
+                    if(position.x != undefined) newPosition.x = position.x;
+                    if(position.y != undefined) newPosition.y = position.y;
+       
+                    const distance = Phaser.Math.Distance.BetweenPoints(this.player.position, newPosition);
+                    
+                    if(distance < 10) this.player.setPosition(newPosition.x, newPosition.y);
+                }
+
+                const input = data.entityData.input;
+
+                if(input) {
+                    if(input.x != undefined) this.player.data.input.x = input.x;
+                    if(input.y != undefined) this.player.data.input.y = input.y;
+                    if(input.mouse1 != undefined) this.player.data.input.mouse1 = input.mouse1;
+                }
+
+                if(data.entityData.lookRotation) this.player.setLookRotation(data.entityData.lookRotation)
+            }
+        }
+
+        if(packet.type == PacketType.WEAPON_SHOT) {
+            const data: IWeaponShotData = packet.data;
+
+            let entityHit: Entity | undefined;
+
+            if(data.entityHit) entityHit = this.player.world.getEntity(data.entityHit)
+
+            /*
+                const pos1 = this.player.position;
+                const pos2 = entity.position;
+
+                const angle = Phaser.Math.Angle.BetweenPoints(pos1, pos2);
+
+                this.player.setLookRotation(angle);
+            */
+
+            this.player.getComponent(WeaponComponent).shot(entityHit);
+
+            /*
+
+            if(data.entityHit) {
+                const entity = this.player.world.getEntity(data.entityHit);
+
+                console.log("shot with dir");
+
+                const pos1 = this.player.position;
+                const pos2 = entity.position;
+
+                const angle = Phaser.Math.Angle.BetweenPoints(pos1, pos2);
+
+                this.player.getComponent(TestWeaponComponent).shotWithDirection(angle);
+            }
+
+            */
+
         }
     }
 
@@ -270,39 +245,23 @@ export class Client {
         });
     }
 
-    public beginControllEntity(entity: Entity) {
-        if(this._player == undefined) this._player = entity as EntityPlayer;
-
-        if(this.player) {
-
-            const inputHandler = this.entity.getComponent(InputHandler);
-            inputHandler.horizontal = 0;
-            inputHandler.vertical = 0;
-
-            this.entity.position.canLerp = false;
-            this._entity = undefined;
-        }
-
-        const data: IPacketData_Id = {
-            id: entity.id
-        }
-
-        this._entity = entity;
-        entity.position.canLerp = true;
-
-        this.send(PacketType.CONTROLL_ENTITY, data);
-    }
-    
     public send(packetType: PacketType, data?: any) {
-        this._packetSender.send(packetType, data);
+
+        setTimeout(() => {
+            
+            this._packetSender.send(packetType, data);
+        }, 0);
+
+   
+
     }
 
     public onConnect() {
-        console.log("conn")
+        console.log(`[Client] Connect`)
     }
 
     public onDisconnect() {
-        console.log("descc")
+        console.log(`[Client] Disconnect`)
 
         if(this._server) this._server.handleClientDisconnect(this);
     }

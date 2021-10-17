@@ -1,7 +1,8 @@
-import { Component } from "./Component";
+import { Component } from "./component/Component";
 
 export class BaseEntity {
 
+    public events = new Phaser.Events.EventEmitter();
     private _components: Component[] = [];
     private _started: boolean = false;
 
@@ -12,8 +13,16 @@ export class BaseEntity {
         this._started = true;
     }
 
+    public preupdate(delta: number) {
+        for (const component of this.components) component.preupdate(delta);
+    }
+
     public update(delta: number) {
         for (const component of this.components) component.update(delta);
+    }
+
+    public postupdate(delta: number) {
+        for (const component of this.components) component.postupdate(delta);
     }
 
     public destroy() {
@@ -25,6 +34,7 @@ export class BaseEntity {
         component.entity = this;
         this.updateComponentsOrder();
         if(this._started) component.start();
+        return component;
     }
 
     public getComponent<C extends Component>(constr: { new(...args: any[]): C }) {

@@ -28,11 +28,15 @@ export class Input {
             this._mouseDown = true;
 
             this.events.emit('input_changed');
+
+            console.log('pointerdown')
         })
         input.addListener('pointerup', (e) => {
             this._mouseDown = false;
 
             this.events.emit('input_changed');
+
+            console.log('pointerup')
         })
     }
 
