@@ -4,6 +4,7 @@ import { WeaponComponent } from '@game/entity/component/WeaponComponent';
 import { EntityBulletTracer } from '@game/entity/EntityBulletTracer';
 import { EntityObject } from '@game/entity/EntityObject';
 import { EntityPlayer } from '@game/entity/EntityPlayer';
+import { EntityVehicle } from '@game/entity/EntityVehicle';
 import { EntityWeapon } from '@game/entity/EntityWeapon';
 import { EntityFactory } from '@game/entityFactory/EntityFactory';
 import { World } from '@game/world/World';
@@ -25,6 +26,7 @@ export class Server {
         this._entityFactory.registerEntity('EntityBulletTracer', EntityBulletTracer);
         this._entityFactory.registerEntity('EntityWeapon', EntityWeapon);
         this._entityFactory.registerEntity('EntityObject', EntityObject);
+        this._entityFactory.registerEntity('EntityVehicle', EntityVehicle);
 
         this._entityFactory.registerComponent('WeaponComponent', WeaponComponent);
         this._entityFactory.registerComponent('FollowComponent', FollowComponent);

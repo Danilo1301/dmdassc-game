@@ -39,6 +39,14 @@ export class Entity extends BaseEntity {
         super.start();
         //console.log(this.name, this.data);
     }
+
+    public update(delta: number) {
+        super.update(delta);
+
+        const distance = Phaser.Math.Distance.BetweenPoints(this.position, {x: 0, y: 0});
+
+        if(distance > 500) this.setPosition(0, 0);
+    }
     
     public setId(id: string) { this._id = id; }
 

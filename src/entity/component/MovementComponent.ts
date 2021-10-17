@@ -9,6 +9,9 @@ export class MovementComponent extends Component {
 
     public speed: number = 4;
 
+    public canChangeRotation: boolean = true;
+    public directional: boolean = false;
+
     constructor() {
         super();
 
@@ -33,7 +36,14 @@ export class MovementComponent extends Component {
 
         const speed = this.speed / 100;
 
-        const move = new Phaser.Math.Vector2(horizontal * speed * delta, vertical * speed * delta);
+        let move = new Phaser.Math.Vector2(horizontal * speed * delta, vertical * speed * delta);
+
+        if(this.directional) {
+            const angle = this.entity.rotation;
+            
+            move.x = Math.cos(angle) * speed * vertical * delta;
+            move.y = Math.sin(angle) * speed * vertical * delta;
+        }
 
         if(entity.hasComponent(PhysicBodyComponent)) {
 
@@ -41,13 +51,17 @@ export class MovementComponent extends Component {
             move.y *= 0.25;
 
             const physicBody = entity.getComponent(PhysicBodyComponent);
-            physicBody.applyForce(Phaser.Math.Vector2.ZERO, move);
+            physicBody.applyForce(new Phaser.Math.Vector2(this.entity.position.x, this.entity.position.y), move);
+
+            if(this.directional) {
+                physicBody.setTorque(0.01 * horizontal * delta);
+            }
         }
 
         const angle = Phaser.Math.Angle.BetweenPoints(move, {x: 0, y: 0});
         const targetAngle = Phaser.Math.Angle.RotateTo(this.entity.rotation, angle, 0.2)
 
-        if(move.length() > 0) {
+        if(move.length() > 0 && this.canChangeRotation) {
             this.entity.setRotation(targetAngle);
         }
 

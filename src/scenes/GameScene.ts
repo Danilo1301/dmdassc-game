@@ -28,7 +28,7 @@ export class GameScene extends Phaser.Scene {
         world.init();
 
         this.Instance.cameras.main.setBackgroundColor(0x286f1e);
-        this.Instance.add.text(0, 0, `(0,0)\nPress F to enter vehicle\nPress E to shoot`);
+        this.Instance.add.text(0, 0, `( 0, 0 )\nSpawn`);
     }
 
     preload() {

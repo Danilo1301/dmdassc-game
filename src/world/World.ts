@@ -11,6 +11,7 @@ import { DataWatcher } from '@game/dataWatcher/DataWatcher';
 import { FollowComponent } from '@game/entity/component/FollowComponent';
 import { EntityObject } from '@game/entity/EntityObject';
 import { WeaponComponent } from '@game/entity/component/WeaponComponent';
+import { EntityVehicle } from '@game/entity/EntityVehicle';
 
 export class World {
 
@@ -127,14 +128,14 @@ export class World {
 
     public setupDefaultWorld() {
         
-        for (let i = 0; i < 1; i++) {
+        for (let i = 0; i < 2; i++) {
             const player = this.spawnPlayer();
             player.addComponent(new FollowComponent())
             player.getComponent(WeaponComponent).autoShot = true;
             
         }
 
-        for (let i = 0; i < 2; i++) {
+        for (let i = 0; i < 3; i++) {
             const object = <EntityObject>this.spawnEntity('EntityObject', {});
 
             if(i == 0) {
@@ -144,6 +145,16 @@ export class World {
             }
             //object.addComponent(new FollowComponent())
             
+        }
+
+        for (let i = 0; i < 2; i++) {
+            const vehicle = <EntityVehicle>this.spawnEntity('EntityVehicle', {});
+
+            if(i == 0) {
+                const c = <WeaponComponent>vehicle.addComponent(new WeaponComponent());
+                c.autoShot = true;
+                c.delay = 100;
+            }
         }
 
     }

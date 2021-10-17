@@ -127,6 +127,12 @@ export class PhysicBodyComponent extends Component {
         matter.body.applyForce(body, position, force);
     }
 
+    public setTorque(torque: number) {
+        var body = this._body!;
+        
+        body.torque = torque;
+    }
+
     public setVelocity(velocity: Phaser.Math.Vector2) {
         var body = this._body!;
         var scene =  this.entity.world.scene;
