@@ -3,6 +3,10 @@ import http from 'http';
 import socketio from 'socket.io';
 import path from 'path';
 
+require('jsdom-global')();
+
+import { GameServer } from './src/scripts/game/gameServer';
+
 const isDevelopment = (process.env.NODE_ENV || "development").trim() === 'development';
 const port = 3000;
 
@@ -24,9 +28,6 @@ server.listen(port, () => console.log(`Express web server started: http://localh
 
 
 function setupGame() {
-    require('jsdom-global')();
-    
-    const GameServer = require('../src/scripts/game/gameServer').GameServer;
     const game = new GameServer(io.of("/api/game"));
     game.start();
 }
