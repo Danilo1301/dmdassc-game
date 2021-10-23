@@ -14654,13 +14654,24 @@ let Ammo = window['Ammo'];
 			options.stencil = true;
 
 			for (var i = 0; i < names.length; i++) {
-				gl = canvas.getContext(names[i], options);
-
+        
+				console.log("trying", names[i])
+				
+				try {
+				  gl = canvas.getContext(names[i], options);
+				} catch(e) {
+				  console.error(e);
+				}
+						
+		
+				console.log(`WebGL:`, names[i], gl);
+				
 				if (gl) {
 					_this.webgl2 = names[i] === 'webgl2';
 					break;
 				}
 			}
+
 
 			if (!gl) {
 				throw new Error("WebGL not supported");

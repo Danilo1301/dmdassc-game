@@ -1,5 +1,5 @@
 import { BaseEntity } from "../entity/baseEntity";
-import { DataWatcher } from "./DataWatcher";
+import { DataWatcher } from "./dataWatcher";
 
 export class EntityWatcher {
 

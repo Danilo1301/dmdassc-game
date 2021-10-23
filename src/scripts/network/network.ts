@@ -5,7 +5,7 @@ import { Game } from "../game/game";
 import { GameClient } from "../game/gameClient";
 import { LocalClient } from "../game/localClient";
 import { EntitySync } from "../scripts/entitySync";
-import { IPacket, IPacketData_ConnectToServerStatus, IPacketData_EntityData, PacketType } from "./Packet";
+import { IPacket, IPacketData_ConnectToServerStatus, IPacketData_EntityData, PacketType } from "./packet";
 import { PacketSender } from "./packetSender";
 
 export class Network {

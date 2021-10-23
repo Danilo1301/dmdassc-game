@@ -1,4 +1,4 @@
-import { IPacket, PacketType } from "./Packet";
+import { IPacket, PacketType } from "./packet";
 
 export class PacketSender {
     private _socket;
