@@ -1,4 +1,4 @@
-import * as pc from "playcanvas";
+import * as pc from "../../playcanvas";
 import { BaseEntity } from "../entity/baseEntity";
 import { EntityPlayer } from "../entity/entityPlayer";
 import { CreateCanvas } from "../game/createCanvas";

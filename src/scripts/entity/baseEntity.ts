@@ -1,4 +1,4 @@
-import * as pc from "playcanvas";
+import * as pc from "../../playcanvas";
 import { v4 as uuidv4 } from 'uuid';
 import { EntitySync } from "../scripts/entitySync";
 import { Movement } from "../scripts/movement";

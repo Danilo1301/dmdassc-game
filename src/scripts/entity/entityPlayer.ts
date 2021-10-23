@@ -1,4 +1,4 @@
-import * as pc from "playcanvas";
+import * as pc from "../../playcanvas";
 import { Movement } from "../scripts/movement";
 import { World } from "../world/world";
 import { BaseEntity } from "./baseEntity";

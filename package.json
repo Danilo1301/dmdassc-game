@@ -2,9 +2,9 @@
   "name": "dmdassc-game",
   "version": "1.0.0",
   "description": "DMDASSC game",
-  "main": "index.js",
+  "main": "server/server.ts",
   "scripts": {
-    "start": "nodemon server/index.ts",
+    "start": "nodemon server/server.ts",
     "dev": "webpack-dev-server --config webpack/webpack.dev.js",
     "build": "webpack --config webpack/webpack.prod.js"
   },
@@ -23,7 +23,8 @@
     "playcanvas": "^1.48.0",
     "socket.io": "^4.3.1",
     "socket.io-client": "^4.3.2",
-    "ts-node": "^10.3.0"
+    "ts-node": "^10.3.0",
+    "nodemon": "^2.0.14"
   },
   "devDependencies": {
     "ammojs-typed": "^1.0.6",

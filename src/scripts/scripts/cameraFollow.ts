@@ -1,4 +1,4 @@
-import * as pc from "playcanvas";
+import * as pc from "../../playcanvas";
 import { Game } from "../game/game";
 
 export class CameraFollow extends pc.ScriptType {

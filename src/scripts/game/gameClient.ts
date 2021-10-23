@@ -1,5 +1,5 @@
+import * as pc from "../../playcanvas";
 import { Game } from "./game";
-import * as pc from "playcanvas";
 import { Network } from "../network/network";
 import { IPacketData_ConnectToServer, PacketType } from "../network/Packet";
 import { CameraFollow } from "../scripts/cameraFollow";

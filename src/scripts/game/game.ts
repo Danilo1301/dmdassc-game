@@ -1,12 +1,13 @@
 const Ammo = require('ammo.js');
 window['Ammo'] = Ammo;
 
-import * as pc from "playcanvas";
+import * as pc from "../../playcanvas";
 import { CameraFollow } from "../scripts/cameraFollow";
 import { EntitySync } from "../scripts/entitySync";
 import { Movement } from "../scripts/movement";
 import { Server } from "../server/server";
 import { LocalClient } from "./localClient";
+
 
 export class Game {
     public static testDelay: number = 0;

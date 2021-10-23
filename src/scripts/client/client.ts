@@ -1,4 +1,4 @@
-import * as pc from 'playcanvas';
+import * as pc from "../../playcanvas";
 import socketio from 'socket.io';
 import { v4 as uuidv4 } from 'uuid';
 import { GameServer } from '../game/gameServer';
