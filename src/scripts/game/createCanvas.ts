@@ -1,6 +1,6 @@
 export class CreateCanvas {
     public static create() {
-        const {mockDOM, createCanvas} = require('node-canvas-webgl/lib');
+        const {mockDOM, createCanvas} = require('../../node-canvas-webgl/lib');
         mockDOM(window);
         
         
