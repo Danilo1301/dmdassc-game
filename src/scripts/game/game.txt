@@ -1,0 +1,194 @@
+const Ammo = require('ammo.js');
+window['Ammo'] = Ammo;
+
+import * as pc from "playcanvas";
+import { EntityPlayer } from "../entity/entityPlayer";
+import { CameraFollow } from "../scripts/cameraFollow";
+import { Movement } from "../scripts/movement";
+import { UI } from "../scripts/ui";
+import { Test1 } from "../test1";
+
+export class Game {
+    
+    public static isHeadless: boolean = false;
+
+    public app: pc.Application;
+    public app2: pc.Application;
+    public canvas: any;
+
+    public camera: pc.Entity;
+
+    constructor(canvas: any) {
+        this.canvas = canvas;
+    }
+
+    public start() {
+        console.log(`[Game] Start`);
+
+        pc.platform.global["Ammo"] = window['Ammo'];
+   
+        const keyboard = new pc.Keyboard(document.body);
+
+        const app = this.app = new pc.Application(this.canvas, {
+            keyboard: keyboard
+        });
+
+        const app2 = this.app2 = new pc.Application(this.canvas, {
+            keyboard: keyboard
+        });
+
+        //app.start();
+        app2.start();
+
+        this.init()
+    }
+
+    protected init() {
+        this.registerScripts();
+        this.setupLights();
+        this.setupCamera();
+        this.setupUI();
+        
+        Test1.app = this.app;
+        this.setupWorld();
+        /*
+        
+
+
+        */
+    }
+
+    private setupUI() {
+        const entity = new pc.Entity('ui');
+
+        const script = entity.addComponent('script') as pc.ScriptComponent;
+        script.create('ui');
+
+        this.app.root.addChild(entity);
+    }
+
+    private async setupWorld() {
+        const floor = Test1.createRectangle('floor', new pc.Vec3(0, 0, 0), new pc.Vec3(10, 0.1, 10), 'static', new pc.Color(0, 1, 0));
+        
+        
+        
+        Test1.createRectangle('building', new pc.Vec3(0, 1, 2), new pc.Vec3(3, 2, 1.5), 'static', new pc.Color(1, 1, 1));
+
+        this.createPlayer();
+        this.createPlayer();
+
+        
+
+        const player = this.createPlayer();
+        player.setControllabe();
+
+        const scr = <CameraFollow>this.camera.script!.get('cameraFollow')
+        scr.followEntity = player;
+
+        window['app'] = this.app;
+        window['pc'] = pc;
+        window['player'] = player;
+    }
+
+    private createPlayer() {
+        const player = new EntityPlayer('player');
+
+        if(!Game.isHeadless)
+            this.addSpriteToEntity(player, 'https://raw.githubusercontent.com/yaustar/yaustar.github.io/master/textures/512x512.jpeg')
+        
+        this.app.root.addChild(player);
+
+
+
+        return player;
+    }
+
+    private registerScripts() {
+        const app = this.app;
+
+        pc.registerScript(CameraFollow, 'cameraFollow', app);
+        pc.registerScript(Movement, 'movement', app);
+        pc.registerScript(UI, 'ui', app);
+    }
+
+    private setupLights() {
+        const app = this.app;
+
+        const light = new pc.Entity('light');
+        const lightComponent = light.addComponent('light') as pc.LightComponent;
+        light.setEulerAngles(30, 0, 0);
+        app.root.addChild(light);
+
+        //lightComponent.castShadows = true;
+    }
+
+    private setupCamera() {
+        const app = this.app;
+
+        const camera = this.camera = new pc.Entity('camera');
+        camera.setPosition(0, 3, 0);
+        camera.setLocalEulerAngles(-90, 0, 0)
+        camera.addComponent('camera', {
+            clearColor: new pc.Color(0.1, 0.1, 0.1)
+        });
+        const script = <pc.ScriptComponent>camera.addComponent('script');
+        script.create('cameraFollow');
+
+        app.root.addChild(camera);
+        
+    }
+
+    public addSpriteToEntity(entity: pc.Entity, url) {
+
+        const s = 0.04;
+
+        const spriteEntity = new pc.Entity('sprite');
+        spriteEntity.setEulerAngles(-90, 0, 0)
+        spriteEntity.setPosition(0, 0, 0)
+        spriteEntity.setLocalScale(new pc.Vec3(s, s, s))
+        spriteEntity.addComponent('sprite');
+        entity.addChild(spriteEntity);
+    
+        const image = new Image();
+        image.crossOrigin = 'anonymous';
+
+        new Promise<pc.Sprite>(res => {
+            image.onload = () => {
+                
+                const atlas = new pc.TextureAtlas();
+                atlas.frames = {
+                    "0": {
+                        rect: new pc.Vec4(0, 0, 512, 512),
+                        pivot: new pc.Vec2(0.5, 0.5),
+                        border: new pc.Vec4(0, 0, 0, 0)
+                    },
+
+                };
+                const texture = new pc.Texture(this.app.graphicsDevice, {
+                    magFilter: pc.FILTER_LINEAR,
+                    minFilter: pc.FILTER_LINEAR
+
+                });
+                
+                
+                texture.setSource(image);
+                atlas.texture = texture;
+
+                const sprite = new pc.Sprite(this.app.graphicsDevice, {
+                    atlas,
+                    frameKeys: ['0'],
+                    pixelsPerUnit: 100,
+                    renderMode: pc.SPRITE_RENDERMODE_SIMPLE
+
+                });
+
+                spriteEntity.sprite!.sprite = sprite;
+
+                return res(sprite);
+            };
+            image.src = url;
+        });
+  
+        return entity;
+    }
+}

@@ -6,35 +6,35 @@ import path from 'path';
 const isDevelopment = (process.env.NODE_ENV || "development").trim() === 'development';
 const port = 3000;
 
+const io: socketio.Server = new socketio.Server();
+
 console.log("server.ts | (ignoring)isDevelopment=", isDevelopment);
 
 const app: express.Application = express();
 const server: http.Server = http.createServer(app);
-const io: socketio.Server = new socketio.Server();
 
 io.attach(server, {
     path: '/socket',
     cors: { origin: '*' }
 });
 
-app.use(express.static(path.join(__dirname, "..", "public")));
-//app.use('/static', express.static(path.join(__dirname, "..", "static")));
-//app.get("*", (req, res) => res.sendFile(path.join(__dirname, "..", "static", "game", "index.html")) );
+app.use(express.static(path.join(__dirname, "..", "dist")));
 
 server.listen(port, () => console.log(`Express web server started: http://localhost:${port}`));
 
-//
 
-console.log("Starting geckos...")
+function setupGame() {
+    require('jsdom-global')();
+    
+    const GameServer = require('../src/scripts/game/gameServer').GameServer;
+    const game = new GameServer(io.of("/api/game"));
+    game.start();
+}
 
-import '@geckos.io/phaser-on-nodejs'
-global['phaserOnNodeFPS'] = 60
+setupGame();
 
-//
 
-console.log("Starting GameServer...")
 
-import { GameServer } from '@game/game/GameServer'
 
-var game = new GameServer(io.of("/api/game"))
-game.start()
+
+
