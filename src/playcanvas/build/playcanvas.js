@@ -14655,16 +14655,16 @@ let Ammo = window['Ammo'];
 
 			for (var i = 0; i < names.length; i++) {
         
-				console.log("trying", names[i])
-				
+	
 				try {
 				  gl = canvas.getContext(names[i], options);
 				} catch(e) {
-				  console.error(e);
+					console.log(`WebGL`, names[i], 'not supported!');
+					console.error(e);
 				}
 						
 		
-				console.log(`WebGL:`, names[i], gl);
+				
 				
 				if (gl) {
 					_this.webgl2 = names[i] === 'webgl2';
@@ -15350,6 +15350,7 @@ let Ammo = window['Ammo'];
 		};
 
 		_proto.updateClientRect = function updateClientRect() {
+
 			this.clientRect = this.canvas.getBoundingClientRect();
 		};
 
