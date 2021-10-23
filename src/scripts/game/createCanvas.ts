@@ -7,6 +7,9 @@ export class CreateCanvas {
         canvas.width = 512;
         canvas.height = 512;
 
+        console.log('webgl', canvas.getContext('webgl'))
+        console.log('webgl2', canvas.getContext('webgl2'));
+
         return canvas;
     }
 }

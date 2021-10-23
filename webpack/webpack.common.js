@@ -11,10 +11,11 @@ module.exports = {
     chunkFilename: '[name].chunk.js'
   },
   resolve: {
-    extensions: ['.ts', '.tsx', '.js']
-  },
-  node: {
-    fs: 'empty'
+    extensions: ['.ts', '.tsx', '.js'],
+    fallback: {
+      fs: false,
+      path: false
+    }
   },
   module: {
     rules: [{ test: /\.tsx?$/, include: path.join(__dirname, '../src'), loader: 'ts-loader' }]
@@ -33,13 +34,20 @@ module.exports = {
   },
   plugins: [
     new HtmlWebpackPlugin({ gameName: 'My Phaser Game', template: 'src/index.html' }),
-    new CopyWebpackPlugin([
-      { from: 'src/assets', to: 'assets' },
-      { from: 'pwa', to: '' },
-      { from: 'src/favicon.ico', to: '' }
-    ]),
+    new CopyWebpackPlugin(
+      {
+        patterns: [ 
+          //{ from: 'src/assets', to: 'assets' },
+          { from: 'pwa', to: '' },
+          { from: 'src/favicon.ico', to: '' }
+        ]
+      },
+    )
+    /*
+    ,
     new InjectManifest({
       swSrc: path.resolve(__dirname, '../pwa/sw.js')
     })
+    */
   ]
 }

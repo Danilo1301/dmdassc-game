@@ -1,5 +1,4 @@
 import { io, Socket } from "socket.io-client";
-import { NewLineKind } from "typescript";
 import { EntityPlayer } from "../entity/entityPlayer";
 import { Game } from "../game/game";
 import { GameClient } from "../game/gameClient";
