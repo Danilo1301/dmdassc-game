@@ -11,7 +11,7 @@ export class Client {
     public get id() { return this._id; }
     public get player() { return this._player; }
 
-    private _sendPacketsDelay: number = 10;
+    private _sendPacketsDelay: number = 200;
     private _lastSentPackets: number = 0;
 
     constructor(game: GameServer, id: string) {
