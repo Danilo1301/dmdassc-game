@@ -1,27 +1,28 @@
-import * as pc from "playcanvas";
-import { BaseEntity } from "../entity/baseEntity";
-import { EntityPlayer } from "../entity/entityPlayer";
-import { Game } from "../game/game";
+import CANNON from 'cannon'
+import { Entity } from '../entity/entity';
+import { Server } from "../server/server";
 
 export class World {
-    private _game: Game;
-    private _entities = new Map<string, BaseEntity>();
 
-    public get game() { return this._game };
-    public get app() { return this._game.app };
-    public get entities() { return Array.from(this._entities.values()); }
-    
-    constructor(game: Game) {
-        this._game = game;
+    private _server: Server;
+    private _dynamicWorld: CANNON.World;
+    private _entities = new Map<string, Entity>();
+
+    public get server() { return this._server };
+    public get dynamicWorld() { return this._dynamicWorld };
+    public get entities() { return Array.from(this._entities.values()) };
+
+    constructor(server: Server) {
+        this._server = server;
+
+        this.setupDynamicWorld();
     }
 
-    public setupWorld() {
-        const floor = ShapeUtils.createRectangle(this.app, 'floor', new pc.Vec3(), new pc.Vec3(15, 1, 15), false, new pc.Color(0, 0.5, 0));
+    public update(dt: number) {
+        var fixedTimeStep = 1.0 / 60.0; // seconds
+        var maxSubSteps = 3;
 
-        if(this.game.isServer) {
-            const p = this.createPlayer(new pc.Vec3());
-            p.fromJSON({inputH: 1})
-        }
+        this.dynamicWorld.step(fixedTimeStep, dt, maxSubSteps);
     }
 
     public getEntity(id: string) {
@@ -32,62 +33,69 @@ export class World {
         return this._entities.has(id);
     }
 
-    public destroyEntity(id: string) {
-        const entity = this._entities.get(id)!;
-        this.app.root.removeChild(entity);
-        this._entities.delete(id);
+    private setupDynamicWorld() {
+
+        // Setup our world
+        var world = this._dynamicWorld = new CANNON.World();
+        world.gravity = new CANNON.Vec3(0, 0, -9.82) // m/s²
+
+        const ground = this.spawnEntity(new CANNON.Vec3(0, 0, 0), new CANNON.Vec3(30, 30, 1), {mass: 0});
+        ground.dontSync = true;
+        
+        
+        
+
+        //const box = this.spawnTestEntity(new CANNON.Vec3(0, 0, 4), new CANNON.Vec3(1, 1, 1), {mass: 200});
+        //const box2 = this.spawnTestEntity(new CANNON.Vec3(0, 1, 8), new CANNON.Vec3(1, 1, 1), {mass: 200});
+        
+        setInterval(() => {
+
+            //console.log("ground: " + this.printPosition(ground.getPosition()));
+            //console.log("box: " + this.printPosition(box.getPosition()));
+
+        }, 250)
+
+        //setInterval(() => { this.spawnTestEntity(); }, 1000)
     }
 
-    public createPlayer(position?: pc.Vec3, customId?: string) {
-        const entity = new EntityPlayer('player');
+    public spawnEntity(position?: CANNON.Vec3, halfExtends?: CANNON.Vec3, options?: CANNON.IBodyOptions, customId?: string) {
 
+        options = options || {mass: 200};
+
+        const body = this.createRectangleBody(position || new CANNON.Vec3(Math.random()*6-3, Math.random()*6-3, 3), halfExtends || new CANNON.Vec3(1, 1, 1), options);
+        
+        const entity = new Entity(this);
+        entity.setBody(body)
         if(customId) entity.setId(customId);
-
-        if(position === undefined) position = new pc.Vec3(Math.random()*6-3, 1, Math.random()*6-3);
-    
-        entity.init();
-        entity.teleport(position)
-
-        this.app.root.addChild(entity);
 
         this._entities.set(entity.id, entity);
 
         return entity;
     }
-    
-}
 
-
-export class ShapeUtils {
-    public static createRectangle(app: pc.Application, name: string, position: pc.Vec3, size: pc.Vec3, isDynamic: boolean, color: pc.Color) {
-        const entity = new pc.Entity(name);
-        entity.setPosition(position)
-        this.createRectangleAtEntity(entity, size, isDynamic, color);
-        app.root.addChild(entity);
-        return entity;
+    private printPosition(pos: CANNON.Vec3) {
+        return `(${pos.x}, ${pos.y}, ${pos.z})`
     }
-    
-    public static createRectangleAtEntity(entity: pc.Entity, size: pc.Vec3, isDynamic: boolean, color: pc.Color) {
-        entity.addComponent('rigidbody', {
-            type: isDynamic ? 'dynamic' : 'static'
-        });
-        entity.addComponent('collision', {
-            type: 'box',
-            halfExtents: new pc.Vec3(size.x/2, size.y/2, size.z/2)
-        });
-    
-        const material = new pc.StandardMaterial();
-        material.diffuse = color;
-        material.update();
-                
-        const cube = new pc.Entity('cube');
-        cube.addComponent("render", {
-            material: material,
-            type: "box"
-        });
-        cube.setLocalScale(size)
-        entity.addChild(cube);
-        return entity;
+
+    public createRectangleBody(position: CANNON.Vec3, halfExtends: CANNON.Vec3, options?: CANNON.IBodyOptions) {
+        
+        const opt = options || {};
+
+        opt.position = position;
+     
+        var shape = new CANNON.Box(halfExtends);
+        var body = new CANNON.Body(opt);
+        body.addShape(shape);
+
+        this.dynamicWorld.addBody(body);
+
+        return body; 
     }
 }
 
+/*
+const entity = new pc.Entity(name);
+entity.setPosition(position)
+this.createRectangleAtEntity(entity, size, isDynamic, color);
+app.root.addChild(entity);
+*/

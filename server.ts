@@ -2,6 +2,7 @@ import express from 'express';
 import http from 'http';
 import socketio from 'socket.io';
 import path from 'path';
+import { GameServer } from './src/game/gameServer';
 
 const isDevelopment = (process.env.NODE_ENV || "development").trim() === 'development';
 const port = 3000;
@@ -25,6 +26,16 @@ server.listen(port, () => console.log(`Express web server started: http://localh
 
 
 
+
+
+
+
+const game = new GameServer(io);
+game.start();
+game.createServer('server-s');
+
+
+/*
 const sockets = new Map<string, socketio.Socket>();
 
 import puppeteer from 'puppeteer';
@@ -33,17 +44,20 @@ async function setupGame() {
     console.log("launching...");
 
     const browser = await puppeteer.launch({
-    args: [
-        '--ignore-certificate-errors',
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--window-size=1920,1080',
-        "--disable-accelerated-2d-canvas",
-        "--disable-gpu"],
-    ignoreHTTPSErrors: true,
-    headless: true,
+        args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-accelerated-2d-canvas',
+            '--no-first-run',
+            '--no-zygote',
+            '--single-process',
+            '--disable-gpu',
+            '--window-size=50,50',
+        ],
+        headless: true,
     });
-    const page = await browser.newPage();
+    const page = (await browser.pages())[0];
     await page.goto('http://localhost:3000#server');
 
     page.on('console', message => {
@@ -65,11 +79,7 @@ async function setupGame() {
         socket.emit('_data', data);
     });
 
-    /*
-    await page.evaluate(() => {
-        window['sendClientPacket']('id', 'detail');
-    })
-    */
+    
 
     io.of("/game").on("connection", async (socket) => {
         const id = socket.id;
@@ -90,6 +100,7 @@ async function setupGame() {
 }
 
 setupGame();
+*/
 
 
 //.on('pageerror', ({ message }) => console.log(message))
