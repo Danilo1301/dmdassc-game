@@ -24,7 +24,6 @@
     "javascript-obfuscator": "^3.0.0",
     "jsdom": "^18.0.0",
     "jsdom-global": "^3.0.2",
-    "node-canvas-webgl": "^0.2.6",
     "nodemon": "^2.0.14",
     "playcanvas": "^1.48.1",
     "puppeteer": "^10.4.0",
