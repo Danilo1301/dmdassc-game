@@ -51,6 +51,12 @@ export class Game {
     }
 
     private setupResize() {
+
+        if(this.isServer) {
+            this.app.setCanvasResolution(pc.RESOLUTION_FIXED, 10, 10);
+            return;
+        }
+
         this.app.setCanvasFillMode(pc.FILLMODE_FILL_WINDOW);
         this.app.setCanvasResolution(pc.RESOLUTION_AUTO);
 
@@ -86,5 +92,7 @@ export class Game {
         this.app.resizeCanvas();
         canvas.style.width = "100%";
         canvas.style.height = "100%";
+
+        
     }
 }

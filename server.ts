@@ -32,7 +32,17 @@ import puppeteer from 'puppeteer';
 async function setupGame() {
     console.log("launching...");
 
-    const browser = await puppeteer.launch({headless: true});
+    const browser = await puppeteer.launch({
+    args: [
+        '--ignore-certificate-errors',
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--window-size=1920,1080',
+        "--disable-accelerated-2d-canvas",
+        "--disable-gpu"],
+    ignoreHTTPSErrors: true,
+    headless: true,
+    });
     const page = await browser.newPage();
     await page.goto('http://localhost:3000#server');
 
