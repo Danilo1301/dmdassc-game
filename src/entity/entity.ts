@@ -1,23 +1,26 @@
 import * as pc from 'playcanvas';
-import CANNON from 'cannon';
+import CANNON, { Vec3 } from 'cannon';
 import { World } from "../world/world";
-import Phaser from 'phaser';
 
 export interface IEntityData {
-    x?: number
-    y?: number
-    z?: number
-    rx?: number
-    ry?: number
-    rz?: number
+    pos?: number[]
+    rot?: number[]
+    input?: number[]
 }
 
 export class Entity {
     public dontSync: boolean = false;
     public pcEntity?: pc.Entity;
 
+    public canLerp: boolean = false;
+
+    public color: pc.Color;
+
     private _position = new CANNON.Vec3();
     private _quaternion = new CANNON.Quaternion();
+
+    private _targetPosition = new CANNON.Vec3();
+    private _targetQuaternion = new CANNON.Quaternion();
 
     private _id: string = `${Math.random()}`;
     private _world: World;
@@ -25,6 +28,8 @@ export class Entity {
     
     public get id() { return this._id; }
     public get body() { return this._body; }
+
+    public input = {x: 0, y: 0};
 
     constructor(world: World) {
         this._world = world;
@@ -53,77 +58,72 @@ export class Entity {
         return this._quaternion;
     }
 
+    public update(dt: number) {
+
+        const speed = 700;
+
+        const force = new CANNON.Vec3(speed * this.input.x, speed * this.input.y, 0)
+
+        this.body?.applyForce(force, this.getPosition());
+
+        if(this.canLerp) {
+            const position = this.getPosition();
+            const newPosition = new CANNON.Vec3();
+
+            const distance = position.distanceTo(this._targetPosition);
+
+            let lerpAmount = 0.3;
+            if(distance > 2.5) lerpAmount = 1;
+
+
+            position.lerp(this._targetPosition, lerpAmount, newPosition);
+            position.set(newPosition.x, newPosition.y, newPosition.z);
+        }
+
+        if(this.canLerp) {
+            //this.body?.angularVelocity.setZero();
+            //this.getQuaternion().set(this._targetQuaternion.x, this._targetQuaternion.y, this._targetQuaternion.z, this._targetQuaternion.w)
+        }
+
+        if(this.getPosition().distanceTo(Vec3.ZERO) > 20) {
+            this.getPosition().set(0, 0, 2);
+            this.body?.velocity.setZero();
+            this.body?.angularVelocity.setZero();
+        }
+
+
+
+        
+
+    }
+
     public toJSON() {
+        const data: IEntityData = {}
+
         const position = this.getPosition();
+        data.pos = [position.x, position.y, position.z];
 
         const quat = this.getQuaternion();
-        const rotation = new CANNON.Vec3();
-        quat.toEuler(rotation);
+        data.rot = [quat.x, quat.y, quat.z, quat.w];
 
-        const velocity = this.getVelocity();
-
-        const data: IEntityData = {
-            x: position.x,
-            y: position.y,
-            z: position.z,
-
-            rx: rotation.x,
-            ry: rotation.y,
-            rz: rotation.z,
-        }
+        data.input = [this.input.x, this.input.y];
 
         return data;
     }
 
     public fromJSON(data: IEntityData) {
         
-        const newPosition = this.getPosition();
+        if(data.pos) {
+            this._targetPosition.set(data.pos[0], data.pos[1], data.pos[2]);
+        }
 
-        if(data.x !== undefined) newPosition.x = data.x
-        if(data.y !== undefined) newPosition.y = data.y
-        if(data.z !== undefined) newPosition.z = data.z
-
-        const newRotation = new CANNON.Vec3();
-        if(data.rx !== undefined) newRotation.x = data.rx;
-        if(data.ry !== undefined) newRotation.y = data.ry;
-        if(data.rz !== undefined) newRotation.z = data.rz;
-
-        this.getQuaternion().setFromEuler(newRotation.x, newRotation.y, newRotation.z)
-
-
-        /*
-        const currentQuaternion = this.getQuaternion();
-        const newQuaternion = new CANNON.Quaternion();
-        newQuaternion.setFromEuler(newRotation.x, newRotation.y, newRotation.z);
-
-        const q1 = new pc.Quat(currentQuaternion.x, currentQuaternion.y, currentQuaternion.z, currentQuaternion.w);
-        const q2 = new pc.Quat(newQuaternion.x, newQuaternion.y, newQuaternion.z, newQuaternion.w);
-        const q = new pc.Quat().slerp(q1, q2, 1);
-
-        this.getQuaternion().set(q.x, q.y, q.z, q.w)
-
-        */
-
+        if(data.rot) {
+            if(this.canLerp) this.getQuaternion().set(data.rot[0], data.rot[1], data.rot[2], data.rot[3]);
+        }
         
-        
-
-
-
-        /*
-        const currentRotation = new CANNON.Vec3();
-        const newRotation = new CANNON.Vec3();
-        this.getQuaternion().toEuler(currentRotation);
-        this.getQuaternion().toEuler(newRotation);
-
-        if(data.rx !== undefined) newRotation.x = data.rx;
-        if(data.ry !== undefined) newRotation.y = data.ry;
-        if(data.rz !== undefined) newRotation.z = data.rz;
-
-        currentRotation.lerp(newRotation, 0.1, currentRotation);
-
-        this.body?.quaternion.setFromEuler(newRotation.x, newRotation.y, newRotation.z);
-        */
-
-        this.body?.angularVelocity.setZero();
+        if(data.input) {
+            this.input.x = data.input[0];
+            this.input.y = data.input[1];
+        }
     }
 }   

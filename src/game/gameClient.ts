@@ -28,6 +28,22 @@ export class GameClient extends Game {
     protected update(dt: number) {
         super.update(dt);
 
+
+        if(GameClient.player) {
+
+            const input = GameClient.player.input;
+            input.x = 0;
+            input.y = 0;
+
+            if(this.app.keyboard.isPressed(pc.KEY_A)) input.x = -1;
+            if(this.app.keyboard.isPressed(pc.KEY_D)) input.x = 1;
+
+            if(this.app.keyboard.isPressed(pc.KEY_W)) input.y = -1;
+            if(this.app.keyboard.isPressed(pc.KEY_S)) input.y = 1;
+
+        }
+
+
         this.render();
 
         this.network.update(dt);
@@ -88,7 +104,7 @@ export class GameClient extends Game {
             clearColor: new pc.Color(0.1, 0.1, 0.1)
         });
         app.root.addChild(camera);
-        camera.setPosition(-30, 30, -50);
+        camera.setPosition(0, 5, 10);
         camera.lookAt(0, 0, 0);
         //camera.setEulerAngles(-90, 0, 0);
         (camera.addComponent('script') as pc.ScriptComponent).create('cameraFollow');
@@ -103,7 +119,7 @@ export class GameClient extends Game {
 
     public render() {
         if(!this.mainServer) return;
-
+        
         const world = this.mainServer.worlds[0];
 
         world.entities.map(entity => {
@@ -114,7 +130,7 @@ export class GameClient extends Game {
           
 
                 const material = new pc.StandardMaterial();
-                material.diffuse = new pc.Color(1, 1, 1);
+                material.diffuse = entity.color;
                 material.update();
 
                 entity.pcEntity = new pc.Entity();

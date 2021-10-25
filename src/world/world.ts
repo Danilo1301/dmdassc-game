@@ -1,4 +1,5 @@
 import CANNON from 'cannon'
+import * as pc from 'playcanvas';
 import { Entity } from '../entity/entity';
 import { Server } from "../server/server";
 
@@ -22,6 +23,7 @@ export class World {
         var fixedTimeStep = 1.0 / 60.0; // seconds
         var maxSubSteps = 3;
 
+        this.entities.map(entity => entity.update(dt));
         this.dynamicWorld.step(fixedTimeStep, dt, maxSubSteps);
     }
 
@@ -58,13 +60,17 @@ export class World {
         //setInterval(() => { this.spawnTestEntity(); }, 1000)
     }
 
-    public spawnEntity(position?: CANNON.Vec3, halfExtends?: CANNON.Vec3, options?: CANNON.IBodyOptions, customId?: string) {
+    public spawnEntity(position?: CANNON.Vec3, halfExtends?: CANNON.Vec3, options?: CANNON.IBodyOptions, color?: pc.Color, customId?: string) {
 
-        options = options || {mass: 200};
+        options = options || {mass: 50};
+        color = color || new pc.Color(1, 1, 1);
 
-        const body = this.createRectangleBody(position || new CANNON.Vec3(Math.random()*6-3, Math.random()*6-3, 3), halfExtends || new CANNON.Vec3(1, 1, 1), options);
+        const body = this.createRectangleBody(position || new CANNON.Vec3(Math.random()*6-3, Math.random()*6-3, 3), halfExtends || new CANNON.Vec3(0.2, 0.2, 0.2), options);
         
+        
+
         const entity = new Entity(this);
+        entity.color = color;
         entity.setBody(body)
         if(customId) entity.setId(customId);
 

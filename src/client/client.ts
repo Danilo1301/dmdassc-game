@@ -20,7 +20,7 @@ export class Client {
     
     public get player() { return this._player; }
 
-    private _sendPacketsDelay: number = 30;
+    private _sendPacketsDelay: number = 100;
     private _sendTime: number = 0;
 
     constructor(game: GameServer, socket: socketio.Socket) {
@@ -58,11 +58,22 @@ export class Client {
     }
 
     public onReceivePacket(packet: IPacket) {
-        console.log(packet)
+        //console.log(packet)
 
         if(packet.type == PacketType.CONNECT_TO_SERVER) {
             const data: IPacketData_ConnectToServer = packet.data;
             this.connectToServer(this.game.servers[0]);
+        }
+
+        if(packet.type == PacketType.ENTITY_DATA) {
+            const data: IPacketData_EntityData = packet.data;
+
+            const player = this.player;
+
+            if(!player) return;
+
+            player.canLerp = true;
+            player.fromJSON(data.data);
         }
     }
 

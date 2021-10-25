@@ -12,7 +12,7 @@ export class Network {
     public get connected() { return this._socket.connected; }
 
     private _sendPacketsDelay: number = 200;
-    private _lastSentPackets: number = 0;
+    private _sendTime: number = 0;
 
     constructor(game: GameClient) {
         this._game = game;
@@ -41,7 +41,21 @@ export class Network {
     }
 
     public update(dt: number) {
-        
+        this._sendTime += dt;
+
+        const entity = GameClient.player;
+
+        if(!entity) return;
+
+        if(this._sendTime <= this._sendPacketsDelay/1000) return;
+        this._sendTime = 0;
+
+        const packetData: IPacketData_EntityData = {
+            entityId: entity.id,
+            data: entity.toJSON()
+        }
+
+        this.send(PacketType.ENTITY_DATA, packetData);
     }
 
     public send(type: PacketType, data?: any) {
