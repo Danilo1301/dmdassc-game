@@ -1,3 +1,4 @@
+import * as pc from 'playcanvas';
 import socketio from 'socket.io';
 import { Entity } from '../entity/entity';
 import { GameServer } from "../game/gameServer";
@@ -82,6 +83,7 @@ export class Client {
         this._world = server.worlds[0];
 
         this._player = this._world.spawnEntity();
+        this._player.setColor(new pc.Color(Math.random(), Math.random(), Math.random()));
 
         const sendData: IPacketData_ConnectToServerStatus = {
             serverId: 'any',

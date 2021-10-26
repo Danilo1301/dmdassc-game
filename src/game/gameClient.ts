@@ -32,14 +32,14 @@ export class GameClient extends Game {
         if(GameClient.player) {
 
             const input = GameClient.player.input;
-            input.x = 0;
-            input.y = 0;
+            input.horizontal = 0;
+            input.vertical = 0;
 
-            if(this.app.keyboard.isPressed(pc.KEY_A)) input.x = -1;
-            if(this.app.keyboard.isPressed(pc.KEY_D)) input.x = 1;
+            if(this.app.keyboard.isPressed(pc.KEY_A)) input.horizontal = -1;
+            if(this.app.keyboard.isPressed(pc.KEY_D)) input.horizontal = 1;
 
-            if(this.app.keyboard.isPressed(pc.KEY_W)) input.y = -1;
-            if(this.app.keyboard.isPressed(pc.KEY_S)) input.y = 1;
+            if(this.app.keyboard.isPressed(pc.KEY_W)) input.vertical = -1;
+            if(this.app.keyboard.isPressed(pc.KEY_S)) input.vertical = 1;
 
         }
 
@@ -127,10 +127,11 @@ export class GameClient extends Game {
 
                 const shape = entity.body!.shapes[0] as CANNON.Box;
 
-          
+                
+                const c = entity.data.color;
 
                 const material = new pc.StandardMaterial();
-                material.diffuse = entity.color;
+                material.diffuse = new pc.Color(c[0], c[1], c[2]);
                 material.update();
 
                 entity.pcEntity = new pc.Entity();
@@ -147,7 +148,7 @@ export class GameClient extends Game {
                 console.log("yaes")
             }
 
-            const pos = entity.getPosition();
+            const pos = entity.position;
             const angle = new CANNON.Vec3();
             
             entity.body?.quaternion.toEuler(angle);

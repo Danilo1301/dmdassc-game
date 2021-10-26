@@ -70,7 +70,7 @@ export class World {
         
 
         const entity = new Entity(this);
-        entity.color = color;
+        entity.data.color = [color.r, color.g, color.b];
         entity.setBody(body)
         if(customId) entity.setId(customId);
 
