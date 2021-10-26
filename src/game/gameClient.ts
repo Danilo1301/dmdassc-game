@@ -161,5 +161,10 @@ export class GameClient extends Game {
             )
             //entity.pcEntity.setEulerAngles(angle.x, angle.z, angle.y);
         })
+
+        if(GameClient.player) {
+            GameClient.camera.setPosition(GameClient.player.position.x, GameClient.player.position.z + 10, GameClient.player.position.y)
+            GameClient.camera.setEulerAngles(-90, 0, 0)
+        }
     }
 }

@@ -55,6 +55,9 @@ export class Entity {
     }
 
     public setBody(body: CANNON.Body) {
+        body.fixedRotation = true;
+        body.updateMassProperties();
+
         this._body = body;
         this._position = body.position;
         this._quaternion = body.quaternion;
@@ -64,11 +67,25 @@ export class Entity {
         this._id = id;
     }
 
+    public startBotBehaviour() {
+        setInterval(() => {
+
+            this.input.horizontal = Math.random()*2-1
+            this.input.vertical = Math.random()*2-1
+
+        }, 400)
+    }
+    
     public update(dt: number) {
 
-        const speed = 700;
+        const speed = 50000;
 
-        const force = new CANNON.Vec3(speed * this.input.horizontal, speed * this.input.vertical, 0);
+        const force = new CANNON.Vec3(
+            speed * this.input.horizontal * dt,
+            speed * this.input.vertical * dt,
+            0
+        );
+
 
         this.body?.applyForce(force, this.position);
 
@@ -151,8 +168,6 @@ export class Entity {
         if(entityData.rot) {
             if(this.canLerp) {
                 this.quaternion.set(entityData.rot[0], entityData.rot[1], entityData.rot[2], entityData.rot[3]);
-            } else {
-                //this.quaternion.set(entityData.rot[0], entityData.rot[1], entityData.rot[2], entityData.rot[3]);
             }
         }
         

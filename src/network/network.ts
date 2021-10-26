@@ -11,7 +11,7 @@ export class Network {
     public get socket() { return this._socket; }
     public get connected() { return this._socket.connected; }
 
-    private _sendPacketsDelay: number = 200;
+    private _sendPacketsDelay: number = 50;
     private _sendTime: number = 0;
 
     constructor(game: GameClient) {

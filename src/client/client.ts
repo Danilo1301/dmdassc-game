@@ -21,7 +21,7 @@ export class Client {
     
     public get player() { return this._player; }
 
-    private _sendPacketsDelay: number = 100;
+    private _sendPacketsDelay: number = 50;
     private _sendTime: number = 0;
 
     constructor(game: GameServer, socket: socketio.Socket) {
