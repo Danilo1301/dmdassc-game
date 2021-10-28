@@ -34,5 +34,6 @@ export interface IPacketData_ConnectToServerStatus {
 
 export interface IPacketData_EntityData {
     entityId: string
+    entityType: string
     data: any
 }

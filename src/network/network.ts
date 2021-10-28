@@ -52,6 +52,7 @@ export class Network {
 
         const packetData: IPacketData_EntityData = {
             entityId: entity.id,
+            entityType: entity.constructor.name,
             data: entity.toJSON()
         }
 

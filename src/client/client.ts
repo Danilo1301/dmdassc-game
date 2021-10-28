@@ -47,6 +47,7 @@ export class Client {
 
             const packetData: IPacketData_EntityData = {
                 entityId: entity.id,
+                entityType: entity.constructor.name,
                 data: entity.toJSON()
             }
 
@@ -82,7 +83,8 @@ export class Client {
         this._server = server;
         this._world = server.worlds[0];
 
-        this._player = this._world.spawnEntity();
+        
+        this._player = this._world.spawnPlayer();
         this._player.setColor(new pc.Color(Math.random(), Math.random(), Math.random()));
 
         const sendData: IPacketData_ConnectToServerStatus = {
@@ -92,6 +94,7 @@ export class Client {
         }
 
         this.send(PacketType.CONNECT_TO_SERVER_STATUS, sendData);
+        
     }
 
     public send(type: PacketType, data?: any) {

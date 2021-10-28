@@ -22,23 +22,20 @@ export class Entity {
     public input = {horizontal: 0, vertical: 0}
 
     private _position = new CANNON.Vec3();
+    private _velocity = new CANNON.Vec3();
     private _quaternion = new CANNON.Quaternion();
-
-    private _targetPosition = new CANNON.Vec3();
-    private _targetQuaternion = new CANNON.Quaternion();
 
     private _id: string = `${Math.random()}`;
     private _world: World;
     private _body?: CANNON.Body;
     
     public get id() { return this._id; }
+    public get world() { return this._world; }
     public get body() { return this._body; }
     public get position() { return this._position; }
+    public get velocity() { return this._velocity; }
     public get quaternion() { return this._quaternion; }
-    public get velocity() {
-        if(this._body) return this._body.velocity;
-        return CANNON.Vec3.ZERO;
-    }
+
     public get angularVelocity() {
         if(this._body) return this._body.angularVelocity;
         return CANNON.Vec3.ZERO;
@@ -50,17 +47,19 @@ export class Entity {
         this.setColor(pc.Color.WHITE);
     }
 
-    setColor(color: pc.Color) {
+    public init() {}
+
+    public setColor(color: pc.Color) {
         this.data.color = [color.r, color.g, color.b];
     }
 
     public setBody(body: CANNON.Body) {
-        body.fixedRotation = true;
-        body.updateMassProperties();
+        body.position.set(this.position.x, this.position.y, this.position.z);
 
         this._body = body;
         this._position = body.position;
         this._quaternion = body.quaternion;
+        this._velocity = body.velocity;
     }
 
     public setId(id: string) {
@@ -69,25 +68,12 @@ export class Entity {
 
     public startBotBehaviour() {
         setInterval(() => {
-
             this.input.horizontal = Math.random()*2-1
             this.input.vertical = Math.random()*2-1
-
         }, 400)
     }
     
     public update(dt: number) {
-
-        const speed = 50000;
-
-        const force = new CANNON.Vec3(
-            speed * this.input.horizontal * dt,
-            speed * this.input.vertical * dt,
-            0
-        );
-
-
-        this.body?.applyForce(force, this.position);
 
         /*
         if(this.canLerp) {
@@ -121,10 +107,6 @@ export class Entity {
             this.body?.angularVelocity.setZero();
         }
 
-
-
-        
-
     }
 
     public toJSON() {
@@ -147,7 +129,18 @@ export class Entity {
         if(entityData.pos) {
 
             if(this.canLerp) {
-                this.position.set(entityData.pos[0], entityData.pos[1], entityData.pos[2]);
+                const position = this.position;
+                const targetPosition = new CANNON.Vec3(entityData.pos[0], entityData.pos[1], entityData.pos[2])
+                const newPosition = new CANNON.Vec3();
+
+                const distance = position.distanceTo(targetPosition);
+
+                let lerpAmount = 0.3;
+                if(distance > 2.5) lerpAmount = 1;
+
+                position.lerp(targetPosition, lerpAmount, newPosition);
+
+                this.position.set(newPosition.x, newPosition.y, newPosition.z);
             }
         }
 
@@ -172,8 +165,11 @@ export class Entity {
         }
         
         if(entityData.input) {
-            this.input.horizontal = entityData.input[0];
-            this.input.vertical = entityData.input[1];
+            if(this.canLerp) {
+                this.input.horizontal = entityData.input[0];
+                this.input.vertical = entityData.input[1];
+
+            }
         }
 
         if(entityData.data) {

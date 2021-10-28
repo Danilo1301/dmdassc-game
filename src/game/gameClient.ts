@@ -55,6 +55,7 @@ export class GameClient extends Game {
         this.setupResize();
         this.setupLocalClientScene();
 
+        
         this.network.connect(() => {
             console.log(`[Network] Connected? ${this.network.connected}`);
 
@@ -63,6 +64,7 @@ export class GameClient extends Game {
             }
             this.network.send(PacketType.CONNECT_TO_SERVER, data);
         });
+            
     }
 
     private setupApp() {
@@ -125,8 +127,25 @@ export class GameClient extends Game {
         world.entities.map(entity => {
             if(!entity.pcEntity) {
 
-                const shape = entity.body!.shapes[0] as CANNON.Box;
+                let halfExtents = new CANNON.Vec3(0.1, 0.1, 0.1);
+                let radius = 1;
+                let box = false;
 
+                if(entity.body) {
+                    const shape = entity.body!.shapes[0];
+
+                    if(shape) {
+                        if(shape instanceof CANNON.Box) {
+                            halfExtents = shape.halfExtents;
+                            box = true;
+                        }
+
+                        if(shape instanceof CANNON.Sphere) {
+                            radius = shape.radius;
+                        }
+                    }
+                }
+                
                 
                 const c = entity.data.color;
 
@@ -135,12 +154,21 @@ export class GameClient extends Game {
                 material.update();
 
                 entity.pcEntity = new pc.Entity();
-                entity.pcEntity.addComponent("render", {
-                    material: material,
-                    type: "box"
-                });
-                entity.pcEntity.setLocalScale(new pc.Vec3(shape.halfExtents.x * 2, shape.halfExtents.z * 2, shape.halfExtents.y * 2))
 
+                if(box) {
+
+                    entity.pcEntity.addComponent("render", {
+                        material: material,
+                        type: "box"
+                    });
+                    entity.pcEntity.setLocalScale(new pc.Vec3(halfExtents.x * 2, halfExtents.z * 2, halfExtents.y * 2))
+                } else {
+                    entity.pcEntity.addComponent("render", {
+                        material: material,
+                        type: "sphere"
+                    });
+                    entity.pcEntity.setLocalScale(new pc.Vec3(radius * 2, radius * 2, radius * 2))
+                }
      
 
                 this.app.root.addChild(entity.pcEntity);
@@ -167,4 +195,6 @@ export class GameClient extends Game {
             GameClient.camera.setEulerAngles(-90, 0, 0)
         }
     }
+
+    public static
 }
