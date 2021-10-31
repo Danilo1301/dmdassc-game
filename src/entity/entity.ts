@@ -107,8 +107,8 @@ export class Entity {
             this.body?.angularVelocity.setZero();
         }
 
-        if(this.velocity.almostZero(0.05)) this.velocity.setZero()
-        if(this.angularVelocity.almostZero(0.05)) this.angularVelocity.setZero()
+        if(this.velocity.almostZero(0.001)) this.velocity.setZero()
+        if(this.angularVelocity.almostZero(0.001)) this.angularVelocity.setZero()
     }
 
     public toJSON() {
