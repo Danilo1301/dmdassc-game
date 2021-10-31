@@ -22,17 +22,20 @@ export class WorldSyncHelper {
 
             entity = new c(world);
             entity.setId(data.entityId);
+            //entity.data = data.data.data; // '-'
 
            // 
             isNewEntity = true;
 
             console.log('new entiy')
 
-            console.log(data, c, entity)
+            console.log([entity])
         }
 
         if(!entity) entity = world.getEntity(data.entityId);
 
+
+        //console.log("\n\n", JSON.stringify(data.data))
         entity.fromJSON(data.data);
 
         if(isNewEntity) {

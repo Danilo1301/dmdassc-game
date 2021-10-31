@@ -1,5 +1,6 @@
 import CANNON from 'cannon'
 import * as pc from 'playcanvas';
+import { DataWatcher } from '../client/dataWatcher';
 import { Entity } from '../entity/entity';
 import { EntityObject, IEntityObjectCustomData, IEntityObjectShape } from '../entity/entityObject';
 import { EntityPlayer } from '../entity/entityPlayer';
@@ -129,17 +130,23 @@ export class World {
                 );
                 
             }
-            
-            
-    
+
             for (let i = 0; i < 4; i++) {
                 const bot = this.spawnPlayer();
                 bot.setColor(new pc.Color(0, 0, 1))
                 bot.startBotBehaviour();
+                
             }
-        
             
+            
+          
 
+          
+
+            setInterval(() => {
+
+                //console.log(bot.toJSON())
+            }, 1000)
         }
 
         
@@ -158,12 +165,7 @@ export class World {
         //const box = this.spawnTestEntity(new CANNON.Vec3(0, 0, 4), new CANNON.Vec3(1, 1, 1), {mass: 200});
         //const box2 = this.spawnTestEntity(new CANNON.Vec3(0, 1, 8), new CANNON.Vec3(1, 1, 1), {mass: 200});
         
-        setInterval(() => {
-
-            //console.log("bot1: " + this.printPosition(bot1.position));
-            //console.log("box: " + this.printPosition(box.getPosition()));
-
-        }, 250)
+        
 
         //setInterval(() => { this.spawnTestEntity(); }, 1000)
     }

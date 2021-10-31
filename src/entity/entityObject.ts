@@ -25,6 +25,8 @@ export class EntityObject extends Entity {
     public init() {
         super.init();
 
+        console.log(JSON.stringify(this.data))
+
         console.log('init', this.getCustomData())
 
         const data = this.getCustomData();

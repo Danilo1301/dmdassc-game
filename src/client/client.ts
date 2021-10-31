@@ -5,11 +5,13 @@ import { GameServer } from "../game/gameServer";
 import { IPacket, IPacketData_ConnectToServer, IPacketData_ConnectToServerStatus, IPacketData_EntityData, PacketType } from '../packet/packet';
 import { Server } from '../server/server';
 import { World } from '../world/world';
+import { EntityWatcher } from './entityWatcher';
 
 export class Client {
     private _game: GameServer;
     private _id: string;
     private _socket: socketio.Socket;
+    private _entityWatcher: EntityWatcher;
 
     private _world?: World;
     private _server?: Server;
@@ -18,6 +20,7 @@ export class Client {
     public get game() { return this._game; }
     public get id() { return this._id; }
     public get socket() { return this._socket; }
+    public get entityWatcher() { return this._entityWatcher; }
     
     public get player() { return this._player; }
 
@@ -28,6 +31,7 @@ export class Client {
         this._game = game;
         this._id = socket.id;
         this._socket = socket;
+        this._entityWatcher = new EntityWatcher();
 
         socket.on('packet', packet => this.onReceivePacket(packet));
     }
@@ -45,14 +49,30 @@ export class Client {
         for (const entity of world.entities) {
             if(entity.dontSync) continue;
 
-            const packetData: IPacketData_EntityData = {
-                entityId: entity.id,
-                entityType: entity.constructor.name,
-                data: entity.toJSON()
+            if(!this.entityWatcher.hasEntity(entity)) {
+                this.entityWatcher.addEntity(entity);
+
+                console.log("added")
             }
 
-            this.send(PacketType.ENTITY_DATA, packetData)
+            const newData = this.entityWatcher.processNewData(entity);
+
+            if(newData) {
+
+                const packetData: IPacketData_EntityData = {
+                    entityId: entity.id,
+                    entityType: entity.constructor.name,
+                    data: newData
+                }
+
+       
+                this.send(PacketType.ENTITY_DATA, packetData)
+
+            }
+
+            /*
             
+            */
         }
     }
 
@@ -83,7 +103,6 @@ export class Client {
         this._server = server;
         this._world = server.worlds[0];
 
-        
         this._player = this._world.spawnPlayer();
         this._player.setColor(new pc.Color(Math.random(), Math.random(), Math.random()));
 
@@ -94,7 +113,7 @@ export class Client {
         }
 
         this.send(PacketType.CONNECT_TO_SERVER_STATUS, sendData);
-        
+    
     }
 
     public send(type: PacketType, data?: any) {
