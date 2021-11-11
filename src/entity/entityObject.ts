@@ -1,64 +1,36 @@
-import * as pc from 'playcanvas';
-import { Entity } from "./entity";
-import CANNON from 'cannon';
-
-export enum IEntityObjectShape {
-    RECTANGLE,
-    SPHERE
-}
-
-export interface IEntityObjectCustomData {
-    shape: IEntityObjectShape
-    radius?: number
-    halfExtents?: {x: number, y: number, z: number}
-    bodyOptions?: CANNON.IBodyOptions
-}
+import { Entity } from "@game/entity/Entity";
+import { World } from "@game/world/World";
+import { DebugComponent } from "./component/DebugComponent";
+import { HealthComponent } from "./component/HealthComponent";
+import { PhysicBodyComponent } from "./component/PhysicBodyComponent";
 
 export class EntityObject extends Entity {
 
-    constructor(world) {
+    constructor(world: World) {
         super(world);
 
-        this.setColor(new pc.Color(Math.random(), Math.random(), Math.random()))
+        this.addComponent(new DebugComponent());
+        this.addComponent(new PhysicBodyComponent());
+        this.addComponent(new HealthComponent())
+
+
+        const physicBody = this.getComponent(PhysicBodyComponent);
+        physicBody.addRectangle('default', 0, 0, 30, 30);
+        physicBody.setOptions({
+            frictionAir: 0.01,
+            mass: 100
+        })
     }
 
-    public init() {
-        super.init();
+    public start() {
+        super.start();
+    }
 
-        console.log(JSON.stringify(this.data))
-
-        console.log('init', this.getCustomData())
-
-        const data = this.getCustomData();
-
-        const halfExtents = data.halfExtents ? new CANNON.Vec3(data.halfExtents.x, data.halfExtents.y, data.halfExtents.z) : new CANNON.Vec3(1, 1, 1);
-
-     
-        if(data.shape == IEntityObjectShape.RECTANGLE) {
-            const body = this.world.createRectangleBody(
-                this.position,
-                halfExtents,
-                data.bodyOptions
-            );
-            this.setBody(body);
-        } else {
-            const body = this.world.createSphereBody(
-                this.position,
-                data.radius!,
-                data.bodyOptions
-            );
-    
-            this.setBody(body);
-        }
-
+    public update(delta: number) {
         
-    }
+        const physicBody = this.getComponent(PhysicBodyComponent);
+        this.setLookRotation(physicBody.angle)
 
-    public getCustomData() {
-        return this.data.objectCustomData as IEntityObjectCustomData;
-    }
-
-    public setCustomData(data: IEntityObjectCustomData) {
-        return this.data.objectCustomData = data;
+        super.update(delta);
     }
 }

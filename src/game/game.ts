@@ -1,29 +1,30 @@
-
-import * as pc from 'playcanvas'
-import { Server } from '../server/server';
+import Phaser from 'phaser';
+import { Server } from "@game/server/Server";
 
 export class Game {
-    private _isServer: boolean = false;
-    private _servers = new Map<string, Server>();
+    
+    private _servers = new Phaser.Structs.Map<string, Server>([]);
 
-    public get isServer() { return this._isServer; }
-    public get servers() { return Array.from(this._servers.values()); }
-    public get mainServer() { return this.servers[0]; }
-
-    constructor(isServer?: boolean) {
-        this._isServer = isServer === true;
-    }
+    public get servers() { return this._servers.values(); }
 
     public start() {
-        console.log(`[Game] start; isServer =`, this.isServer);
+        console.log(`[Game] Start`);
+
+        //change
+        setInterval(() => this.updateServers(16), 16);
     }
 
-    public createServer(id: string) {
-        const server = new Server(this);
-        this._servers.set(id, server);
+    public createServer() {
+        const server = new Server();
+        this._servers.set(server.id, server);
+        return server;
     }
 
-    protected update(dt: number) {
-        this.servers.map(server => server.update(dt));
+    public getServer(id: string) {
+        return this._servers.get(id);
+    }
+ 
+    protected updateServers(delta: number) {
+        for (const server of this.servers) server.update(delta);
     }
 }

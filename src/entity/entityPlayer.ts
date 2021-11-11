@@ -1,52 +1,40 @@
-import * as pc from 'playcanvas';
-import { Entity } from "./entity";
-import CANNON from 'cannon';
+import { Entity } from "@game/entity/Entity";
+import { World } from "@game/world/World";
+import { DebugComponent } from "./component/DebugComponent";
+import { HealthComponent } from "./component/HealthComponent";
+import { InputHandlerComponent } from "./component/InputHandlerComponent";
+import { MovementComponent } from "./component/MovementComponent";
+import { PhysicBodyComponent } from "./component/PhysicBodyComponent";
+import { PlayerSpriteComponent } from "./component/PlayerSpriteComponent";
+import { WeaponComponent } from "./component/WeaponComponent";
 
 export class EntityPlayer extends Entity {
 
-    constructor(world) {
+    constructor(world: World) {
         super(world);
 
-        this.setColor(new pc.Color(Math.random(), Math.random(), Math.random()))
+        this.setColor(0xffffff);
+        this.addComponent(new DebugComponent());
+        this.addComponent(new HealthComponent())
+        this.addComponent(new InputHandlerComponent());
+        this.addComponent(new MovementComponent());
+        this.addComponent(new PhysicBodyComponent());
+        this.addComponent(new PlayerSpriteComponent());
+        this.addComponent(new WeaponComponent());
+
+        const physicBody = this.getComponent(PhysicBodyComponent);
+        physicBody.addCircle('default', 0, 0, 10);
+        physicBody.setOptions({
+            frictionAir: 0.2,
+            mass: 100,
+            inertia: Infinity
+        })
     }
 
+    public get color() { return this.data.color as number; }
 
-    public setBody(body: CANNON.Body) {
-        body.fixedRotation = true;
-        body.updateMassProperties();
-
-        super.setBody(body);
+    public setColor(color: number) {
+        this.data.color = color;
     }
-
-    public update(dt: number) {
-        super.update(dt);
-
-        const speed = 200;
-
-        const force = new CANNON.Vec3(
-            speed * this.input.horizontal * dt,
-            speed * this.input.vertical * dt,
-            0
-        );
-
-
-        const velocity = this.velocity;
-        velocity.set(force.x, force.y, velocity.z);
-
-        //this.body?.applyLocalForce(new CANNON.Vec3(0, 0, -1000), CANNON.Vec3.ZERO);
-    }
-
-    public init() {
-        super.init();
-
-        const s = 0.3;
-
-        const body = this.world.createRectangleBody(
-            this.position,
-            new CANNON.Vec3(s,s,s),
-            {mass: 100, material: this.world._material_test}
-        );
-
-        this.setBody(body);
-    }
+    
 }
