@@ -1,30 +1,27 @@
-import Phaser from 'phaser';
-import { Server } from "@game/server/Server";
+import { Server } from "../server/server";
 
 export class Game {
-    
-    private _servers = new Phaser.Structs.Map<string, Server>([]);
+    private _servers = new Map<string, Server>();
 
-    public get servers() { return this._servers.values(); }
+    public isClient: boolean = false;
+    public get servers() { return Array.from(this._servers.values()); }
+    public get mainServer() { return this.servers[0]; }
 
-    public start() {
-        console.log(`[Game] Start`);
+    public start() {}
 
-        //change
-        setInterval(() => this.updateServers(16), 16);
+    public update(dt: number) {
+        this.servers.map(server => server.update(dt));
     }
 
-    public createServer() {
-        const server = new Server();
+    public createServer(id: string) {
+        const server = new Server(this);
+        server.id = id;
+        return this.addServer(server);;
+    }
+
+    public addServer(server: Server) {
         this._servers.set(server.id, server);
+        server.init();
         return server;
-    }
-
-    public getServer(id: string) {
-        return this._servers.get(id);
-    }
- 
-    protected updateServers(delta: number) {
-        for (const server of this.servers) server.update(delta);
     }
 }

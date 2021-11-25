@@ -1,16 +1,14 @@
 {
-  "compilerOptions": {
-    "target": "es6",
-    "module": "commonjs",
-    "strict": true,
-    "noImplicitAny": false,
-    "baseUrl": "./",
-    "paths": {
-      "@game/*": ["./src/*"]
-    },
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
-  },
-  "include": ["./src/**/*", "./server/**/*"]
-}
+    "compilerOptions": {
+      "target": "es6",
+      "module": "commonjs",
+      "strict": true,
+      "noImplicitAny": false,
+      "esModuleInterop": true,
+      "allowUnreachableCode": false,
+      "sourceMap": true,
+      "strictPropertyInitialization": false,
+      "lib": ["dom", "es6", "esnext"]
+    }
+  }
+  

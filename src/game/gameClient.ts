@@ -1,43 +1,72 @@
-import { Game } from "@game/game/Game";
-import { Network } from "@game/network/Network";
-import { SceneManager } from "@game/sceneManager/SceneManager";
-import { MainScene } from "@game/scenes/MainScene";
+import * as pc from 'playcanvas';
+import { Camera } from '../camera/camera';
+
+import { Input } from "../input/input";
+import { Network } from "../network/network";
+import { Render } from '../render/render';
+import { WorldSync } from '../world/worldSync';
+import { Game } from "./game";
 
 export class GameClient extends Game {
+    public get network() { return this._network; }
     
     private _network: Network;
 
-    constructor() {
+    constructor(canvas) {
         super();
+        this.isClient = true;
 
-        this._network = new Network(this);
-    }
+        this._network = new Network();
+        this._network.init();
 
-    public get network() { return this._network; }
+        Render.init(this, canvas);
+        Input.init();
+        Camera.init();
 
-    public async start() {
-        super.start();
-
-        console.log(`[GameClient] Start`);
-
-        this.initScene();
-
-
-
-        this.network.connect(() => {
-            console.log(`[Network] Connected? ${this.network.connected}`);
-
-
+        Render.app.on('update', (dt: number) => {
+            this.update(dt);
         });
     }
 
-    private async initScene() {
-        const phaser = await SceneManager.createPhaserInstance(this);
-        phaser.events.on('step', (time: number, delta: number) => this.updateServers(delta));
+    public update(dt: number) {
+        super.update(dt);
 
-        console.log(`[GameClient] Phaser started`);
+        this._network.update(dt);
 
-        SceneManager.startScene('MainScene', MainScene);
+        Render.update(dt);
+        Input.update(dt);
+        Camera.update(dt);
+    }
 
+    public start() {
+        super.start();
+        const server = this.createServer('server1');
+
+        this.network.connect();
+        
+
+        this.startMultiplayer();
+
+        
+    }
+
+    private startSingleplayer() {
+        const server = this.servers[0];
+        const world = server.worlds[0];
+
+        //const player = server.worlds[0].spawnPlayer();
+        //Render.setPlayer(player);
+
+        const veh = server.worlds[0].spawnVehicle();
+        Render.setPlayer(veh);
+
+        world.generateBaseWorld();
+    }
+
+    private startMultiplayer() {
+        const server = this.servers[0];
+        const world = server.worlds[0];
+
+        WorldSync.world = world;
     }
 }

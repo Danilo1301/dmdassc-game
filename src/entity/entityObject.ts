@@ -1,36 +1,29 @@
-import { Entity } from "@game/entity/Entity";
-import { World } from "@game/world/World";
-import { DebugComponent } from "./component/DebugComponent";
-import { HealthComponent } from "./component/HealthComponent";
-import { PhysicBodyComponent } from "./component/PhysicBodyComponent";
+import { Entity } from './entity';
+import { World } from '../world/world';
+import { PositionComponent } from '../component/positionComponent';
+import { CollisionComponent } from '../component/collisionComponent';
+import { ObjectSpriteComponent } from '../component/objectSpriteComponent';
 
 export class EntityObject extends Entity {
+
+    public position: PositionComponent;
 
     constructor(world: World) {
         super(world);
 
-        this.addComponent(new DebugComponent());
-        this.addComponent(new PhysicBodyComponent());
-        this.addComponent(new HealthComponent())
+        this.position = this.addComponent(new PositionComponent());
 
-
-        const physicBody = this.getComponent(PhysicBodyComponent);
-        physicBody.addRectangle('default', 0, 0, 30, 30);
-        physicBody.setOptions({
-            frictionAir: 0.01,
-            mass: 100
-        })
-    }
-
-    public start() {
-        super.start();
-    }
-
-    public update(delta: number) {
         
-        const physicBody = this.getComponent(PhysicBodyComponent);
-        this.setLookRotation(physicBody.angle)
+        
+        const collisionComponent = this.addComponent(new CollisionComponent());
+        /*
+        const s = 100;
+        collisionComponent.size.set(s, s);
+        collisionComponent.frictionAir = 0.03;
+        */
 
-        super.update(delta);
+        if(world.server.game.isClient) {
+            this.addComponent(new ObjectSpriteComponent());
+        }
     }
 }

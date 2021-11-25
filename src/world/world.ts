@@ -1,170 +1,124 @@
-import { EntityPlayer } from '@game/entity/EntityPlayer';
-import { Component } from '@game/entity/component/Component';
+import Matter from "matter-js";
+import { InputHandlerComponent } from "../component/inputHandlerComponent";
+import { Entity } from "../entity/entity";
+import { EntityBuilding } from "../entity/entityBuilding";
+import { EntityObject } from "../entity/entityObject";
+import { EntityPlayer } from "../entity/entityPlayer";
+import { EntityVehicle } from "../entity/entityVehicle";
+import { Server } from "../server/server";
 
-import { Entity } from '@game/entity/Entity';
-import { ICreateEntityOptions } from '@game/entityFactory/EntityFactory';
-import { SceneManager } from '@game/sceneManager/SceneManager';
-import { GameScene } from '@game/scenes/GameScene';
-import { Server } from '@game/server/Server';
-import { v4 as uuidv4 } from 'uuid';
-import { DataWatcher } from '@game/dataWatcher/DataWatcher';
-import { FollowComponent } from '@game/entity/component/FollowComponent';
-import { EntityObject } from '@game/entity/EntityObject';
-import { WeaponComponent } from '@game/entity/component/WeaponComponent';
-import { EntityVehicle } from '@game/entity/EntityVehicle';
+export interface IWorldSpawnOptions {
+    id?: string
+}
 
 export class World {
-
-    public events = new Phaser.Events.EventEmitter();
-
-    
-    private _id: string = "";
     private _server: Server;
-    private _scene?: Phaser.Scene;
-    private _entities = new Phaser.Structs.Map<string, Entity>([]);
-    
+    private _entities = new Map<string, Entity>();
+    private _engine: Matter.Engine;
+    private _matterWorld: Matter.World;
+    private _runner: Matter.Runner;
+
+    public get server() { return this._server };
+    public get entities() { return Array.from(this._entities.values()) };
+    public get engine() { return this._engine };
+    public get matterWorld() { return this._matterWorld };
+
     constructor(server: Server) {
         this._server = server;
+    }
+
+    public init() {
+        console.log(`[world] init`);
+
+        this.initMatter();
         
-        console.log(`[World] Created`);
-    }
-    
-    public get id() { return this._id; }
-    public set id(value: string) { this._id = value; }
-    public get entities() { return this._entities.values(); }
-    public get scene() { return this._scene!; }
-    public get server() { return this._server!; }
-    public get isHost() { return this.server.isHost; }
-    
-    public async init() {
-        await this.setupWorld();
+        this.generateBuldings();
     }
 
-    public update(delta: number) {
-        //console.log(`[World] Update ${delta}`);
-
-        for (const entity of this.entities) entity.preupdate(delta);
-        for (const entity of this.entities) entity.update(delta);
-        for (const entity of this.entities) entity.postupdate(delta);
-    }
-
-    public spawnPlayer(color?: number) {
-        const player = <EntityPlayer>this.createEntity('EntityPlayer', {});
-
-        player.setPosition(200, 200);
-
-        //player.data.spawnedFromServer = true;
-
-        //player.data.test = [{id: 'test_entity', count: 12}];
-        setInterval(() => {
-            //player.data.test[0].count = (Phaser.Math.RND.integerInRange(0, 10000));
-            
-        }, 3000)
-        setInterval(() => {
-            //player.data.position.x += (Phaser.Math.RND.integerInRange(1, 3));
-            //player.data.position.y = (Phaser.Math.RND.integerInRange(100, 600));
-        }, 1620)
-
-        player.setColor(Phaser.Math.RND.integerInRange(0, 0xffffff));
-
-        if(color != undefined) player.setColor(color);
-        this.addEntity(player);
-        return player;
-    }
-
-    public spawnEntity(entityType: string, options: ICreateEntityOptions) {
-        const e = this.createEntity(entityType, options);
-        this.addEntity(e);
-        return e;
-    }
-
-    public createEntity(entityType: string, options: ICreateEntityOptions) {
-        const entity = this._server.entityFactory.createEntity(entityType, this, options);
-        //entity.position.set(100, 100);
-
-        return entity
-    }
-
-    public hasEntity(id: any) {
-        return this._entities.has(id);
-    }
-
-    public getEntity(id: any) {
-        return this._entities.get(id);
-    }
-
-    public addEntity(entity: Entity, components?: Component[]) {
-        //console.log('[World]', `Add entity ${entity.constructor.name}`);
-        this._entities.set(entity.id, entity);
-
-        if(components != undefined) {
-            for (const component of components) {
-                entity.addComponent(component);
-            }
+    public generateBaseWorld() {
+        for (let i = 0; i < 1; i++) {
+            this.spawnPlayer();
         }
         
-        entity.start();
+        for (let i = 0; i < 4; i++) {
+            this.spawnObject();
+        }
+
+        for (let i = 0; i < 1; i++) {
+            this.spawnVehicle();
+        }
+
+        
+    }
+
+    private generateBuldings() {
+        for (let y = 0; y < 4; y++) {
+            for (let x = 0; x < 4; x++) {
+                const b = this.spawnBuilding();
+
+            b.position.set(
+                (x-2) * 10 * 6,
+                (y-2) * 10 * 6,
+            )
+            }
+            
+        }
+    }
+    
+    private initMatter() {
+        const engine = this._engine = Matter.Engine.create();
+        const world = this._matterWorld = engine.world;
+        const runner = this._runner = Matter.Runner.create();
+        
+        engine.gravity.x = 0;
+        engine.gravity.y = 0;
+
+        Matter.Runner.run(runner, engine);
+    }
+
+    public spawnPlayer() {
+        const entity = new EntityPlayer(this);
+        this.addEntity(entity);
         return entity;
     }
 
-    public removeEntity(entity: Entity) {
-        //console.log('[World]', `Remove entity ${entity.constructor.name}`);
-        this._entities.delete(entity.id);
-        entity.destroy();
+    public spawnObject() {
+        const entity = new EntityObject(this);
+        this.addEntity(entity);
+        return entity;
     }
 
-    private async setupWorld() {
-        const gameScene = GameScene.Instance;
-
-        if(gameScene) this._scene = gameScene;
-        else await this.createScene();
-
-        this.setupEvents();
-
-        console.log(`[World] Ready`)
-
-        this.events.emit('ready');
+    public spawnVehicle() {
+        const entity = new EntityVehicle(this);
+        this.addEntity(entity);
+        return entity;
     }
 
-    public setupDefaultWorld() {
-        
-        for (let i = 0; i < 2; i++) {
-            const player = this.spawnPlayer();
-            player.addComponent(new FollowComponent())
-            player.getComponent(WeaponComponent).autoShot = true;
-            
-        }
-
-        for (let i = 0; i < 3; i++) {
-            const object = <EntityObject>this.spawnEntity('EntityObject', {});
-
-            if(i == 0) {
-                const c = <WeaponComponent>object.addComponent(new WeaponComponent());
-                c.autoShot = true;
-                
-            }
-            //object.addComponent(new FollowComponent())
-            
-        }
-
-        for (let i = 0; i < 2; i++) {
-            const vehicle = <EntityVehicle>this.spawnEntity('EntityVehicle', {});
-
-            if(i == 0) {
-                const c = <WeaponComponent>vehicle.addComponent(new WeaponComponent());
-                c.autoShot = true;
-                c.delay = 100;
-            }
-        }
-
+    public spawnBuilding() {
+        const entity = new EntityBuilding(this);
+        this.addEntity(entity);
+        return entity;
     }
 
-    private async createScene() {
-        const phaser = await SceneManager.createPhaserInstance();
-        this._scene = phaser.scene.getScenes()[0];
+    public update(dt: number) {
+        this.entities.map(entity => entity.update(dt))
     }
 
-    private setupEvents() {
-        this._scene!.events.on('update', (time: number, delta: number) => this.update(delta));
+    public postupdate(dt: number) {
+        this.entities.map(entity => entity.postupdate(dt))
+    }
+
+    public getEntity(id: string) {
+        return this._entities.get(id)!;
+    }
+
+    public hasEntity(id: string) {
+        return this._entities.has(id);
+    }
+
+    public addEntity(entity: Entity) {
+        this._entities.set(entity.id, entity);
+        entity.init();
+        return entity;
     }
 }

@@ -1,141 +1,98 @@
-
-import { EntitySyncComponent } from "@game/entity/component/EntitySyncComponent";
-import { InputHandlerComponent } from "@game/entity/component/InputHandlerComponent";
-import { Entity } from "@game/entity/Entity";
-import { GameClient } from "@game/game/GameClient";
-import { Input } from "@game/input/Input";
-import { SceneManager } from "@game/sceneManager/SceneManager";
-import { GameScene } from "@game/scenes/GameScene";
-import { ServerListScene } from "@game/scenes/ServerListScene";
 import { io, Socket } from "socket.io-client";
-import { LocalPlayer } from "./LocalPlayer";
-import { IPacket, IPacketData_ComponentEvent, IPacketData_ConnectToServerStatus, IPacketData_EntityData, IPacketData_Id, IPacketData_InputData, IPacketData_ServerList, IPacketData_SetServerPacketSendDelay, PacketType } from "./Packet";
-import { PacketSender } from "./PacketSender";
+import { Entity } from "../entity/entity";
+import { GameClient } from "../game/gameClient";
+import { IPacket, IPacket_Component, IPacket_ControlEntity, IPacket_Entity, PACKET_TYPE } from "../packet/packets";
+import { Render } from "../render/render";
+import { WorldSync } from "../world/worldSync";
 
 export class Network {
-    
-    public receivePacketEvents = new Phaser.Events.EventEmitter();
+    public sendPacketIntervalMs: number = 80;
 
     private _game: GameClient;
     private _socket: Socket;
-    private _packetSender: PacketSender;
+    private _sendPacketTime: number = 0;
 
-    private _bytesReceived: number = 0;
-    private _bytesSent: number = 0;
+    public get address() {
+        if(location.host.includes('localhost')) return `${location.protocol}//${location.host}/`;
+        return `https://dmdassc-game.glitch.me/`;
+    }
 
-    private _sendPacketDelay: number = 50;
-    private _lastSentPackets: number = 0;
-
-    private _hasInputChanged: boolean = false;
-
-    constructor(game: GameClient) {
-        this._game = game;
-
-        //https://dmdassc-game.glitch.me/
-        
-        let address = `https://dmdassc-game.glitch.me/api/game`;
-        
-        if(location.host.includes('localhost')) address = `${location.protocol}//${location.host}/api/game`;
-
-        console.log(`[Network] Address: (${address})`)
-
-        const socket = this._socket = io(address, {
-            path: '/socket',
+    public init() {
+        this._socket = io(this.address, {
+            //path: '/socket',
             autoConnect: false,
             reconnection: false
         });
 
-        this._packetSender = new PacketSender(socket);
-        this._packetSender.receivePacketEvents.on('packet', (packet: IPacket) => this.onReceivePacket(packet));
+        this._socket.on('p', (packet: IPacket) => {
+            this.onReceivePacket(packet);
+        })
 
-        setInterval(() => this.update(0), 0);
-
-        Input.events.on('input_changed', () => this._hasInputChanged = true);
+        console.log(`[network] Address: (${this.address})`)
     }
 
-    public get connected() { return this._socket.connected; }
-
-    public update(delta: number) {
-        
-   
-    }
-
-    private getDataSize(data: any) {
-        const byteSize = str => new Blob([str]).size;
-        const result = byteSize(JSON.stringify(data));
-        return result;
-    }
-
-    private onReceivePacket(packet: IPacket) {
-        this._bytesReceived += this.getDataSize(packet);
-
-        if(packet.type == PacketType.SERVER_LIST) {
-            const data: IPacketData_ServerList = packet.data;
-            ServerListScene.Instance.updateServersList(data.servers);
-        }
-
-        if(packet.type == PacketType.CONNECT_TO_SERVER_STATUS) {
-            const data: IPacketData_ConnectToServerStatus = packet.data;
-           
-            if(data.success) {
-                SceneManager.startScene('GameScene', GameScene);
-                GameScene.setupGame(false, true)
-            }
-        }
-
-        if(packet.type == PacketType.ENTITY_DATA) {
-            const data: IPacketData_EntityData = packet.data;
-            const world = this._game.servers[0].worlds[0];
-
-            let entity: Entity | undefined;
-            let isNewEntity: boolean = false;
-
-            if(!world.hasEntity(data.entityId)) {
-                entity = world.createEntity(data.entityType, {id: data.entityId});
-                isNewEntity = true;
-            }
-
-            if(!entity) entity = world.getEntity(data.entityId);
-
-            if(data.entityData) entity.mergeData(data.entityData);
-
-            if(isNewEntity) {
-                entity.addComponent(new EntitySyncComponent());
-                world.addEntity(entity);
-            }
-
-        }
-
-        if(packet.type == PacketType.CONTROLL_ENTITY) {
-            const data: IPacketData_Id = packet.data;
-
-            LocalPlayer.entityId = data.id;
-        }
-
-        if(packet.type == PacketType.COMPONENT_EVENT) {
-            const data: IPacketData_ComponentEvent = packet.data;
-            const world = this._game.servers[0].worlds[0];
-
-            const entity = world.getEntity(data.entityId);
-            entity.events.emit('component_event', data.componentName, data.eventName, data.data)
-        }
-    }
-
-    public connect(callback?: () => void) {
+    public connect() {
         this._socket.connect();
-        this._socket.once('connect', () => {
-            callback?.();
-        });
     }
 
-    public send(packetType: PacketType, data?: any) {
-        this._packetSender.send(packetType, data);
+    public update(dt: number) {
+        this._sendPacketTime += dt;
+
+        if(this._sendPacketTime >= this.sendPacketIntervalMs / 1000) {
+            this._sendPacketTime = 0;
+
+            const player = Render.player;
+
+            if(!player) return;
+
+            const packet = Network.serializeEntity(player);
+
+            this.send(PACKET_TYPE.ENTITY_DATA, packet);
+        }
+
     }
 
-    public setSendPacketDelay(client: number, server: number) {
-        this._sendPacketDelay = client;
+    public send(packetId: number, data: any) {
+        const packet: IPacket = {
+            id: packetId,
+            data: data
+        }
+        this._socket.emit('p', packet);
 
-        const data: IPacketData_SetServerPacketSendDelay = {delay: server};
-        this.send(PacketType.SET_SERVER_PACKET_SEND_DELAY, data);
-    }   
+        console.log(`[network] send`, packet);
+    }
+
+    public onReceivePacket(packet: IPacket) {
+        if(packet.id == PACKET_TYPE.ENTITY_DATA) {
+            WorldSync.processEntityPacketData(packet.data);
+        }
+
+        if(packet.id == PACKET_TYPE.CONTROL_ENTITY) {
+            const data = packet.data as IPacket_ControlEntity;
+            WorldSync.entityId = data.id;
+        }
+    }
+
+    public static serializeEntity(entity: Entity) {
+        const componentsData: {[component: string]: IPacket_Component} = {};
+
+        const entityFactory = entity.world.server.entityFactory;
+
+        const packet: IPacket_Entity = {
+            id: entity.id,
+            type: entityFactory.getIndexOfEntity(entity),
+            cdata: componentsData
+        }
+
+        for (const component of entity.components) {
+            const serializedData = component.serialize();
+            if(!serializedData) continue;
+
+            const id = entityFactory.getIndexOfComponent(component);
+            
+            componentsData[id] = serializedData;
+        }
+
+        return packet;
+    }
 }

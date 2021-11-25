@@ -1,38 +1,39 @@
-import { Client } from "@game/client/Client";
-import { Game } from "@game/game/Game";
-import { SceneManager } from "@game/sceneManager/SceneManager";
 import socketio from 'socket.io';
+import { Client } from '../client/client';
+import { ServerOnline } from '../server/serverOnline';
+import { Game } from "./game";
+
 
 export class GameServer extends Game {
-    
-    constructor(io: socketio.Namespace) {
+
+
+    constructor(io: socketio.Server) {
         super();
 
-        io.on("connection", this.onSocketConnect.bind(this))
+        io.on("connection", (socket) => {
+            console.log(socket.id)
+
+            const client = new Client(socket);
+
+            const server = this.mainServer as ServerOnline;
+            server.handleClientConnection(client);
+        })
+
+        
+        setInterval(() => {
+            this.update(0.016);
+        }, 16)
     }
 
     public start() {
         super.start();
 
-        console.log(`[GameServer] Start`);
-
-        
-
-
-        const server = this.createServer();
-        const world = server.createWorld('world1');
-
-        world.events.on('ready', () => {
-            world.setupDefaultWorld();
-        })
-
-        world.init();
-        
+        const server = this.createServer('server1');
+        server.worlds[0].generateBaseWorld();
     }
 
-    private onSocketConnect(socket: socketio.Socket) {
-        console.log(`[GameServer] New socket connection (${socket.id})`);
-
-        const client = new Client(this, socket);
+    public createServer(id: string): ServerOnline {
+        const server = new ServerOnline(this)
+        return this.addServer(server) as ServerOnline;
     }
 }
