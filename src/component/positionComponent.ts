@@ -5,6 +5,7 @@ import { Component } from "./component";
 export interface IPositionComponent_Data {
     x?: number
     y?: number
+    a?: number
 }
 
 export class PositionComponent extends Component {
@@ -33,6 +34,15 @@ export class PositionComponent extends Component {
             Matter.Body.setPosition(c.body, {x: this._x * 10, y: this._y * 10});
         }
     }
+    
+    public setAngle(angle: number) {
+        this._angle = angle;
+
+        if(this.entity.hasComponent(CollisionComponent)) {
+            const c = this.entity.getComponent(CollisionComponent);
+            Matter.Body.setAngle(c.body, this._angle);
+        }
+    }
 
     private handleCollisionComponent() {
         if(this.entity.hasComponent(CollisionComponent)) {
@@ -47,7 +57,8 @@ export class PositionComponent extends Component {
     public serialize() {
         const data: IPositionComponent_Data = {
             x: this.x,
-            y: this.y
+            y: this.y,
+            a: this.angle
         }
         return data;
     }
@@ -58,6 +69,8 @@ export class PositionComponent extends Component {
 
         if(data.x != undefined) newPos.x = data.x;
         if(data.y != undefined) newPos.y = data.y;
+
+        if(data.a != undefined) this.setAngle(data.a);
 
         this.set(newPos.x, newPos.y)
 

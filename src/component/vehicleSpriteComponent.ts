@@ -30,7 +30,7 @@ export class VehicleSpriteComponent extends Component {
     private initAnimatedMaterial() {
         const animatedMaterial = this._animatedMaterial = new AnimatedMaterial(1, 1, 200);
 
-        Render.loadAsset('car.png', (asset) => {
+        Render.loadAsset('assets/car.png', (asset) => {
             animatedMaterial.setAsset(asset);
         });
     }

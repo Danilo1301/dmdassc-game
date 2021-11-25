@@ -29,7 +29,7 @@ export class TestAnimSpriteComponent extends Component {
     private initAnimatedMaterial() {
         const animatedMaterial = this._animatedMaterial = new AnimatedMaterial(3, 1, 200);
 
-        Render.loadAsset('player.png', (asset) => {
+        Render.loadAsset('/assets/player.png', (asset) => {
             animatedMaterial.setAsset(asset);
         });
     }

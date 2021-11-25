@@ -33,6 +33,6 @@ export class WorldSync {
         }
 
      
-        console.log(data.cdata)
+        //console.log(data.cdata)
     }
 }

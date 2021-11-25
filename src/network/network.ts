@@ -59,7 +59,7 @@ export class Network {
         }
         this._socket.emit('p', packet);
 
-        console.log(`[network] send`, packet);
+        //console.log(`[network] send`, packet);
     }
 
     public onReceivePacket(packet: IPacket) {

@@ -4,7 +4,7 @@ export class GLBLoader {
     public static loadModel(url: string, callback: (entity: pc.Entity) => void) {
         require('../playcanvas/glb-utils.js')
 
-        Render.app.assets.loadFromUrl('building.glb', 'binary', function (err, glbAsset) {
+        Render.app.assets.loadFromUrl(url, 'binary', function (err, glbAsset) {
 
             if(!glbAsset) return console.error("error");
            

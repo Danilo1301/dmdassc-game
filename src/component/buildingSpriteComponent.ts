@@ -22,7 +22,7 @@ export class BuildingSpriteComponent extends Component {
         
         const pcEntity = this.entity.pcEntity;
 
-        GLBLoader.loadModel('', (renderRootEntity) => {
+        GLBLoader.loadModel('assets/building.glb', (renderRootEntity) => {
             console.log(renderRootEntity)
 
             /*

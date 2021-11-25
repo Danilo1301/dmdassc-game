@@ -28,7 +28,7 @@ export class ObjectSpriteComponent extends Component {
     private initAnimatedMaterial() {
         const animatedMaterial = this._animatedMaterial = new AnimatedMaterial(1, 1, 200);
 
-        Render.loadAsset('crate.png', (asset) => {
+        Render.loadAsset('/assets/crate.png', (asset) => {
             animatedMaterial.setAsset(asset);
         });
     }

@@ -22,7 +22,10 @@
   },
   "scripts": {
     "start": "nodemon server.ts",
-    "dev": "webpack --config webpack/webpack.dev.js --watch"
+    "dev": "webpack --config webpack.config.js --watch",
+    "numtemcomodar_start": "node -r tsconfig-paths/register -r ts-node/register src/main.ts",
+    "build": "webpack --config webpack.config.js",
+    "old_start": "nodemon -e ts,js --ignore static/ --exec ts-node -r tsconfig-paths/register server/index.ts"
   },
   "author": "Danilo",
   "license": "ISC"
