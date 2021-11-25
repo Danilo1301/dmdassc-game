@@ -25,6 +25,8 @@ export class BuildingSpriteComponent extends Component {
         GLBLoader.loadModel('assets/building.glb', (renderRootEntity) => {
             console.log(renderRootEntity)
 
+
+
             /*
             var bdl = renderRootEntity.children[1] as pc.Entity;
 
@@ -114,6 +116,7 @@ export class BuildingSpriteComponent extends Component {
 
             pcEntity.addChild(renderRootEntity);
 
+            console.log(renderRootEntity)
             
         })
         

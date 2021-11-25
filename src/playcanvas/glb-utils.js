@@ -1,8 +1,11 @@
 const pc = require("playcanvas");
 
+var utils = {};
+
 (function(){
-    var utils = {};
     var app = pc.Application.getApplication();
+
+    console.log(app)
 
     /**
      * @name utils#loadGlbContainerFromAsset
@@ -66,5 +69,7 @@ const pc = require("playcanvas");
         return asset;
     };
 
-    window.utils = utils;
+    //window.utils = utils;
 })();
+
+module.exports = utils;

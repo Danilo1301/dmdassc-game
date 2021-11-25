@@ -7,7 +7,9 @@ export class Game {
     public get servers() { return Array.from(this._servers.values()); }
     public get mainServer() { return this.servers[0]; }
 
-    public start() {}
+    public start() {
+        console.log('start')
+    }
 
     public update(dt: number) {
         this.servers.map(server => server.update(dt));

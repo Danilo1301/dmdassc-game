@@ -11860,6 +11860,7 @@ const positionComponent_1 = __webpack_require__(/*! ../component/positionCompone
 const playcanvas_1 = __webpack_require__(/*! ../playcanvas/playcanvas */ "./src/playcanvas/playcanvas.ts");
 const render_1 = __webpack_require__(/*! ../render/render */ "./src/render/render.ts");
 class Camera {
+    static get positon() { return this._position; }
     static init() {
         window["Camera"] = Camera;
     }
@@ -11880,7 +11881,7 @@ class Camera {
     }
 }
 exports.Camera = Camera;
-Camera.height = 200;
+Camera.height = 150;
 Camera.followPlayer = true;
 Camera._position = new pc.Vec3();
 
@@ -11993,6 +11994,7 @@ class BuildingSpriteComponent extends component_1.Component {
             */
             //
             pcEntity.addChild(renderRootEntity);
+            console.log(renderRootEntity);
         });
         /*
         
@@ -12200,7 +12202,7 @@ class ObjectSpriteComponent extends component_1.Component {
     }
     initAnimatedMaterial() {
         const animatedMaterial = this._animatedMaterial = new animatedMaterial_1.AnimatedMaterial(1, 1, 200);
-        render_1.Render.loadAsset('/assets/crate.png', (asset) => {
+        render_1.Render.loadAsset('assets/crate.png', (asset) => {
             animatedMaterial.setAsset(asset);
         });
     }
@@ -12403,7 +12405,7 @@ class TestAnimSpriteComponent extends component_1.Component {
     }
     initAnimatedMaterial() {
         const animatedMaterial = this._animatedMaterial = new animatedMaterial_1.AnimatedMaterial(3, 1, 200);
-        render_1.Render.loadAsset('/assets/player.png', (asset) => {
+        render_1.Render.loadAsset('assets/player.png', (asset) => {
             animatedMaterial.setAsset(asset);
         });
     }
@@ -12413,6 +12415,27 @@ class TestAnimSpriteComponent extends component_1.Component {
     }
 }
 exports.TestAnimSpriteComponent = TestAnimSpriteComponent;
+
+
+/***/ }),
+
+/***/ "./src/component/testComponent.ts":
+/*!****************************************!*\
+  !*** ./src/component/testComponent.ts ***!
+  \****************************************/
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.TestComponent = void 0;
+const component_1 = __webpack_require__(/*! ./component */ "./src/component/component.ts");
+class TestComponent extends component_1.Component {
+    init() {
+        super.init();
+    }
+}
+exports.TestComponent = TestComponent;
 
 
 /***/ }),
@@ -12630,12 +12653,14 @@ exports.EntityBuilding = void 0;
 const entity_1 = __webpack_require__(/*! ./entity */ "./src/entity/entity.ts");
 const positionComponent_1 = __webpack_require__(/*! ../component/positionComponent */ "./src/component/positionComponent.ts");
 const buildingSpriteComponent_1 = __webpack_require__(/*! ../component/buildingSpriteComponent */ "./src/component/buildingSpriteComponent.ts");
+const testComponent_1 = __webpack_require__(/*! ../component/testComponent */ "./src/component/testComponent.ts");
 class EntityBuilding extends entity_1.Entity {
     constructor(world) {
         super(world);
         this.position = this.addComponent(new positionComponent_1.PositionComponent());
         //const collisionComponent = this.addComponent(new CollisionComponent());
         //collisionComponent.size.set(10, 10)
+        this.addComponent(new testComponent_1.TestComponent());
         if (world.server.game.isClient) {
             this.addComponent(new buildingSpriteComponent_1.BuildingSpriteComponent());
         }
@@ -12766,7 +12791,9 @@ class Game {
     }
     get servers() { return Array.from(this._servers.values()); }
     get mainServer() { return this.servers[0]; }
-    start() { }
+    start() {
+        console.log('start');
+    }
     update(dt) {
         this.servers.map(server => server.update(dt));
     }
@@ -12863,11 +12890,10 @@ exports.GLBLoader = void 0;
 const render_1 = __webpack_require__(/*! ../render/render */ "./src/render/render.ts");
 class GLBLoader {
     static loadModel(url, callback) {
-        __webpack_require__(/*! ../playcanvas/glb-utils.js */ "./src/playcanvas/glb-utils.js");
+        const utils = __webpack_require__(/*! ../playcanvas/glb-utils.js */ "./src/playcanvas/glb-utils.js");
         render_1.Render.app.assets.loadFromUrl(url, 'binary', function (err, glbAsset) {
             if (!glbAsset)
                 return console.error("error");
-            const utils = window['utils'];
             utils.loadGlbContainerFromAsset(glbAsset, null, glbAsset.name, function (err, asset) {
                 var renderRootEntity = asset.resource.instantiateRenderEntity();
                 callback(renderRootEntity);
@@ -13089,6 +13115,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.PlayCanvas = void 0;
 const pc = __importStar(__webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs"));
+const textScript_1 = __webpack_require__(/*! ./scripts/textScript */ "./src/playcanvas/scripts/textScript.ts");
 class PlayCanvas {
     static setupApp(canvas) {
         const app = new pc.Application(canvas, {
@@ -13096,17 +13123,12 @@ class PlayCanvas {
             touch: new pc.TouchDevice(canvas),
             keyboard: new pc.Keyboard(document.body)
         });
+        //pc.registerScript(CameraFollow, 'cameraFollow', app);
+        pc.registerScript(textScript_1.TextScript, 'textScript', app);
         app.resizeCanvas(800, 600);
-        /*
-        const ObjModelParser = require('./objModelParser.js');
-
-        const m: any = app.loader.getHandler("model");
-        m.addParser(new ObjModelParser(app.graphicsDevice), function (url, data) {
-            return (pc.path.getExtension(url) === '.obj');
-        });
-        */
-        //app.setCanvasFillMode(pc.FILLMODE_FILL_WINDOW);
-        //app.setCanvasResolution(pc.RESOLUTION_AUTO);
+        app.scene.ambientLight = new pc.Color(0.2, 0.2, 0.2);
+        app.setCanvasFillMode(pc.FILLMODE_FILL_WINDOW);
+        app.setCanvasResolution(pc.RESOLUTION_AUTO);
         return app;
     }
     static setupLocalClientScene(app) {
@@ -13119,13 +13141,127 @@ class PlayCanvas {
         //camera.lookAt(0, 0, 0);
         camera.setEulerAngles(-90, 0, 0);
         camera.addComponent('script').create('cameraFollow');
-        const light = new pc.Entity('light');
+        //
+        const light = this.sunLight = new pc.Entity('light');
         light.addComponent('light');
         app.root.addChild(light);
-        light.setEulerAngles(30, 0, 0);
+        light.setEulerAngles(30, 30, 0);
+        light.light.castShadows = true;
+        //
+        const text = new pc.Entity('text');
+        app.root.addChild(text);
+        text.addComponent('script').create('textScript');
     }
 }
 exports.PlayCanvas = PlayCanvas;
+
+
+/***/ }),
+
+/***/ "./src/playcanvas/scripts/textScript.ts":
+/*!**********************************************!*\
+  !*** ./src/playcanvas/scripts/textScript.ts ***!
+  \**********************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.TextScript = void 0;
+const pc = __importStar(__webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs"));
+class TextScript extends pc.ScriptType {
+    constructor() {
+        super(...arguments);
+        this.text = "spawn";
+        this.fontsize = 70;
+    }
+    initialize() {
+        this.fire('initialize');
+        // Create a canvas to do the text rendering
+        this.canvas = document.createElement('canvas');
+        this.canvas.height = 128;
+        this.canvas.width = 512;
+        this.context = this.canvas.getContext("2d");
+        this.texture = new pc.Texture(this.app.graphicsDevice, {
+            format: pc.PIXELFORMAT_R8_G8_B8_A8
+        });
+        this.texture.setSource(this.canvas);
+        this.texture.minFilter = pc.FILTER_LINEAR_MIPMAP_LINEAR;
+        this.texture.magFilter = pc.FILTER_LINEAR;
+        this.texture.addressU = pc.ADDRESS_CLAMP_TO_EDGE;
+        this.texture.addressV = pc.ADDRESS_CLAMP_TO_EDGE;
+        this.updateText();
+        const material = new pc.StandardMaterial();
+        this.entity.addComponent("render", {
+            material: material,
+            type: "plane",
+        });
+        this.entity.setLocalScale(5.12, 1, 1.28);
+        this.entity.render.castShadows = false;
+        this.entity.render.receiveShadows = false;
+        material.emissiveMap = this.texture;
+        material.opacityMap = this.texture;
+        material.blendType = pc.BLEND_NORMAL;
+        material.depthTest = false;
+        material.update();
+    }
+    updateText() {
+        var ctx = this.context;
+        var w = ctx.canvas.width;
+        var h = ctx.canvas.height;
+        // Clear the context to transparent
+        ctx.fillStyle = "#00000000";
+        ctx.fillRect(0, 0, w, h);
+        // Write white text
+        ctx.fillStyle = 'red';
+        ctx.save();
+        ctx.font = 'bold ' + String(this.fontsize) + 'px Verdana';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(this.text, w / 2, h / 2);
+        ctx.restore();
+        // Copy the canvas into the texture
+        this.texture.upload();
+    }
+    postInitialize() {
+        this.fire('postInitialize');
+    }
+    update(dt) {
+        this.fire('update', dt);
+    }
+    postUpdate(dt) {
+        this.fire('postUpdate', dt);
+        //var pos = PlayCanvas.camera.getPosition();
+        //this.entity.setPosition(pos.x, 0, pos.z)
+        //this.text = `${this.app.}`;
+        //this.updateText();
+    }
+    swap() {
+        this.fire('swap');
+    }
+}
+exports.TextScript = TextScript;
+//TestScript.attributes.add('height', {type: 'number', default: 5});
+//TestScript.attributes.add('followEntity', {type: 'entity'});
 
 
 /***/ }),
@@ -13170,6 +13306,7 @@ class Render {
         this.app.start();
         playcanvas_1.PlayCanvas.setupLocalClientScene(this.app);
         window["Render"] = Render;
+        window["PlayCanvas"] = playcanvas_1.PlayCanvas;
     }
     static update(dt) {
         const world = this.game.mainServer.worlds[0];
@@ -14426,13 +14563,16 @@ module.exports = yeast;
 /*!*************************************!*\
   !*** ./src/playcanvas/glb-utils.js ***!
   \*************************************/
-/***/ ((__unused_webpack_module, __unused_webpack_exports, __webpack_require__) => {
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 const pc = __webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs");
 
+var utils = {};
+
 (function(){
-    var utils = {};
     var app = pc.Application.getApplication();
+
+    console.log(app)
 
     /**
      * @name utils#loadGlbContainerFromAsset
@@ -14496,8 +14636,11 @@ const pc = __webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/buil
         return asset;
     };
 
-    window.utils = utils;
+    //window.utils = utils;
 })();
+
+module.exports = utils;
+
 
 /***/ }),
 

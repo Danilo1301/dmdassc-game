@@ -1,5 +1,7 @@
+import * as pc from 'playcanvas';
 import socketio from 'socket.io';
 import { Client } from '../client/client';
+import { PlayCanvas } from '../playcanvas/playcanvas';
 import { ServerOnline } from '../server/serverOnline';
 import { Game } from "./game";
 

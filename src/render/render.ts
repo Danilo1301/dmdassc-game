@@ -21,6 +21,7 @@ export class Render {
         PlayCanvas.setupLocalClientScene(this.app);
 
         window["Render"] = Render;
+        window["PlayCanvas"] = PlayCanvas;
     }
 
     public static update(dt: number) {

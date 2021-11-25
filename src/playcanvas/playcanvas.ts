@@ -1,9 +1,12 @@
 import * as pc from 'playcanvas'
 import { GameClient } from '../game/gameClient';
 import { World } from '../world/world';
+import { CameraFollow } from './scripts/cameraFollow';
+import { TextScript } from './scripts/textScript';
 
 export class PlayCanvas {
     public static camera: pc.Entity;
+    public static sunLight: pc.Entity;
 
     public static setupApp(canvas) {
         const app = new pc.Application(canvas, {
@@ -12,22 +15,16 @@ export class PlayCanvas {
             keyboard: new pc.Keyboard(document.body)
         });
 
+        //pc.registerScript(CameraFollow, 'cameraFollow', app);
+        pc.registerScript(TextScript, 'textScript', app);
+
         app.resizeCanvas(800, 600);
- 
 
-        /*
-        const ObjModelParser = require('./objModelParser.js');
-
-        const m: any = app.loader.getHandler("model");
-        m.addParser(new ObjModelParser(app.graphicsDevice), function (url, data) {
-            return (pc.path.getExtension(url) === '.obj');
-        });
-        */
+        app.scene.ambientLight = new pc.Color(0.2, 0.2, 0.2);
 
 
-
-        //app.setCanvasFillMode(pc.FILLMODE_FILL_WINDOW);
-        //app.setCanvasResolution(pc.RESOLUTION_AUTO);
+        app.setCanvasFillMode(pc.FILLMODE_FILL_WINDOW);
+        app.setCanvasResolution(pc.RESOLUTION_AUTO);
 
         return app;
     }
@@ -44,11 +41,20 @@ export class PlayCanvas {
         camera.setEulerAngles(-90, 0, 0);
         (camera.addComponent('script') as pc.ScriptComponent).create('cameraFollow');
         
-        const light = new pc.Entity('light');
+        //
+
+        const light = this.sunLight = new pc.Entity('light');
         light.addComponent('light');
         app.root.addChild(light);
-        light.setEulerAngles(30, 0, 0);
+        light.setEulerAngles(30, 30, 0);
 
+        light.light!.castShadows = true;
+
+        //
+
+        const text = new pc.Entity('text');
+        app.root.addChild(text);
+        (text.addComponent('script') as pc.ScriptComponent).create('textScript');
    
     }
 

@@ -4,8 +4,9 @@ import { PlayCanvas } from "../playcanvas/playcanvas";
 import { Render } from "../render/render";
 
 export class Camera {
-    public static height: number = 200;
+    public static height: number = 150;
     public static followPlayer: boolean = true;
+    public static get positon() { return this._position; }
 
     private static _position = new pc.Vec3();
     
