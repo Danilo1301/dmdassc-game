@@ -10,7 +10,8 @@
     "playcanvas": "^1.49.0",
     "socket.io": "^4.3.1",
     "socket.io-client": "^4.3.2",
-    "uuid": "^8.3.2"
+    "uuid": "^8.3.2",
+    "nodemon": "^2.0.15"
   },
   "devDependencies": {
     "html-webpack-plugin": "^5.5.0",
@@ -28,5 +29,6 @@
     "old_start": "nodemon -e ts,js --ignore static/ --exec ts-node -r tsconfig-paths/register server/index.ts"
   },
   "author": "Danilo",
-  "license": "ISC"
+  "license": "ISC",
+  "engines": { "node": "14.x" }
 }
