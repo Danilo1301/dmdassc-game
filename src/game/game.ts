@@ -1,29 +1,45 @@
-import { Server } from "../server/server";
+import { InputHandlerComponent } from "../component/inputHandlerComponent";
+import { PlayerComponent } from "../component/playerComponent";
+import { TransformComponent } from "../component/transformComponent";
+import { EntityBuilding } from "../entity/building/entityBuilding";
+import { Entity } from "../entity/entity";
+import { EntityPlayer } from "../entity/player/entityPlayer";
+import { EntityVehicle } from "../entity/vehicle/entityVehicle";
+import { EntityFactory } from "../entityFactory/entityFactory";
+import { World } from "../world/world";
 
 export class Game {
-    private _servers = new Map<string, Server>();
+    public get worlds() { return Array.from(this._worlds.values()); }
+    public get entityFactory() { return this._entityFactory; }
 
-    public isClient: boolean = false;
-    public get servers() { return Array.from(this._servers.values()); }
-    public get mainServer() { return this.servers[0]; }
+    private _worlds = new Map<string, World>();
+    private _entityFactory: EntityFactory;
+
+    constructor() {
+        this._entityFactory = new EntityFactory();
+
+        this._entityFactory.registerComponent(InputHandlerComponent);
+        this._entityFactory.registerComponent(PlayerComponent);
+        this._entityFactory.registerComponent(TransformComponent);
+
+        this._entityFactory.registerEntity('EntityBuilding', EntityBuilding);
+        this._entityFactory.registerEntity('EntityPlayer', EntityPlayer);
+        this._entityFactory.registerEntity('EntityVehicle', EntityVehicle);
+    }
 
     public start() {
-        console.log('start')
+        console.log(`[game] start`);
     }
 
     public update(dt: number) {
-        this.servers.map(server => server.update(dt));
+        this.worlds.map(world => world.update(dt));
     }
 
-    public createServer(id: string) {
-        const server = new Server(this);
-        server.id = id;
-        return this.addServer(server);;
-    }
+    public createWorld(name: string) {
+        console.log(`[game] create world '${name}'`);
 
-    public addServer(server: Server) {
-        this._servers.set(server.id, server);
-        server.init();
-        return server;
+        const world = new World(this);
+        this._worlds.set(name, world);
+        return world;
     }
 }

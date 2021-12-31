@@ -1,67 +1,66 @@
-
-import { Client } from "../client/client";
-import { CollisionComponent } from "../component/collisionComponent";
-import { InputHandlerComponent } from "../component/inputHandlerComponent";
-import { ObjectSpriteComponent } from "../component/objectSpriteComponent";
-import { PositionComponent } from "../component/positionComponent";
-import { TestAnimSpriteComponent } from "../component/testAnimSprite";
-import { VehicleComponent } from "../component/vehicleComponent";
-import { VehicleSpriteComponent } from "../component/vehicleSpriteComponent";
-import { EntityObject } from "../entity/entityObject";
-import { EntityPlayer } from "../entity/entityPlayer";
-import { EntityVehicle } from "../entity/entityVehicle";
-import { Game } from "../game/game";
-import { World } from "../world/world";
-import { EntityFactory } from "./entityFactory";
+import { v4 as uuidv4 } from 'uuid';
+import { Client } from '../client/client';
+import { Component } from '../component/component';
+import { SyncComponent, SyncType } from '../component/syncComponent';
+import { Entity } from '../entity/entity';
+import { EntityPlayer } from '../entity/player/entityPlayer';
+import { Game } from '../game/game';
+import { PacketType } from '../network/network';
+import { Packet } from '../packet/packet';
 
 export class Server {
-    public id: string = "";
+    public get id() { return this._id; }
     public get game() { return this._game; }
-    public get worlds() { return Array.from(this._worlds.values()); }
-    public get entityFactory() { return this._entityFactory; }
+    public get clients() { return Array.from(this._clients.values()); }
 
+    private _id: string = uuidv4();
     private _game: Game;
-    private _worlds = new Map<string, World>();
-    private _entityFactory: EntityFactory;
+    private _clients = new Map<string, Client>();
 
-    constructor(game: Game) {
-        this._game = game;
-        this._entityFactory = new EntityFactory();
-        this.registerEntitiesAndComponents();
+    constructor() {
+        this._game = new Game();
     }
 
-    private registerEntitiesAndComponents() {
-        const entityFactory = this._entityFactory;
-
-        entityFactory.registerEntity("EntityPlayer", EntityPlayer);
-        entityFactory.registerEntity("EntityObject", EntityObject);
-        entityFactory.registerEntity("EntityVehicle", EntityVehicle);
-
-        entityFactory.registerComponent("PositionComponent", PositionComponent);
-        entityFactory.registerComponent("CollisionComponent", CollisionComponent);
-        entityFactory.registerComponent("InputHandlerComponent", InputHandlerComponent);
-        entityFactory.registerComponent("ObjectSpriteComponent", ObjectSpriteComponent);
-        entityFactory.registerComponent("TestAnimSpriteComponent", TestAnimSpriteComponent);
-        entityFactory.registerComponent("VehicleComponent", VehicleComponent);
-        entityFactory.registerComponent("VehicleSpriteComponent", VehicleSpriteComponent);
-    }
-
-    public init() {
-        console.log(`[server] init`);
-
-        this.createWorld('world');
+    public start() {
+        const game = this.game;
+        game.start();
+        
+        const world = game.createWorld('world');
+        world.init();
+        world.generateWorld();
     }
 
     public update(dt: number) {
-        this.worlds.map(world => world.update(dt));
-        this.worlds.map(world => world.postupdate(dt));
+        this.game.update(dt);
+        this.clients.map(client => client.update(dt));
     }
 
-    public createWorld(name: string) {
-        console.log(`[server] create world '${name}'`);
+    public onClientJoin(client: Client) {
+        console.log("client joined")
 
-        const world = new World(this);
-        this._worlds.set(name, world);
-        world.init();
+        this._clients.set(client.id, client);
+
+        const world = this.game.worlds[0];
+
+        const player = world.spawnEntity(EntityPlayer);
+        const syncComponent = player.addComponent(new SyncComponent());
+        syncComponent.syncType = SyncType.SERVER_SYNC;
+
+
+        client.setPlayer(player);
+        client.checkStreamedEntities();
+
+        //
+        const packet = new Packet();
+        packet.writeShort(PacketType.CONTROLL_ENTITY);
+        packet.writeString(player.id);
+        client.sendPacket(packet);
+
+        console.log("sent controll")
+        //
+
+      
     }
 }
+
+

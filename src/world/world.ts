@@ -1,74 +1,54 @@
 import Matter from "matter-js";
 import { InputHandlerComponent } from "../component/inputHandlerComponent";
+import { TestCollisionComponent } from "../component/testCollisionComponent";
+import { EntityBuilding } from "../entity/building/entityBuilding";
 import { Entity } from "../entity/entity";
-import { EntityBuilding } from "../entity/entityBuilding";
-import { EntityObject } from "../entity/entityObject";
-import { EntityPlayer } from "../entity/entityPlayer";
-import { EntityVehicle } from "../entity/entityVehicle";
-import { Server } from "../server/server";
+import { EntityPlayer } from "../entity/player/entityPlayer";
+import { EntityVehicle } from "../entity/vehicle/entityVehicle";
+import { Game } from "../game/game";
 
-export interface IWorldSpawnOptions {
-    id?: string
+interface IWorldMatter {
+    engine?: Matter.Engine
+    world?: Matter.World
+    runner?: Matter.Runner
 }
 
 export class World {
-    private _server: Server;
-    private _entities = new Map<string, Entity>();
-    private _engine: Matter.Engine;
-    private _matterWorld: Matter.World;
-    private _runner: Matter.Runner;
-
-    public get server() { return this._server };
+    public matter: IWorldMatter = {}
     public get entities() { return Array.from(this._entities.values()) };
-    public get engine() { return this._engine };
-    public get matterWorld() { return this._matterWorld };
+    public get game() { return this._game; };
+    
+    private _entities = new Map<string, Entity>();
+    private _game: Game;
 
-    constructor(server: Server) {
-        this._server = server;
+    constructor(game: Game) {
+        this._game = game;
     }
 
     public init() {
         console.log(`[world] init`);
 
-        this.initMatter();
-        
-        this.generateBuldings();
+        this.initMatterWorld();
+
+        /*
+        var bb = new ByteBuffer();
+        bb.writeString("ayo");
+        bb.flip();
+
+        console.log(bb.toBuffer())
+
+        console.log(bb.readString(2)+" from ByteBuffer.js");
+        */
     }
 
-    public generateBaseWorld() {
-        for (let i = 0; i < 1; i++) {
-            this.spawnPlayer();
-        }
-        
-        for (let i = 0; i < 4; i++) {
-            this.spawnObject();
-        }
-
-        for (let i = 0; i < 1; i++) {
-            this.spawnVehicle();
-        }
-
-        
+    public update(dt: number) {
+        this.entities.map(entity => entity.update(dt));
     }
 
-    private generateBuldings() {
-        for (let y = 0; y < 4; y++) {
-            for (let x = 0; x < 4; x++) {
-                const b = this.spawnBuilding();
-
-            b.position.set(
-                (x-2) * 10 * 6,
-                (y-2) * 10 * 6,
-            )
-            }
-            
-        }
-    }
-    
-    private initMatter() {
-        const engine = this._engine = Matter.Engine.create();
-        const world = this._matterWorld = engine.world;
-        const runner = this._runner = Matter.Runner.create();
+    private initMatterWorld() {
+        const engine = this.matter.engine = Matter.Engine.create();
+        const world = this.matter.world = engine.world;
+        const runner = this.matter.runner = Matter.Runner.create();
         
         engine.gravity.x = 0;
         engine.gravity.y = 0;
@@ -76,47 +56,42 @@ export class World {
         Matter.Runner.run(runner, engine);
     }
 
-    public spawnPlayer() {
-        const entity = new EntityPlayer(this);
-        this.addEntity(entity);
-        return entity;
+    public generateWorld() {
+        console.log(`[world] generate world`);
+
+        const building1 = this.spawnEntity(EntityBuilding);
+        building1.transform.setPosition(300, 0)
+
+        const building2 = this.spawnEntity(EntityBuilding);
+        building2.transform.setPosition(-300, 0)
+
+        const vehicle1 = this.spawnEntity(EntityVehicle);
+        const vehicle2 = this.spawnEntity(EntityVehicle);
     }
 
-    public spawnObject() {
-        const entity = new EntityObject(this);
-        this.addEntity(entity);
-        return entity;
-    }
+    
+    
+    public spawnEntity(c: typeof Entity, options?) {
+        const entity = new c(this);
 
-    public spawnVehicle() {
-        const entity = new EntityVehicle(this);
-        this.addEntity(entity);
-        return entity;
-    }
-
-    public spawnBuilding() {
-        const entity = new EntityBuilding(this);
-        this.addEntity(entity);
-        return entity;
-    }
-
-    public update(dt: number) {
-        this.entities.map(entity => entity.update(dt))
-    }
-
-    public postupdate(dt: number) {
-        this.entities.map(entity => entity.postupdate(dt))
-    }
-
-    public getEntity(id: string) {
-        return this._entities.get(id)!;
+        if(options) {
+            if(options.id) entity.setId(options.id);
+        }
+        
+        return this.addEntity(entity);
     }
 
     public hasEntity(id: string) {
         return this._entities.has(id);
     }
 
+    public getEntity(id: string) {
+        return this._entities.get(id);
+    }
+
     public addEntity(entity: Entity) {
+        console.log(`[world] add entity ${entity.constructor.name}`);
+        
         this._entities.set(entity.id, entity);
         entity.init();
         return entity;

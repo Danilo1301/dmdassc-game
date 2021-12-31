@@ -1,14 +1,11 @@
 import * as pc from 'playcanvas'
 
-import { Render } from '../render/render';
-
 export class Input {
     private static _keys = new Map<number, boolean>();
 
-    public static init() {
-        console.log("init")
+    public static init(app: pc.Application) {
+        console.log("[input] init");
 
-        const app = Render.app;
         app.keyboard.on(pc.EVENT_KEYDOWN, this.onKeyDown, this);
         app.keyboard.on(pc.EVENT_KEYUP, this.onKeyUp, this);
 

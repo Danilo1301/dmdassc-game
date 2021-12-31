@@ -1,17 +1,19 @@
 import Matter from "matter-js";
-import { GameClient } from "../src/game/gameClient";
+import { Gameface } from "../src/gameface/gameface";
+import { Render } from "../src/gameface/render";
 
-const game = new GameClient(document.getElementById('game'));
-game.start();
+const gameface = new Gameface(document.getElementById('game'));
+gameface.start();
 
-window['game'] = game;
+window['gameface'] = gameface;
+window['Render'] = Render;
 
 const width = 800;
 const height = 600;
 const s = 3;
 
 // renderer
-const engine = game.mainServer.worlds[0].engine;
+const engine = gameface.game.worlds[0].matter.engine!;
 const render = Matter.Render.create({
     element: document.body,
     engine: engine,
@@ -37,8 +39,7 @@ Matter.Render.run(render);
 
 
 // mouse constraint
-const matterWorld = game.mainServer.worlds[0].matterWorld;
-
+const matterWorld = gameface.game.worlds[0].matter.world!;
 
 const constraint: any = {
     stiffness: 0.2,

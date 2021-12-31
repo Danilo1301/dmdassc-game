@@ -348,6 +348,3759 @@ var decode = function (base64) {
 
 /***/ }),
 
+/***/ "./node_modules/bytebuffer/dist/bytebuffer.js":
+/*!****************************************************!*\
+  !*** ./node_modules/bytebuffer/dist/bytebuffer.js ***!
+  \****************************************************/
+/***/ (function(module, exports, __webpack_require__) {
+
+var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;/*
+ Copyright 2013-2014 Daniel Wirtz <dcode@dcode.io>
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+ http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+ */
+
+/**
+ * @license bytebuffer.js (c) 2015 Daniel Wirtz <dcode@dcode.io>
+ * Backing buffer: ArrayBuffer, Accessor: Uint8Array
+ * Released under the Apache License, Version 2.0
+ * see: https://github.com/dcodeIO/bytebuffer.js for details
+ */
+(function(global, factory) {
+
+    /* AMD */ if (true)
+        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(/*! long */ "./node_modules/long/dist/long.js")], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory),
+		__WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ?
+		(__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__),
+		__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+    /* CommonJS */ else {}
+
+})(this, function(Long) {
+    "use strict";
+
+    /**
+     * Constructs a new ByteBuffer.
+     * @class The swiss army knife for binary data in JavaScript.
+     * @exports ByteBuffer
+     * @constructor
+     * @param {number=} capacity Initial capacity. Defaults to {@link ByteBuffer.DEFAULT_CAPACITY}.
+     * @param {boolean=} littleEndian Whether to use little or big endian byte order. Defaults to
+     *  {@link ByteBuffer.DEFAULT_ENDIAN}.
+     * @param {boolean=} noAssert Whether to skip assertions of offsets and values. Defaults to
+     *  {@link ByteBuffer.DEFAULT_NOASSERT}.
+     * @expose
+     */
+    var ByteBuffer = function(capacity, littleEndian, noAssert) {
+        if (typeof capacity === 'undefined')
+            capacity = ByteBuffer.DEFAULT_CAPACITY;
+        if (typeof littleEndian === 'undefined')
+            littleEndian = ByteBuffer.DEFAULT_ENDIAN;
+        if (typeof noAssert === 'undefined')
+            noAssert = ByteBuffer.DEFAULT_NOASSERT;
+        if (!noAssert) {
+            capacity = capacity | 0;
+            if (capacity < 0)
+                throw RangeError("Illegal capacity");
+            littleEndian = !!littleEndian;
+            noAssert = !!noAssert;
+        }
+
+        /**
+         * Backing ArrayBuffer.
+         * @type {!ArrayBuffer}
+         * @expose
+         */
+        this.buffer = capacity === 0 ? EMPTY_BUFFER : new ArrayBuffer(capacity);
+
+        /**
+         * Uint8Array utilized to manipulate the backing buffer. Becomes `null` if the backing buffer has a capacity of `0`.
+         * @type {?Uint8Array}
+         * @expose
+         */
+        this.view = capacity === 0 ? null : new Uint8Array(this.buffer);
+
+        /**
+         * Absolute read/write offset.
+         * @type {number}
+         * @expose
+         * @see ByteBuffer#flip
+         * @see ByteBuffer#clear
+         */
+        this.offset = 0;
+
+        /**
+         * Marked offset.
+         * @type {number}
+         * @expose
+         * @see ByteBuffer#mark
+         * @see ByteBuffer#reset
+         */
+        this.markedOffset = -1;
+
+        /**
+         * Absolute limit of the contained data. Set to the backing buffer's capacity upon allocation.
+         * @type {number}
+         * @expose
+         * @see ByteBuffer#flip
+         * @see ByteBuffer#clear
+         */
+        this.limit = capacity;
+
+        /**
+         * Whether to use little endian byte order, defaults to `false` for big endian.
+         * @type {boolean}
+         * @expose
+         */
+        this.littleEndian = littleEndian;
+
+        /**
+         * Whether to skip assertions of offsets and values, defaults to `false`.
+         * @type {boolean}
+         * @expose
+         */
+        this.noAssert = noAssert;
+    };
+
+    /**
+     * ByteBuffer version.
+     * @type {string}
+     * @const
+     * @expose
+     */
+    ByteBuffer.VERSION = "5.0.1";
+
+    /**
+     * Little endian constant that can be used instead of its boolean value. Evaluates to `true`.
+     * @type {boolean}
+     * @const
+     * @expose
+     */
+    ByteBuffer.LITTLE_ENDIAN = true;
+
+    /**
+     * Big endian constant that can be used instead of its boolean value. Evaluates to `false`.
+     * @type {boolean}
+     * @const
+     * @expose
+     */
+    ByteBuffer.BIG_ENDIAN = false;
+
+    /**
+     * Default initial capacity of `16`.
+     * @type {number}
+     * @expose
+     */
+    ByteBuffer.DEFAULT_CAPACITY = 16;
+
+    /**
+     * Default endianess of `false` for big endian.
+     * @type {boolean}
+     * @expose
+     */
+    ByteBuffer.DEFAULT_ENDIAN = ByteBuffer.BIG_ENDIAN;
+
+    /**
+     * Default no assertions flag of `false`.
+     * @type {boolean}
+     * @expose
+     */
+    ByteBuffer.DEFAULT_NOASSERT = false;
+
+    /**
+     * A `Long` class for representing a 64-bit two's-complement integer value. May be `null` if Long.js has not been loaded
+     *  and int64 support is not available.
+     * @type {?Long}
+     * @const
+     * @see https://github.com/dcodeIO/long.js
+     * @expose
+     */
+    ByteBuffer.Long = Long || null;
+
+    /**
+     * @alias ByteBuffer.prototype
+     * @inner
+     */
+    var ByteBufferPrototype = ByteBuffer.prototype;
+
+    /**
+     * An indicator used to reliably determine if an object is a ByteBuffer or not.
+     * @type {boolean}
+     * @const
+     * @expose
+     * @private
+     */
+    ByteBufferPrototype.__isByteBuffer__;
+
+    Object.defineProperty(ByteBufferPrototype, "__isByteBuffer__", {
+        value: true,
+        enumerable: false,
+        configurable: false
+    });
+
+    // helpers
+
+    /**
+     * @type {!ArrayBuffer}
+     * @inner
+     */
+    var EMPTY_BUFFER = new ArrayBuffer(0);
+
+    /**
+     * String.fromCharCode reference for compile-time renaming.
+     * @type {function(...number):string}
+     * @inner
+     */
+    var stringFromCharCode = String.fromCharCode;
+
+    /**
+     * Creates a source function for a string.
+     * @param {string} s String to read from
+     * @returns {function():number|null} Source function returning the next char code respectively `null` if there are
+     *  no more characters left.
+     * @throws {TypeError} If the argument is invalid
+     * @inner
+     */
+    function stringSource(s) {
+        var i=0; return function() {
+            return i < s.length ? s.charCodeAt(i++) : null;
+        };
+    }
+
+    /**
+     * Creates a destination function for a string.
+     * @returns {function(number=):undefined|string} Destination function successively called with the next char code.
+     *  Returns the final string when called without arguments.
+     * @inner
+     */
+    function stringDestination() {
+        var cs = [], ps = []; return function() {
+            if (arguments.length === 0)
+                return ps.join('')+stringFromCharCode.apply(String, cs);
+            if (cs.length + arguments.length > 1024)
+                ps.push(stringFromCharCode.apply(String, cs)),
+                    cs.length = 0;
+            Array.prototype.push.apply(cs, arguments);
+        };
+    }
+
+    /**
+     * Gets the accessor type.
+     * @returns {Function} `Buffer` under node.js, `Uint8Array` respectively `DataView` in the browser (classes)
+     * @expose
+     */
+    ByteBuffer.accessor = function() {
+        return Uint8Array;
+    };
+    /**
+     * Allocates a new ByteBuffer backed by a buffer of the specified capacity.
+     * @param {number=} capacity Initial capacity. Defaults to {@link ByteBuffer.DEFAULT_CAPACITY}.
+     * @param {boolean=} littleEndian Whether to use little or big endian byte order. Defaults to
+     *  {@link ByteBuffer.DEFAULT_ENDIAN}.
+     * @param {boolean=} noAssert Whether to skip assertions of offsets and values. Defaults to
+     *  {@link ByteBuffer.DEFAULT_NOASSERT}.
+     * @returns {!ByteBuffer}
+     * @expose
+     */
+    ByteBuffer.allocate = function(capacity, littleEndian, noAssert) {
+        return new ByteBuffer(capacity, littleEndian, noAssert);
+    };
+
+    /**
+     * Concatenates multiple ByteBuffers into one.
+     * @param {!Array.<!ByteBuffer|!ArrayBuffer|!Uint8Array|string>} buffers Buffers to concatenate
+     * @param {(string|boolean)=} encoding String encoding if `buffers` contains a string ("base64", "hex", "binary",
+     *  defaults to "utf8")
+     * @param {boolean=} littleEndian Whether to use little or big endian byte order for the resulting ByteBuffer. Defaults
+     *  to {@link ByteBuffer.DEFAULT_ENDIAN}.
+     * @param {boolean=} noAssert Whether to skip assertions of offsets and values for the resulting ByteBuffer. Defaults to
+     *  {@link ByteBuffer.DEFAULT_NOASSERT}.
+     * @returns {!ByteBuffer} Concatenated ByteBuffer
+     * @expose
+     */
+    ByteBuffer.concat = function(buffers, encoding, littleEndian, noAssert) {
+        if (typeof encoding === 'boolean' || typeof encoding !== 'string') {
+            noAssert = littleEndian;
+            littleEndian = encoding;
+            encoding = undefined;
+        }
+        var capacity = 0;
+        for (var i=0, k=buffers.length, length; i<k; ++i) {
+            if (!ByteBuffer.isByteBuffer(buffers[i]))
+                buffers[i] = ByteBuffer.wrap(buffers[i], encoding);
+            length = buffers[i].limit - buffers[i].offset;
+            if (length > 0) capacity += length;
+        }
+        if (capacity === 0)
+            return new ByteBuffer(0, littleEndian, noAssert);
+        var bb = new ByteBuffer(capacity, littleEndian, noAssert),
+            bi;
+        i=0; while (i<k) {
+            bi = buffers[i++];
+            length = bi.limit - bi.offset;
+            if (length <= 0) continue;
+            bb.view.set(bi.view.subarray(bi.offset, bi.limit), bb.offset);
+            bb.offset += length;
+        }
+        bb.limit = bb.offset;
+        bb.offset = 0;
+        return bb;
+    };
+
+    /**
+     * Tests if the specified type is a ByteBuffer.
+     * @param {*} bb ByteBuffer to test
+     * @returns {boolean} `true` if it is a ByteBuffer, otherwise `false`
+     * @expose
+     */
+    ByteBuffer.isByteBuffer = function(bb) {
+        return (bb && bb["__isByteBuffer__"]) === true;
+    };
+    /**
+     * Gets the backing buffer type.
+     * @returns {Function} `Buffer` under node.js, `ArrayBuffer` in the browser (classes)
+     * @expose
+     */
+    ByteBuffer.type = function() {
+        return ArrayBuffer;
+    };
+    /**
+     * Wraps a buffer or a string. Sets the allocated ByteBuffer's {@link ByteBuffer#offset} to `0` and its
+     *  {@link ByteBuffer#limit} to the length of the wrapped data.
+     * @param {!ByteBuffer|!ArrayBuffer|!Uint8Array|string|!Array.<number>} buffer Anything that can be wrapped
+     * @param {(string|boolean)=} encoding String encoding if `buffer` is a string ("base64", "hex", "binary", defaults to
+     *  "utf8")
+     * @param {boolean=} littleEndian Whether to use little or big endian byte order. Defaults to
+     *  {@link ByteBuffer.DEFAULT_ENDIAN}.
+     * @param {boolean=} noAssert Whether to skip assertions of offsets and values. Defaults to
+     *  {@link ByteBuffer.DEFAULT_NOASSERT}.
+     * @returns {!ByteBuffer} A ByteBuffer wrapping `buffer`
+     * @expose
+     */
+    ByteBuffer.wrap = function(buffer, encoding, littleEndian, noAssert) {
+        if (typeof encoding !== 'string') {
+            noAssert = littleEndian;
+            littleEndian = encoding;
+            encoding = undefined;
+        }
+        if (typeof buffer === 'string') {
+            if (typeof encoding === 'undefined')
+                encoding = "utf8";
+            switch (encoding) {
+                case "base64":
+                    return ByteBuffer.fromBase64(buffer, littleEndian);
+                case "hex":
+                    return ByteBuffer.fromHex(buffer, littleEndian);
+                case "binary":
+                    return ByteBuffer.fromBinary(buffer, littleEndian);
+                case "utf8":
+                    return ByteBuffer.fromUTF8(buffer, littleEndian);
+                case "debug":
+                    return ByteBuffer.fromDebug(buffer, littleEndian);
+                default:
+                    throw Error("Unsupported encoding: "+encoding);
+            }
+        }
+        if (buffer === null || typeof buffer !== 'object')
+            throw TypeError("Illegal buffer");
+        var bb;
+        if (ByteBuffer.isByteBuffer(buffer)) {
+            bb = ByteBufferPrototype.clone.call(buffer);
+            bb.markedOffset = -1;
+            return bb;
+        }
+        if (buffer instanceof Uint8Array) { // Extract ArrayBuffer from Uint8Array
+            bb = new ByteBuffer(0, littleEndian, noAssert);
+            if (buffer.length > 0) { // Avoid references to more than one EMPTY_BUFFER
+                bb.buffer = buffer.buffer;
+                bb.offset = buffer.byteOffset;
+                bb.limit = buffer.byteOffset + buffer.byteLength;
+                bb.view = new Uint8Array(buffer.buffer);
+            }
+        } else if (buffer instanceof ArrayBuffer) { // Reuse ArrayBuffer
+            bb = new ByteBuffer(0, littleEndian, noAssert);
+            if (buffer.byteLength > 0) {
+                bb.buffer = buffer;
+                bb.offset = 0;
+                bb.limit = buffer.byteLength;
+                bb.view = buffer.byteLength > 0 ? new Uint8Array(buffer) : null;
+            }
+        } else if (Object.prototype.toString.call(buffer) === "[object Array]") { // Create from octets
+            bb = new ByteBuffer(buffer.length, littleEndian, noAssert);
+            bb.limit = buffer.length;
+            for (var i=0; i<buffer.length; ++i)
+                bb.view[i] = buffer[i];
+        } else
+            throw TypeError("Illegal buffer"); // Otherwise fail
+        return bb;
+    };
+
+    /**
+     * Writes the array as a bitset.
+     * @param {Array<boolean>} value Array of booleans to write
+     * @param {number=} offset Offset to read from. Will use and increase {@link ByteBuffer#offset} by `length` if omitted.
+     * @returns {!ByteBuffer}
+     * @expose
+     */
+    ByteBufferPrototype.writeBitSet = function(value, offset) {
+      var relative = typeof offset === 'undefined';
+      if (relative) offset = this.offset;
+      if (!this.noAssert) {
+        if (!(value instanceof Array))
+          throw TypeError("Illegal BitSet: Not an array");
+        if (typeof offset !== 'number' || offset % 1 !== 0)
+            throw TypeError("Illegal offset: "+offset+" (not an integer)");
+        offset >>>= 0;
+        if (offset < 0 || offset + 0 > this.buffer.byteLength)
+            throw RangeError("Illegal offset: 0 <= "+offset+" (+"+0+") <= "+this.buffer.byteLength);
+      }
+
+      var start = offset,
+          bits = value.length,
+          bytes = (bits >> 3),
+          bit = 0,
+          k;
+
+      offset += this.writeVarint32(bits,offset);
+
+      while(bytes--) {
+        k = (!!value[bit++] & 1) |
+            ((!!value[bit++] & 1) << 1) |
+            ((!!value[bit++] & 1) << 2) |
+            ((!!value[bit++] & 1) << 3) |
+            ((!!value[bit++] & 1) << 4) |
+            ((!!value[bit++] & 1) << 5) |
+            ((!!value[bit++] & 1) << 6) |
+            ((!!value[bit++] & 1) << 7);
+        this.writeByte(k,offset++);
+      }
+
+      if(bit < bits) {
+        var m = 0; k = 0;
+        while(bit < bits) k = k | ((!!value[bit++] & 1) << (m++));
+        this.writeByte(k,offset++);
+      }
+
+      if (relative) {
+        this.offset = offset;
+        return this;
+      }
+      return offset - start;
+    }
+
+    /**
+     * Reads a BitSet as an array of booleans.
+     * @param {number=} offset Offset to read from. Will use and increase {@link ByteBuffer#offset} by `length` if omitted.
+     * @returns {Array<boolean>
+     * @expose
+     */
+    ByteBufferPrototype.readBitSet = function(offset) {
+      var relative = typeof offset === 'undefined';
+      if (relative) offset = this.offset;
+
+      var ret = this.readVarint32(offset),
+          bits = ret.value,
+          bytes = (bits >> 3),
+          bit = 0,
+          value = [],
+          k;
+
+      offset += ret.length;
+
+      while(bytes--) {
+        k = this.readByte(offset++);
+        value[bit++] = !!(k & 0x01);
+        value[bit++] = !!(k & 0x02);
+        value[bit++] = !!(k & 0x04);
+        value[bit++] = !!(k & 0x08);
+        value[bit++] = !!(k & 0x10);
+        value[bit++] = !!(k & 0x20);
+        value[bit++] = !!(k & 0x40);
+        value[bit++] = !!(k & 0x80);
+      }
+
+      if(bit < bits) {
+        var m = 0;
+        k = this.readByte(offset++);
+        while(bit < bits) value[bit++] = !!((k >> (m++)) & 1);
+      }
+
+      if (relative) {
+        this.offset = offset;
+      }
+      return value;
+    }
+    /**
+     * Reads the specified number of bytes.
+     * @param {number} length Number of bytes to read
+     * @param {number=} offset Offset to read from. Will use and increase {@link ByteBuffer#offset} by `length` if omitted.
+     * @returns {!ByteBuffer}
+     * @expose
+     */
+    ByteBufferPrototype.readBytes = function(length, offset) {
+        var relative = typeof offset === 'undefined';
+        if (relative) offset = this.offset;
+        if (!this.noAssert) {
+            if (typeof offset !== 'number' || offset % 1 !== 0)
+                throw TypeError("Illegal offset: "+offset+" (not an integer)");
+            offset >>>= 0;
+            if (offset < 0 || offset + length > this.buffer.byteLength)
+                throw RangeError("Illegal offset: 0 <= "+offset+" (+"+length+") <= "+this.buffer.byteLength);
+        }
+        var slice = this.slice(offset, offset + length);
+        if (relative) this.offset += length;
+        return slice;
+    };
+
+    /**
+     * Writes a payload of bytes. This is an alias of {@link ByteBuffer#append}.
+     * @function
+     * @param {!ByteBuffer|!ArrayBuffer|!Uint8Array|string} source Data to write. If `source` is a ByteBuffer, its offsets
+     *  will be modified according to the performed read operation.
+     * @param {(string|number)=} encoding Encoding if `data` is a string ("base64", "hex", "binary", defaults to "utf8")
+     * @param {number=} offset Offset to write to. Will use and increase {@link ByteBuffer#offset} by the number of bytes
+     *  written if omitted.
+     * @returns {!ByteBuffer} this
+     * @expose
+     */
+    ByteBufferPrototype.writeBytes = ByteBufferPrototype.append;
+
+    // types/ints/int8
+
+    /**
+     * Writes an 8bit signed integer.
+     * @param {number} value Value to write
+     * @param {number=} offset Offset to write to. Will use and advance {@link ByteBuffer#offset} by `1` if omitted.
+     * @returns {!ByteBuffer} this
+     * @expose
+     */
+    ByteBufferPrototype.writeInt8 = function(value, offset) {
+        var relative = typeof offset === 'undefined';
+        if (relative) offset = this.offset;
+        if (!this.noAssert) {
+            if (typeof value !== 'number' || value % 1 !== 0)
+                throw TypeError("Illegal value: "+value+" (not an integer)");
+            value |= 0;
+            if (typeof offset !== 'number' || offset % 1 !== 0)
+                throw TypeError("Illegal offset: "+offset+" (not an integer)");
+            offset >>>= 0;
+            if (offset < 0 || offset + 0 > this.buffer.byteLength)
+                throw RangeError("Illegal offset: 0 <= "+offset+" (+"+0+") <= "+this.buffer.byteLength);
+        }
+        offset += 1;
+        var capacity0 = this.buffer.byteLength;
+        if (offset > capacity0)
+            this.resize((capacity0 *= 2) > offset ? capacity0 : offset);
+        offset -= 1;
+        this.view[offset] = value;
+        if (relative) this.offset += 1;
+        return this;
+    };
+
+    /**
+     * Writes an 8bit signed integer. This is an alias of {@link ByteBuffer#writeInt8}.
+     * @function
+     * @param {number} value Value to write
+     * @param {number=} offset Offset to write to. Will use and advance {@link ByteBuffer#offset} by `1` if omitted.
+     * @returns {!ByteBuffer} this
+     * @expose
+     */
+    ByteBufferPrototype.writeByte = ByteBufferPrototype.writeInt8;
+
+    /**
+     * Reads an 8bit signed integer.
+     * @param {number=} offset Offset to read from. Will use and advance {@link ByteBuffer#offset} by `1` if omitted.
+     * @returns {number} Value read
+     * @expose
+     */
+    ByteBufferPrototype.readInt8 = function(offset) {
+        var relative = typeof offset === 'undefined';
+        if (relative) offset = this.offset;
+        if (!this.noAssert) {
+            if (typeof offset !== 'number' || offset % 1 !== 0)
+                throw TypeError("Illegal offset: "+offset+" (not an integer)");
+            offset >>>= 0;
+            if (offset < 0 || offset + 1 > this.buffer.byteLength)
+                throw RangeError("Illegal offset: 0 <= "+offset+" (+"+1+") <= "+this.buffer.byteLength);
+        }
+        var value = this.view[offset];
+        if ((value & 0x80) === 0x80) value = -(0xFF - value + 1); // Cast to signed
+        if (relative) this.offset += 1;
+        return value;
+    };
+
+    /**
+     * Reads an 8bit signed integer. This is an alias of {@link ByteBuffer#readInt8}.
+     * @function
+     * @param {number=} offset Offset to read from. Will use and advance {@link ByteBuffer#offset} by `1` if omitted.
+     * @returns {number} Value read
+     * @expose
+     */
+    ByteBufferPrototype.readByte = ByteBufferPrototype.readInt8;
+
+    /**
+     * Writes an 8bit unsigned integer.
+     * @param {number} value Value to write
+     * @param {number=} offset Offset to write to. Will use and advance {@link ByteBuffer#offset} by `1` if omitted.
+     * @returns {!ByteBuffer} this
+     * @expose
+     */
+    ByteBufferPrototype.writeUint8 = function(value, offset) {
+        var relative = typeof offset === 'undefined';
+        if (relative) offset = this.offset;
+        if (!this.noAssert) {
+            if (typeof value !== 'number' || value % 1 !== 0)
+                throw TypeError("Illegal value: "+value+" (not an integer)");
+            value >>>= 0;
+            if (typeof offset !== 'number' || offset % 1 !== 0)
+                throw TypeError("Illegal offset: "+offset+" (not an integer)");
+            offset >>>= 0;
+            if (offset < 0 || offset + 0 > this.buffer.byteLength)
+                throw RangeError("Illegal offset: 0 <= "+offset+" (+"+0+") <= "+this.buffer.byteLength);
+        }
+        offset += 1;
+        var capacity1 = this.buffer.byteLength;
+        if (offset > capacity1)
+            this.resize((capacity1 *= 2) > offset ? capacity1 : offset);
+        offset -= 1;
+        this.view[offset] = value;
+        if (relative) this.offset += 1;
+        return this;
+    };
+
+    /**
+     * Writes an 8bit unsigned integer. This is an alias of {@link ByteBuffer#writeUint8}.
+     * @function
+     * @param {number} value Value to write
+     * @param {number=} offset Offset to write to. Will use and advance {@link ByteBuffer#offset} by `1` if omitted.
+     * @returns {!ByteBuffer} this
+     * @expose
+     */
+    ByteBufferPrototype.writeUInt8 = ByteBufferPrototype.writeUint8;
+
+    /**
+     * Reads an 8bit unsigned integer.
+     * @param {number=} offset Offset to read from. Will use and advance {@link ByteBuffer#offset} by `1` if omitted.
+     * @returns {number} Value read
+     * @expose
+     */
+    ByteBufferPrototype.readUint8 = function(offset) {
+        var relative = typeof offset === 'undefined';
+        if (relative) offset = this.offset;
+        if (!this.noAssert) {
+            if (typeof offset !== 'number' || offset % 1 !== 0)
+                throw TypeError("Illegal offset: "+offset+" (not an integer)");
+            offset >>>= 0;
+            if (offset < 0 || offset + 1 > this.buffer.byteLength)
+                throw RangeError("Illegal offset: 0 <= "+offset+" (+"+1+") <= "+this.buffer.byteLength);
+        }
+        var value = this.view[offset];
+        if (relative) this.offset += 1;
+        return value;
+    };
+
+    /**
+     * Reads an 8bit unsigned integer. This is an alias of {@link ByteBuffer#readUint8}.
+     * @function
+     * @param {number=} offset Offset to read from. Will use and advance {@link ByteBuffer#offset} by `1` if omitted.
+     * @returns {number} Value read
+     * @expose
+     */
+    ByteBufferPrototype.readUInt8 = ByteBufferPrototype.readUint8;
+
+    // types/ints/int16
+
+    /**
+     * Writes a 16bit signed integer.
+     * @param {number} value Value to write
+     * @param {number=} offset Offset to write to. Will use and advance {@link ByteBuffer#offset} by `2` if omitted.
+     * @throws {TypeError} If `offset` or `value` is not a valid number
+     * @throws {RangeError} If `offset` is out of bounds
+     * @expose
+     */
+    ByteBufferPrototype.writeInt16 = function(value, offset) {
+        var relative = typeof offset === 'undefined';
+        if (relative) offset = this.offset;
+        if (!this.noAssert) {
+            if (typeof value !== 'number' || value % 1 !== 0)
+                throw TypeError("Illegal value: "+value+" (not an integer)");
+            value |= 0;
+            if (typeof offset !== 'number' || offset % 1 !== 0)
+                throw TypeError("Illegal offset: "+offset+" (not an integer)");
+            offset >>>= 0;
+            if (offset < 0 || offset + 0 > this.buffer.byteLength)
+                throw RangeError("Illegal offset: 0 <= "+offset+" (+"+0+") <= "+this.buffer.byteLength);
+        }
+        offset += 2;
+        var capacity2 = this.buffer.byteLength;
+        if (offset > capacity2)
+            this.resize((capacity2 *= 2) > offset ? capacity2 : offset);
+        offset -= 2;
+        if (this.littleEndian) {
+            this.view[offset+1] = (value & 0xFF00) >>> 8;
+            this.view[offset  ] =  value & 0x00FF;
+        } else {
+            this.view[offset]   = (value & 0xFF00) >>> 8;
+            this.view[offset+1] =  value & 0x00FF;
+        }
+        if (relative) this.offset += 2;
+        return this;
+    };
+
+    /**
+     * Writes a 16bit signed integer. This is an alias of {@link ByteBuffer#writeInt16}.
+     * @function
+     * @param {number} value Value to write
+     * @param {number=} offset Offset to write to. Will use and advance {@link ByteBuffer#offset} by `2` if omitted.
+     * @throws {TypeError} If `offset` or `value` is not a valid number
+     * @throws {RangeError} If `offset` is out of bounds
+     * @expose
+     */
+    ByteBufferPrototype.writeShort = ByteBufferPrototype.writeInt16;
+
+    /**
+     * Reads a 16bit signed integer.
+     * @param {number=} offset Offset to read from. Will use and advance {@link ByteBuffer#offset} by `2` if omitted.
+     * @returns {number} Value read
+     * @throws {TypeError} If `offset` is not a valid number
+     * @throws {RangeError} If `offset` is out of bounds
+     * @expose
+     */
+    ByteBufferPrototype.readInt16 = function(offset) {
+        var relative = typeof offset === 'undefined';
+        if (relative) offset = this.offset;
+        if (!this.noAssert) {
+            if (typeof offset !== 'number' || offset % 1 !== 0)
+                throw TypeError("Illegal offset: "+offset+" (not an integer)");
+            offset >>>= 0;
+            if (offset < 0 || offset + 2 > this.buffer.byteLength)
+                throw RangeError("Illegal offset: 0 <= "+offset+" (+"+2+") <= "+this.buffer.byteLength);
+        }
+        var value = 0;
+        if (this.littleEndian) {
+            value  = this.view[offset  ];
+            value |= this.view[offset+1] << 8;
+        } else {
+            value  = this.view[offset  ] << 8;
+            value |= this.view[offset+1];
+        }
+        if ((value & 0x8000) === 0x8000) value = -(0xFFFF - value + 1); // Cast to signed
+        if (relative) this.offset += 2;
+        return value;
+    };
+
+    /**
+     * Reads a 16bit signed integer. This is an alias of {@link ByteBuffer#readInt16}.
+     * @function
+     * @param {number=} offset Offset to read from. Will use and advance {@link ByteBuffer#offset} by `2` if omitted.
+     * @returns {number} Value read
+     * @throws {TypeError} If `offset` is not a valid number
+     * @throws {RangeError} If `offset` is out of bounds
+     * @expose
+     */
+    ByteBufferPrototype.readShort = ByteBufferPrototype.readInt16;
+
+    /**
+     * Writes a 16bit unsigned integer.
+     * @param {number} value Value to write
+     * @param {number=} offset Offset to write to. Will use and advance {@link ByteBuffer#offset} by `2` if omitted.
+     * @throws {TypeError} If `offset` or `value` is not a valid number
+     * @throws {RangeError} If `offset` is out of bounds
+     * @expose
+     */
+    ByteBufferPrototype.writeUint16 = function(value, offset) {
+        var relative = typeof offset === 'undefined';
+        if (relative) offset = this.offset;
+        if (!this.noAssert) {
+            if (typeof value !== 'number' || value % 1 !== 0)
+                throw TypeError("Illegal value: "+value+" (not an integer)");
+            value >>>= 0;
+            if (typeof offset !== 'number' || offset % 1 !== 0)
+                throw TypeError("Illegal offset: "+offset+" (not an integer)");
+            offset >>>= 0;
+            if (offset < 0 || offset + 0 > this.buffer.byteLength)
+                throw RangeError("Illegal offset: 0 <= "+offset+" (+"+0+") <= "+this.buffer.byteLength);
+        }
+        offset += 2;
+        var capacity3 = this.buffer.byteLength;
+        if (offset > capacity3)
+            this.resize((capacity3 *= 2) > offset ? capacity3 : offset);
+        offset -= 2;
+        if (this.littleEndian) {
+            this.view[offset+1] = (value & 0xFF00) >>> 8;
+            this.view[offset  ] =  value & 0x00FF;
+        } else {
+            this.view[offset]   = (value & 0xFF00) >>> 8;
+            this.view[offset+1] =  value & 0x00FF;
+        }
+        if (relative) this.offset += 2;
+        return this;
+    };
+
+    /**
+     * Writes a 16bit unsigned integer. This is an alias of {@link ByteBuffer#writeUint16}.
+     * @function
+     * @param {number} value Value to write
+     * @param {number=} offset Offset to write to. Will use and advance {@link ByteBuffer#offset} by `2` if omitted.
+     * @throws {TypeError} If `offset` or `value` is not a valid number
+     * @throws {RangeError} If `offset` is out of bounds
+     * @expose
+     */
+    ByteBufferPrototype.writeUInt16 = ByteBufferPrototype.writeUint16;
+
+    /**
+     * Reads a 16bit unsigned integer.
+     * @param {number=} offset Offset to read from. Will use and advance {@link ByteBuffer#offset} by `2` if omitted.
+     * @returns {number} Value read
+     * @throws {TypeError} If `offset` is not a valid number
+     * @throws {RangeError} If `offset` is out of bounds
+     * @expose
+     */
+    ByteBufferPrototype.readUint16 = function(offset) {
+        var relative = typeof offset === 'undefined';
+        if (relative) offset = this.offset;
+        if (!this.noAssert) {
+            if (typeof offset !== 'number' || offset % 1 !== 0)
+                throw TypeError("Illegal offset: "+offset+" (not an integer)");
+            offset >>>= 0;
+            if (offset < 0 || offset + 2 > this.buffer.byteLength)
+                throw RangeError("Illegal offset: 0 <= "+offset+" (+"+2+") <= "+this.buffer.byteLength);
+        }
+        var value = 0;
+        if (this.littleEndian) {
+            value  = this.view[offset  ];
+            value |= this.view[offset+1] << 8;
+        } else {
+            value  = this.view[offset  ] << 8;
+            value |= this.view[offset+1];
+        }
+        if (relative) this.offset += 2;
+        return value;
+    };
+
+    /**
+     * Reads a 16bit unsigned integer. This is an alias of {@link ByteBuffer#readUint16}.
+     * @function
+     * @param {number=} offset Offset to read from. Will use and advance {@link ByteBuffer#offset} by `2` if omitted.
+     * @returns {number} Value read
+     * @throws {TypeError} If `offset` is not a valid number
+     * @throws {RangeError} If `offset` is out of bounds
+     * @expose
+     */
+    ByteBufferPrototype.readUInt16 = ByteBufferPrototype.readUint16;
+
+    // types/ints/int32
+
+    /**
+     * Writes a 32bit signed integer.
+     * @param {number} value Value to write
+     * @param {number=} offset Offset to write to. Will use and increase {@link ByteBuffer#offset} by `4` if omitted.
+     * @expose
+     */
+    ByteBufferPrototype.writeInt32 = function(value, offset) {
+        var relative = typeof offset === 'undefined';
+        if (relative) offset = this.offset;
+        if (!this.noAssert) {
+            if (typeof value !== 'number' || value % 1 !== 0)
+                throw TypeError("Illegal value: "+value+" (not an integer)");
+            value |= 0;
+            if (typeof offset !== 'number' || offset % 1 !== 0)
+                throw TypeError("Illegal offset: "+offset+" (not an integer)");
+            offset >>>= 0;
+            if (offset < 0 || offset + 0 > this.buffer.byteLength)
+                throw RangeError("Illegal offset: 0 <= "+offset+" (+"+0+") <= "+this.buffer.byteLength);
+        }
+        offset += 4;
+        var capacity4 = this.buffer.byteLength;
+        if (offset > capacity4)
+            this.resize((capacity4 *= 2) > offset ? capacity4 : offset);
+        offset -= 4;
+        if (this.littleEndian) {
+            this.view[offset+3] = (value >>> 24) & 0xFF;
+            this.view[offset+2] = (value >>> 16) & 0xFF;
+            this.view[offset+1] = (value >>>  8) & 0xFF;
+            this.view[offset  ] =  value         & 0xFF;
+        } else {
+            this.view[offset  ] = (value >>> 24) & 0xFF;
+            this.view[offset+1] = (value >>> 16) & 0xFF;
+            this.view[offset+2] = (value >>>  8) & 0xFF;
+            this.view[offset+3] =  value         & 0xFF;
+        }
+        if (relative) this.offset += 4;
+        return this;
+    };
+
+    /**
+     * Writes a 32bit signed integer. This is an alias of {@link ByteBuffer#writeInt32}.
+     * @param {number} value Value to write
+     * @param {number=} offset Offset to write to. Will use and increase {@link ByteBuffer#offset} by `4` if omitted.
+     * @expose
+     */
+    ByteBufferPrototype.writeInt = ByteBufferPrototype.writeInt32;
+
+    /**
+     * Reads a 32bit signed integer.
+     * @param {number=} offset Offset to read from. Will use and increase {@link ByteBuffer#offset} by `4` if omitted.
+     * @returns {number} Value read
+     * @expose
+     */
+    ByteBufferPrototype.readInt32 = function(offset) {
+        var relative = typeof offset === 'undefined';
+        if (relative) offset = this.offset;
+        if (!this.noAssert) {
+            if (typeof offset !== 'number' || offset % 1 !== 0)
+                throw TypeError("Illegal offset: "+offset+" (not an integer)");
+            offset >>>= 0;
+            if (offset < 0 || offset + 4 > this.buffer.byteLength)
+                throw RangeError("Illegal offset: 0 <= "+offset+" (+"+4+") <= "+this.buffer.byteLength);
+        }
+        var value = 0;
+        if (this.littleEndian) {
+            value  = this.view[offset+2] << 16;
+            value |= this.view[offset+1] <<  8;
+            value |= this.view[offset  ];
+            value += this.view[offset+3] << 24 >>> 0;
+        } else {
+            value  = this.view[offset+1] << 16;
+            value |= this.view[offset+2] <<  8;
+            value |= this.view[offset+3];
+            value += this.view[offset  ] << 24 >>> 0;
+        }
+        value |= 0; // Cast to signed
+        if (relative) this.offset += 4;
+        return value;
+    };
+
+    /**
+     * Reads a 32bit signed integer. This is an alias of {@link ByteBuffer#readInt32}.
+     * @param {number=} offset Offset to read from. Will use and advance {@link ByteBuffer#offset} by `4` if omitted.
+     * @returns {number} Value read
+     * @expose
+     */
+    ByteBufferPrototype.readInt = ByteBufferPrototype.readInt32;
+
+    /**
+     * Writes a 32bit unsigned integer.
+     * @param {number} value Value to write
+     * @param {number=} offset Offset to write to. Will use and increase {@link ByteBuffer#offset} by `4` if omitted.
+     * @expose
+     */
+    ByteBufferPrototype.writeUint32 = function(value, offset) {
+        var relative = typeof offset === 'undefined';
+        if (relative) offset = this.offset;
+        if (!this.noAssert) {
+            if (typeof value !== 'number' || value % 1 !== 0)
+                throw TypeError("Illegal value: "+value+" (not an integer)");
+            value >>>= 0;
+            if (typeof offset !== 'number' || offset % 1 !== 0)
+                throw TypeError("Illegal offset: "+offset+" (not an integer)");
+            offset >>>= 0;
+            if (offset < 0 || offset + 0 > this.buffer.byteLength)
+                throw RangeError("Illegal offset: 0 <= "+offset+" (+"+0+") <= "+this.buffer.byteLength);
+        }
+        offset += 4;
+        var capacity5 = this.buffer.byteLength;
+        if (offset > capacity5)
+            this.resize((capacity5 *= 2) > offset ? capacity5 : offset);
+        offset -= 4;
+        if (this.littleEndian) {
+            this.view[offset+3] = (value >>> 24) & 0xFF;
+            this.view[offset+2] = (value >>> 16) & 0xFF;
+            this.view[offset+1] = (value >>>  8) & 0xFF;
+            this.view[offset  ] =  value         & 0xFF;
+        } else {
+            this.view[offset  ] = (value >>> 24) & 0xFF;
+            this.view[offset+1] = (value >>> 16) & 0xFF;
+            this.view[offset+2] = (value >>>  8) & 0xFF;
+            this.view[offset+3] =  value         & 0xFF;
+        }
+        if (relative) this.offset += 4;
+        return this;
+    };
+
+    /**
+     * Writes a 32bit unsigned integer. This is an alias of {@link ByteBuffer#writeUint32}.
+     * @function
+     * @param {number} value Value to write
+     * @param {number=} offset Offset to write to. Will use and increase {@link ByteBuffer#offset} by `4` if omitted.
+     * @expose
+     */
+    ByteBufferPrototype.writeUInt32 = ByteBufferPrototype.writeUint32;
+
+    /**
+     * Reads a 32bit unsigned integer.
+     * @param {number=} offset Offset to read from. Will use and increase {@link ByteBuffer#offset} by `4` if omitted.
+     * @returns {number} Value read
+     * @expose
+     */
+    ByteBufferPrototype.readUint32 = function(offset) {
+        var relative = typeof offset === 'undefined';
+        if (relative) offset = this.offset;
+        if (!this.noAssert) {
+            if (typeof offset !== 'number' || offset % 1 !== 0)
+                throw TypeError("Illegal offset: "+offset+" (not an integer)");
+            offset >>>= 0;
+            if (offset < 0 || offset + 4 > this.buffer.byteLength)
+                throw RangeError("Illegal offset: 0 <= "+offset+" (+"+4+") <= "+this.buffer.byteLength);
+        }
+        var value = 0;
+        if (this.littleEndian) {
+            value  = this.view[offset+2] << 16;
+            value |= this.view[offset+1] <<  8;
+            value |= this.view[offset  ];
+            value += this.view[offset+3] << 24 >>> 0;
+        } else {
+            value  = this.view[offset+1] << 16;
+            value |= this.view[offset+2] <<  8;
+            value |= this.view[offset+3];
+            value += this.view[offset  ] << 24 >>> 0;
+        }
+        if (relative) this.offset += 4;
+        return value;
+    };
+
+    /**
+     * Reads a 32bit unsigned integer. This is an alias of {@link ByteBuffer#readUint32}.
+     * @function
+     * @param {number=} offset Offset to read from. Will use and increase {@link ByteBuffer#offset} by `4` if omitted.
+     * @returns {number} Value read
+     * @expose
+     */
+    ByteBufferPrototype.readUInt32 = ByteBufferPrototype.readUint32;
+
+    // types/ints/int64
+
+    if (Long) {
+
+        /**
+         * Writes a 64bit signed integer.
+         * @param {number|!Long} value Value to write
+         * @param {number=} offset Offset to write to. Will use and increase {@link ByteBuffer#offset} by `8` if omitted.
+         * @returns {!ByteBuffer} this
+         * @expose
+         */
+        ByteBufferPrototype.writeInt64 = function(value, offset) {
+            var relative = typeof offset === 'undefined';
+            if (relative) offset = this.offset;
+            if (!this.noAssert) {
+                if (typeof value === 'number')
+                    value = Long.fromNumber(value);
+                else if (typeof value === 'string')
+                    value = Long.fromString(value);
+                else if (!(value && value instanceof Long))
+                    throw TypeError("Illegal value: "+value+" (not an integer or Long)");
+                if (typeof offset !== 'number' || offset % 1 !== 0)
+                    throw TypeError("Illegal offset: "+offset+" (not an integer)");
+                offset >>>= 0;
+                if (offset < 0 || offset + 0 > this.buffer.byteLength)
+                    throw RangeError("Illegal offset: 0 <= "+offset+" (+"+0+") <= "+this.buffer.byteLength);
+            }
+            if (typeof value === 'number')
+                value = Long.fromNumber(value);
+            else if (typeof value === 'string')
+                value = Long.fromString(value);
+            offset += 8;
+            var capacity6 = this.buffer.byteLength;
+            if (offset > capacity6)
+                this.resize((capacity6 *= 2) > offset ? capacity6 : offset);
+            offset -= 8;
+            var lo = value.low,
+                hi = value.high;
+            if (this.littleEndian) {
+                this.view[offset+3] = (lo >>> 24) & 0xFF;
+                this.view[offset+2] = (lo >>> 16) & 0xFF;
+                this.view[offset+1] = (lo >>>  8) & 0xFF;
+                this.view[offset  ] =  lo         & 0xFF;
+                offset += 4;
+                this.view[offset+3] = (hi >>> 24) & 0xFF;
+                this.view[offset+2] = (hi >>> 16) & 0xFF;
+                this.view[offset+1] = (hi >>>  8) & 0xFF;
+                this.view[offset  ] =  hi         & 0xFF;
+            } else {
+                this.view[offset  ] = (hi >>> 24) & 0xFF;
+                this.view[offset+1] = (hi >>> 16) & 0xFF;
+                this.view[offset+2] = (hi >>>  8) & 0xFF;
+                this.view[offset+3] =  hi         & 0xFF;
+                offset += 4;
+                this.view[offset  ] = (lo >>> 24) & 0xFF;
+                this.view[offset+1] = (lo >>> 16) & 0xFF;
+                this.view[offset+2] = (lo >>>  8) & 0xFF;
+                this.view[offset+3] =  lo         & 0xFF;
+            }
+            if (relative) this.offset += 8;
+            return this;
+        };
+
+        /**
+         * Writes a 64bit signed integer. This is an alias of {@link ByteBuffer#writeInt64}.
+         * @param {number|!Long} value Value to write
+         * @param {number=} offset Offset to write to. Will use and increase {@link ByteBuffer#offset} by `8` if omitted.
+         * @returns {!ByteBuffer} this
+         * @expose
+         */
+        ByteBufferPrototype.writeLong = ByteBufferPrototype.writeInt64;
+
+        /**
+         * Reads a 64bit signed integer.
+         * @param {number=} offset Offset to read from. Will use and increase {@link ByteBuffer#offset} by `8` if omitted.
+         * @returns {!Long}
+         * @expose
+         */
+        ByteBufferPrototype.readInt64 = function(offset) {
+            var relative = typeof offset === 'undefined';
+            if (relative) offset = this.offset;
+            if (!this.noAssert) {
+                if (typeof offset !== 'number' || offset % 1 !== 0)
+                    throw TypeError("Illegal offset: "+offset+" (not an integer)");
+                offset >>>= 0;
+                if (offset < 0 || offset + 8 > this.buffer.byteLength)
+                    throw RangeError("Illegal offset: 0 <= "+offset+" (+"+8+") <= "+this.buffer.byteLength);
+            }
+            var lo = 0,
+                hi = 0;
+            if (this.littleEndian) {
+                lo  = this.view[offset+2] << 16;
+                lo |= this.view[offset+1] <<  8;
+                lo |= this.view[offset  ];
+                lo += this.view[offset+3] << 24 >>> 0;
+                offset += 4;
+                hi  = this.view[offset+2] << 16;
+                hi |= this.view[offset+1] <<  8;
+                hi |= this.view[offset  ];
+                hi += this.view[offset+3] << 24 >>> 0;
+            } else {
+                hi  = this.view[offset+1] << 16;
+                hi |= this.view[offset+2] <<  8;
+                hi |= this.view[offset+3];
+                hi += this.view[offset  ] << 24 >>> 0;
+                offset += 4;
+                lo  = this.view[offset+1] << 16;
+                lo |= this.view[offset+2] <<  8;
+                lo |= this.view[offset+3];
+                lo += this.view[offset  ] << 24 >>> 0;
+            }
+            var value = new Long(lo, hi, false);
+            if (relative) this.offset += 8;
+            return value;
+        };
+
+        /**
+         * Reads a 64bit signed integer. This is an alias of {@link ByteBuffer#readInt64}.
+         * @param {number=} offset Offset to read from. Will use and increase {@link ByteBuffer#offset} by `8` if omitted.
+         * @returns {!Long}
+         * @expose
+         */
+        ByteBufferPrototype.readLong = ByteBufferPrototype.readInt64;
+
+        /**
+         * Writes a 64bit unsigned integer.
+         * @param {number|!Long} value Value to write
+         * @param {number=} offset Offset to write to. Will use and increase {@link ByteBuffer#offset} by `8` if omitted.
+         * @returns {!ByteBuffer} this
+         * @expose
+         */
+        ByteBufferPrototype.writeUint64 = function(value, offset) {
+            var relative = typeof offset === 'undefined';
+            if (relative) offset = this.offset;
+            if (!this.noAssert) {
+                if (typeof value === 'number')
+                    value = Long.fromNumber(value);
+                else if (typeof value === 'string')
+                    value = Long.fromString(value);
+                else if (!(value && value instanceof Long))
+                    throw TypeError("Illegal value: "+value+" (not an integer or Long)");
+                if (typeof offset !== 'number' || offset % 1 !== 0)
+                    throw TypeError("Illegal offset: "+offset+" (not an integer)");
+                offset >>>= 0;
+                if (offset < 0 || offset + 0 > this.buffer.byteLength)
+                    throw RangeError("Illegal offset: 0 <= "+offset+" (+"+0+") <= "+this.buffer.byteLength);
+            }
+            if (typeof value === 'number')
+                value = Long.fromNumber(value);
+            else if (typeof value === 'string')
+                value = Long.fromString(value);
+            offset += 8;
+            var capacity7 = this.buffer.byteLength;
+            if (offset > capacity7)
+                this.resize((capacity7 *= 2) > offset ? capacity7 : offset);
+            offset -= 8;
+            var lo = value.low,
+                hi = value.high;
+            if (this.littleEndian) {
+                this.view[offset+3] = (lo >>> 24) & 0xFF;
+                this.view[offset+2] = (lo >>> 16) & 0xFF;
+                this.view[offset+1] = (lo >>>  8) & 0xFF;
+                this.view[offset  ] =  lo         & 0xFF;
+                offset += 4;
+                this.view[offset+3] = (hi >>> 24) & 0xFF;
+                this.view[offset+2] = (hi >>> 16) & 0xFF;
+                this.view[offset+1] = (hi >>>  8) & 0xFF;
+                this.view[offset  ] =  hi         & 0xFF;
+            } else {
+                this.view[offset  ] = (hi >>> 24) & 0xFF;
+                this.view[offset+1] = (hi >>> 16) & 0xFF;
+                this.view[offset+2] = (hi >>>  8) & 0xFF;
+                this.view[offset+3] =  hi         & 0xFF;
+                offset += 4;
+                this.view[offset  ] = (lo >>> 24) & 0xFF;
+                this.view[offset+1] = (lo >>> 16) & 0xFF;
+                this.view[offset+2] = (lo >>>  8) & 0xFF;
+                this.view[offset+3] =  lo         & 0xFF;
+            }
+            if (relative) this.offset += 8;
+            return this;
+        };
+
+        /**
+         * Writes a 64bit unsigned integer. This is an alias of {@link ByteBuffer#writeUint64}.
+         * @function
+         * @param {number|!Long} value Value to write
+         * @param {number=} offset Offset to write to. Will use and increase {@link ByteBuffer#offset} by `8` if omitted.
+         * @returns {!ByteBuffer} this
+         * @expose
+         */
+        ByteBufferPrototype.writeUInt64 = ByteBufferPrototype.writeUint64;
+
+        /**
+         * Reads a 64bit unsigned integer.
+         * @param {number=} offset Offset to read from. Will use and increase {@link ByteBuffer#offset} by `8` if omitted.
+         * @returns {!Long}
+         * @expose
+         */
+        ByteBufferPrototype.readUint64 = function(offset) {
+            var relative = typeof offset === 'undefined';
+            if (relative) offset = this.offset;
+            if (!this.noAssert) {
+                if (typeof offset !== 'number' || offset % 1 !== 0)
+                    throw TypeError("Illegal offset: "+offset+" (not an integer)");
+                offset >>>= 0;
+                if (offset < 0 || offset + 8 > this.buffer.byteLength)
+                    throw RangeError("Illegal offset: 0 <= "+offset+" (+"+8+") <= "+this.buffer.byteLength);
+            }
+            var lo = 0,
+                hi = 0;
+            if (this.littleEndian) {
+                lo  = this.view[offset+2] << 16;
+                lo |= this.view[offset+1] <<  8;
+                lo |= this.view[offset  ];
+                lo += this.view[offset+3] << 24 >>> 0;
+                offset += 4;
+                hi  = this.view[offset+2] << 16;
+                hi |= this.view[offset+1] <<  8;
+                hi |= this.view[offset  ];
+                hi += this.view[offset+3] << 24 >>> 0;
+            } else {
+                hi  = this.view[offset+1] << 16;
+                hi |= this.view[offset+2] <<  8;
+                hi |= this.view[offset+3];
+                hi += this.view[offset  ] << 24 >>> 0;
+                offset += 4;
+                lo  = this.view[offset+1] << 16;
+                lo |= this.view[offset+2] <<  8;
+                lo |= this.view[offset+3];
+                lo += this.view[offset  ] << 24 >>> 0;
+            }
+            var value = new Long(lo, hi, true);
+            if (relative) this.offset += 8;
+            return value;
+        };
+
+        /**
+         * Reads a 64bit unsigned integer. This is an alias of {@link ByteBuffer#readUint64}.
+         * @function
+         * @param {number=} offset Offset to read from. Will use and increase {@link ByteBuffer#offset} by `8` if omitted.
+         * @returns {!Long}
+         * @expose
+         */
+        ByteBufferPrototype.readUInt64 = ByteBufferPrototype.readUint64;
+
+    } // Long
+
+
+    // types/floats/float32
+
+    /*
+     ieee754 - https://github.com/feross/ieee754
+
+     The MIT License (MIT)
+
+     Copyright (c) Feross Aboukhadijeh
+
+     Permission is hereby granted, free of charge, to any person obtaining a copy
+     of this software and associated documentation files (the "Software"), to deal
+     in the Software without restriction, including without limitation the rights
+     to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+     copies of the Software, and to permit persons to whom the Software is
+     furnished to do so, subject to the following conditions:
+
+     The above copyright notice and this permission notice shall be included in
+     all copies or substantial portions of the Software.
+
+     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+     IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+     FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+     AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+     LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+     THE SOFTWARE.
+    */
+
+    /**
+     * Reads an IEEE754 float from a byte array.
+     * @param {!Array} buffer
+     * @param {number} offset
+     * @param {boolean} isLE
+     * @param {number} mLen
+     * @param {number} nBytes
+     * @returns {number}
+     * @inner
+     */
+    function ieee754_read(buffer, offset, isLE, mLen, nBytes) {
+        var e, m,
+            eLen = nBytes * 8 - mLen - 1,
+            eMax = (1 << eLen) - 1,
+            eBias = eMax >> 1,
+            nBits = -7,
+            i = isLE ? (nBytes - 1) : 0,
+            d = isLE ? -1 : 1,
+            s = buffer[offset + i];
+
+        i += d;
+
+        e = s & ((1 << (-nBits)) - 1);
+        s >>= (-nBits);
+        nBits += eLen;
+        for (; nBits > 0; e = e * 256 + buffer[offset + i], i += d, nBits -= 8) {}
+
+        m = e & ((1 << (-nBits)) - 1);
+        e >>= (-nBits);
+        nBits += mLen;
+        for (; nBits > 0; m = m * 256 + buffer[offset + i], i += d, nBits -= 8) {}
+
+        if (e === 0) {
+            e = 1 - eBias;
+        } else if (e === eMax) {
+            return m ? NaN : ((s ? -1 : 1) * Infinity);
+        } else {
+            m = m + Math.pow(2, mLen);
+            e = e - eBias;
+        }
+        return (s ? -1 : 1) * m * Math.pow(2, e - mLen);
+    }
+
+    /**
+     * Writes an IEEE754 float to a byte array.
+     * @param {!Array} buffer
+     * @param {number} value
+     * @param {number} offset
+     * @param {boolean} isLE
+     * @param {number} mLen
+     * @param {number} nBytes
+     * @inner
+     */
+    function ieee754_write(buffer, value, offset, isLE, mLen, nBytes) {
+        var e, m, c,
+            eLen = nBytes * 8 - mLen - 1,
+            eMax = (1 << eLen) - 1,
+            eBias = eMax >> 1,
+            rt = (mLen === 23 ? Math.pow(2, -24) - Math.pow(2, -77) : 0),
+            i = isLE ? 0 : (nBytes - 1),
+            d = isLE ? 1 : -1,
+            s = value < 0 || (value === 0 && 1 / value < 0) ? 1 : 0;
+
+        value = Math.abs(value);
+
+        if (isNaN(value) || value === Infinity) {
+            m = isNaN(value) ? 1 : 0;
+            e = eMax;
+        } else {
+            e = Math.floor(Math.log(value) / Math.LN2);
+            if (value * (c = Math.pow(2, -e)) < 1) {
+                e--;
+                c *= 2;
+            }
+            if (e + eBias >= 1) {
+                value += rt / c;
+            } else {
+                value += rt * Math.pow(2, 1 - eBias);
+            }
+            if (value * c >= 2) {
+                e++;
+                c /= 2;
+            }
+
+            if (e + eBias >= eMax) {
+                m = 0;
+                e = eMax;
+            } else if (e + eBias >= 1) {
+                m = (value * c - 1) * Math.pow(2, mLen);
+                e = e + eBias;
+            } else {
+                m = value * Math.pow(2, eBias - 1) * Math.pow(2, mLen);
+                e = 0;
+            }
+        }
+
+        for (; mLen >= 8; buffer[offset + i] = m & 0xff, i += d, m /= 256, mLen -= 8) {}
+
+        e = (e << mLen) | m;
+        eLen += mLen;
+        for (; eLen > 0; buffer[offset + i] = e & 0xff, i += d, e /= 256, eLen -= 8) {}
+
+        buffer[offset + i - d] |= s * 128;
+    }
+
+    /**
+     * Writes a 32bit float.
+     * @param {number} value Value to write
+     * @param {number=} offset Offset to write to. Will use and increase {@link ByteBuffer#offset} by `4` if omitted.
+     * @returns {!ByteBuffer} this
+     * @expose
+     */
+    ByteBufferPrototype.writeFloat32 = function(value, offset) {
+        var relative = typeof offset === 'undefined';
+        if (relative) offset = this.offset;
+        if (!this.noAssert) {
+            if (typeof value !== 'number')
+                throw TypeError("Illegal value: "+value+" (not a number)");
+            if (typeof offset !== 'number' || offset % 1 !== 0)
+                throw TypeError("Illegal offset: "+offset+" (not an integer)");
+            offset >>>= 0;
+            if (offset < 0 || offset + 0 > this.buffer.byteLength)
+                throw RangeError("Illegal offset: 0 <= "+offset+" (+"+0+") <= "+this.buffer.byteLength);
+        }
+        offset += 4;
+        var capacity8 = this.buffer.byteLength;
+        if (offset > capacity8)
+            this.resize((capacity8 *= 2) > offset ? capacity8 : offset);
+        offset -= 4;
+        ieee754_write(this.view, value, offset, this.littleEndian, 23, 4);
+        if (relative) this.offset += 4;
+        return this;
+    };
+
+    /**
+     * Writes a 32bit float. This is an alias of {@link ByteBuffer#writeFloat32}.
+     * @function
+     * @param {number} value Value to write
+     * @param {number=} offset Offset to write to. Will use and increase {@link ByteBuffer#offset} by `4` if omitted.
+     * @returns {!ByteBuffer} this
+     * @expose
+     */
+    ByteBufferPrototype.writeFloat = ByteBufferPrototype.writeFloat32;
+
+    /**
+     * Reads a 32bit float.
+     * @param {number=} offset Offset to read from. Will use and increase {@link ByteBuffer#offset} by `4` if omitted.
+     * @returns {number}
+     * @expose
+     */
+    ByteBufferPrototype.readFloat32 = function(offset) {
+        var relative = typeof offset === 'undefined';
+        if (relative) offset = this.offset;
+        if (!this.noAssert) {
+            if (typeof offset !== 'number' || offset % 1 !== 0)
+                throw TypeError("Illegal offset: "+offset+" (not an integer)");
+            offset >>>= 0;
+            if (offset < 0 || offset + 4 > this.buffer.byteLength)
+                throw RangeError("Illegal offset: 0 <= "+offset+" (+"+4+") <= "+this.buffer.byteLength);
+        }
+        var value = ieee754_read(this.view, offset, this.littleEndian, 23, 4);
+        if (relative) this.offset += 4;
+        return value;
+    };
+
+    /**
+     * Reads a 32bit float. This is an alias of {@link ByteBuffer#readFloat32}.
+     * @function
+     * @param {number=} offset Offset to read from. Will use and increase {@link ByteBuffer#offset} by `4` if omitted.
+     * @returns {number}
+     * @expose
+     */
+    ByteBufferPrototype.readFloat = ByteBufferPrototype.readFloat32;
+
+    // types/floats/float64
+
+    /**
+     * Writes a 64bit float.
+     * @param {number} value Value to write
+     * @param {number=} offset Offset to write to. Will use and increase {@link ByteBuffer#offset} by `8` if omitted.
+     * @returns {!ByteBuffer} this
+     * @expose
+     */
+    ByteBufferPrototype.writeFloat64 = function(value, offset) {
+        var relative = typeof offset === 'undefined';
+        if (relative) offset = this.offset;
+        if (!this.noAssert) {
+            if (typeof value !== 'number')
+                throw TypeError("Illegal value: "+value+" (not a number)");
+            if (typeof offset !== 'number' || offset % 1 !== 0)
+                throw TypeError("Illegal offset: "+offset+" (not an integer)");
+            offset >>>= 0;
+            if (offset < 0 || offset + 0 > this.buffer.byteLength)
+                throw RangeError("Illegal offset: 0 <= "+offset+" (+"+0+") <= "+this.buffer.byteLength);
+        }
+        offset += 8;
+        var capacity9 = this.buffer.byteLength;
+        if (offset > capacity9)
+            this.resize((capacity9 *= 2) > offset ? capacity9 : offset);
+        offset -= 8;
+        ieee754_write(this.view, value, offset, this.littleEndian, 52, 8);
+        if (relative) this.offset += 8;
+        return this;
+    };
+
+    /**
+     * Writes a 64bit float. This is an alias of {@link ByteBuffer#writeFloat64}.
+     * @function
+     * @param {number} value Value to write
+     * @param {number=} offset Offset to write to. Will use and increase {@link ByteBuffer#offset} by `8` if omitted.
+     * @returns {!ByteBuffer} this
+     * @expose
+     */
+    ByteBufferPrototype.writeDouble = ByteBufferPrototype.writeFloat64;
+
+    /**
+     * Reads a 64bit float.
+     * @param {number=} offset Offset to read from. Will use and increase {@link ByteBuffer#offset} by `8` if omitted.
+     * @returns {number}
+     * @expose
+     */
+    ByteBufferPrototype.readFloat64 = function(offset) {
+        var relative = typeof offset === 'undefined';
+        if (relative) offset = this.offset;
+        if (!this.noAssert) {
+            if (typeof offset !== 'number' || offset % 1 !== 0)
+                throw TypeError("Illegal offset: "+offset+" (not an integer)");
+            offset >>>= 0;
+            if (offset < 0 || offset + 8 > this.buffer.byteLength)
+                throw RangeError("Illegal offset: 0 <= "+offset+" (+"+8+") <= "+this.buffer.byteLength);
+        }
+        var value = ieee754_read(this.view, offset, this.littleEndian, 52, 8);
+        if (relative) this.offset += 8;
+        return value;
+    };
+
+    /**
+     * Reads a 64bit float. This is an alias of {@link ByteBuffer#readFloat64}.
+     * @function
+     * @param {number=} offset Offset to read from. Will use and increase {@link ByteBuffer#offset} by `8` if omitted.
+     * @returns {number}
+     * @expose
+     */
+    ByteBufferPrototype.readDouble = ByteBufferPrototype.readFloat64;
+
+
+    // types/varints/varint32
+
+    /**
+     * Maximum number of bytes required to store a 32bit base 128 variable-length integer.
+     * @type {number}
+     * @const
+     * @expose
+     */
+    ByteBuffer.MAX_VARINT32_BYTES = 5;
+
+    /**
+     * Calculates the actual number of bytes required to store a 32bit base 128 variable-length integer.
+     * @param {number} value Value to encode
+     * @returns {number} Number of bytes required. Capped to {@link ByteBuffer.MAX_VARINT32_BYTES}
+     * @expose
+     */
+    ByteBuffer.calculateVarint32 = function(value) {
+        // ref: src/google/protobuf/io/coded_stream.cc
+        value = value >>> 0;
+             if (value < 1 << 7 ) return 1;
+        else if (value < 1 << 14) return 2;
+        else if (value < 1 << 21) return 3;
+        else if (value < 1 << 28) return 4;
+        else                      return 5;
+    };
+
+    /**
+     * Zigzag encodes a signed 32bit integer so that it can be effectively used with varint encoding.
+     * @param {number} n Signed 32bit integer
+     * @returns {number} Unsigned zigzag encoded 32bit integer
+     * @expose
+     */
+    ByteBuffer.zigZagEncode32 = function(n) {
+        return (((n |= 0) << 1) ^ (n >> 31)) >>> 0; // ref: src/google/protobuf/wire_format_lite.h
+    };
+
+    /**
+     * Decodes a zigzag encoded signed 32bit integer.
+     * @param {number} n Unsigned zigzag encoded 32bit integer
+     * @returns {number} Signed 32bit integer
+     * @expose
+     */
+    ByteBuffer.zigZagDecode32 = function(n) {
+        return ((n >>> 1) ^ -(n & 1)) | 0; // // ref: src/google/protobuf/wire_format_lite.h
+    };
+
+    /**
+     * Writes a 32bit base 128 variable-length integer.
+     * @param {number} value Value to write
+     * @param {number=} offset Offset to write to. Will use and increase {@link ByteBuffer#offset} by the number of bytes
+     *  written if omitted.
+     * @returns {!ByteBuffer|number} this if `offset` is omitted, else the actual number of bytes written
+     * @expose
+     */
+    ByteBufferPrototype.writeVarint32 = function(value, offset) {
+        var relative = typeof offset === 'undefined';
+        if (relative) offset = this.offset;
+        if (!this.noAssert) {
+            if (typeof value !== 'number' || value % 1 !== 0)
+                throw TypeError("Illegal value: "+value+" (not an integer)");
+            value |= 0;
+            if (typeof offset !== 'number' || offset % 1 !== 0)
+                throw TypeError("Illegal offset: "+offset+" (not an integer)");
+            offset >>>= 0;
+            if (offset < 0 || offset + 0 > this.buffer.byteLength)
+                throw RangeError("Illegal offset: 0 <= "+offset+" (+"+0+") <= "+this.buffer.byteLength);
+        }
+        var size = ByteBuffer.calculateVarint32(value),
+            b;
+        offset += size;
+        var capacity10 = this.buffer.byteLength;
+        if (offset > capacity10)
+            this.resize((capacity10 *= 2) > offset ? capacity10 : offset);
+        offset -= size;
+        value >>>= 0;
+        while (value >= 0x80) {
+            b = (value & 0x7f) | 0x80;
+            this.view[offset++] = b;
+            value >>>= 7;
+        }
+        this.view[offset++] = value;
+        if (relative) {
+            this.offset = offset;
+            return this;
+        }
+        return size;
+    };
+
+    /**
+     * Writes a zig-zag encoded (signed) 32bit base 128 variable-length integer.
+     * @param {number} value Value to write
+     * @param {number=} offset Offset to write to. Will use and increase {@link ByteBuffer#offset} by the number of bytes
+     *  written if omitted.
+     * @returns {!ByteBuffer|number} this if `offset` is omitted, else the actual number of bytes written
+     * @expose
+     */
+    ByteBufferPrototype.writeVarint32ZigZag = function(value, offset) {
+        return this.writeVarint32(ByteBuffer.zigZagEncode32(value), offset);
+    };
+
+    /**
+     * Reads a 32bit base 128 variable-length integer.
+     * @param {number=} offset Offset to read from. Will use and increase {@link ByteBuffer#offset} by the number of bytes
+     *  written if omitted.
+     * @returns {number|!{value: number, length: number}} The value read if offset is omitted, else the value read
+     *  and the actual number of bytes read.
+     * @throws {Error} If it's not a valid varint. Has a property `truncated = true` if there is not enough data available
+     *  to fully decode the varint.
+     * @expose
+     */
+    ByteBufferPrototype.readVarint32 = function(offset) {
+        var relative = typeof offset === 'undefined';
+        if (relative) offset = this.offset;
+        if (!this.noAssert) {
+            if (typeof offset !== 'number' || offset % 1 !== 0)
+                throw TypeError("Illegal offset: "+offset+" (not an integer)");
+            offset >>>= 0;
+            if (offset < 0 || offset + 1 > this.buffer.byteLength)
+                throw RangeError("Illegal offset: 0 <= "+offset+" (+"+1+") <= "+this.buffer.byteLength);
+        }
+        var c = 0,
+            value = 0 >>> 0,
+            b;
+        do {
+            if (!this.noAssert && offset > this.limit) {
+                var err = Error("Truncated");
+                err['truncated'] = true;
+                throw err;
+            }
+            b = this.view[offset++];
+            if (c < 5)
+                value |= (b & 0x7f) << (7*c);
+            ++c;
+        } while ((b & 0x80) !== 0);
+        value |= 0;
+        if (relative) {
+            this.offset = offset;
+            return value;
+        }
+        return {
+            "value": value,
+            "length": c
+        };
+    };
+
+    /**
+     * Reads a zig-zag encoded (signed) 32bit base 128 variable-length integer.
+     * @param {number=} offset Offset to read from. Will use and increase {@link ByteBuffer#offset} by the number of bytes
+     *  written if omitted.
+     * @returns {number|!{value: number, length: number}} The value read if offset is omitted, else the value read
+     *  and the actual number of bytes read.
+     * @throws {Error} If it's not a valid varint
+     * @expose
+     */
+    ByteBufferPrototype.readVarint32ZigZag = function(offset) {
+        var val = this.readVarint32(offset);
+        if (typeof val === 'object')
+            val["value"] = ByteBuffer.zigZagDecode32(val["value"]);
+        else
+            val = ByteBuffer.zigZagDecode32(val);
+        return val;
+    };
+
+    // types/varints/varint64
+
+    if (Long) {
+
+        /**
+         * Maximum number of bytes required to store a 64bit base 128 variable-length integer.
+         * @type {number}
+         * @const
+         * @expose
+         */
+        ByteBuffer.MAX_VARINT64_BYTES = 10;
+
+        /**
+         * Calculates the actual number of bytes required to store a 64bit base 128 variable-length integer.
+         * @param {number|!Long} value Value to encode
+         * @returns {number} Number of bytes required. Capped to {@link ByteBuffer.MAX_VARINT64_BYTES}
+         * @expose
+         */
+        ByteBuffer.calculateVarint64 = function(value) {
+            if (typeof value === 'number')
+                value = Long.fromNumber(value);
+            else if (typeof value === 'string')
+                value = Long.fromString(value);
+            // ref: src/google/protobuf/io/coded_stream.cc
+            var part0 = value.toInt() >>> 0,
+                part1 = value.shiftRightUnsigned(28).toInt() >>> 0,
+                part2 = value.shiftRightUnsigned(56).toInt() >>> 0;
+            if (part2 == 0) {
+                if (part1 == 0) {
+                    if (part0 < 1 << 14)
+                        return part0 < 1 << 7 ? 1 : 2;
+                    else
+                        return part0 < 1 << 21 ? 3 : 4;
+                } else {
+                    if (part1 < 1 << 14)
+                        return part1 < 1 << 7 ? 5 : 6;
+                    else
+                        return part1 < 1 << 21 ? 7 : 8;
+                }
+            } else
+                return part2 < 1 << 7 ? 9 : 10;
+        };
+
+        /**
+         * Zigzag encodes a signed 64bit integer so that it can be effectively used with varint encoding.
+         * @param {number|!Long} value Signed long
+         * @returns {!Long} Unsigned zigzag encoded long
+         * @expose
+         */
+        ByteBuffer.zigZagEncode64 = function(value) {
+            if (typeof value === 'number')
+                value = Long.fromNumber(value, false);
+            else if (typeof value === 'string')
+                value = Long.fromString(value, false);
+            else if (value.unsigned !== false) value = value.toSigned();
+            // ref: src/google/protobuf/wire_format_lite.h
+            return value.shiftLeft(1).xor(value.shiftRight(63)).toUnsigned();
+        };
+
+        /**
+         * Decodes a zigzag encoded signed 64bit integer.
+         * @param {!Long|number} value Unsigned zigzag encoded long or JavaScript number
+         * @returns {!Long} Signed long
+         * @expose
+         */
+        ByteBuffer.zigZagDecode64 = function(value) {
+            if (typeof value === 'number')
+                value = Long.fromNumber(value, false);
+            else if (typeof value === 'string')
+                value = Long.fromString(value, false);
+            else if (value.unsigned !== false) value = value.toSigned();
+            // ref: src/google/protobuf/wire_format_lite.h
+            return value.shiftRightUnsigned(1).xor(value.and(Long.ONE).toSigned().negate()).toSigned();
+        };
+
+        /**
+         * Writes a 64bit base 128 variable-length integer.
+         * @param {number|Long} value Value to write
+         * @param {number=} offset Offset to write to. Will use and increase {@link ByteBuffer#offset} by the number of bytes
+         *  written if omitted.
+         * @returns {!ByteBuffer|number} `this` if offset is omitted, else the actual number of bytes written.
+         * @expose
+         */
+        ByteBufferPrototype.writeVarint64 = function(value, offset) {
+            var relative = typeof offset === 'undefined';
+            if (relative) offset = this.offset;
+            if (!this.noAssert) {
+                if (typeof value === 'number')
+                    value = Long.fromNumber(value);
+                else if (typeof value === 'string')
+                    value = Long.fromString(value);
+                else if (!(value && value instanceof Long))
+                    throw TypeError("Illegal value: "+value+" (not an integer or Long)");
+                if (typeof offset !== 'number' || offset % 1 !== 0)
+                    throw TypeError("Illegal offset: "+offset+" (not an integer)");
+                offset >>>= 0;
+                if (offset < 0 || offset + 0 > this.buffer.byteLength)
+                    throw RangeError("Illegal offset: 0 <= "+offset+" (+"+0+") <= "+this.buffer.byteLength);
+            }
+            if (typeof value === 'number')
+                value = Long.fromNumber(value, false);
+            else if (typeof value === 'string')
+                value = Long.fromString(value, false);
+            else if (value.unsigned !== false) value = value.toSigned();
+            var size = ByteBuffer.calculateVarint64(value),
+                part0 = value.toInt() >>> 0,
+                part1 = value.shiftRightUnsigned(28).toInt() >>> 0,
+                part2 = value.shiftRightUnsigned(56).toInt() >>> 0;
+            offset += size;
+            var capacity11 = this.buffer.byteLength;
+            if (offset > capacity11)
+                this.resize((capacity11 *= 2) > offset ? capacity11 : offset);
+            offset -= size;
+            switch (size) {
+                case 10: this.view[offset+9] = (part2 >>>  7) & 0x01;
+                case 9 : this.view[offset+8] = size !== 9 ? (part2       ) | 0x80 : (part2       ) & 0x7F;
+                case 8 : this.view[offset+7] = size !== 8 ? (part1 >>> 21) | 0x80 : (part1 >>> 21) & 0x7F;
+                case 7 : this.view[offset+6] = size !== 7 ? (part1 >>> 14) | 0x80 : (part1 >>> 14) & 0x7F;
+                case 6 : this.view[offset+5] = size !== 6 ? (part1 >>>  7) | 0x80 : (part1 >>>  7) & 0x7F;
+                case 5 : this.view[offset+4] = size !== 5 ? (part1       ) | 0x80 : (part1       ) & 0x7F;
+                case 4 : this.view[offset+3] = size !== 4 ? (part0 >>> 21) | 0x80 : (part0 >>> 21) & 0x7F;
+                case 3 : this.view[offset+2] = size !== 3 ? (part0 >>> 14) | 0x80 : (part0 >>> 14) & 0x7F;
+                case 2 : this.view[offset+1] = size !== 2 ? (part0 >>>  7) | 0x80 : (part0 >>>  7) & 0x7F;
+                case 1 : this.view[offset  ] = size !== 1 ? (part0       ) | 0x80 : (part0       ) & 0x7F;
+            }
+            if (relative) {
+                this.offset += size;
+                return this;
+            } else {
+                return size;
+            }
+        };
+
+        /**
+         * Writes a zig-zag encoded 64bit base 128 variable-length integer.
+         * @param {number|Long} value Value to write
+         * @param {number=} offset Offset to write to. Will use and increase {@link ByteBuffer#offset} by the number of bytes
+         *  written if omitted.
+         * @returns {!ByteBuffer|number} `this` if offset is omitted, else the actual number of bytes written.
+         * @expose
+         */
+        ByteBufferPrototype.writeVarint64ZigZag = function(value, offset) {
+            return this.writeVarint64(ByteBuffer.zigZagEncode64(value), offset);
+        };
+
+        /**
+         * Reads a 64bit base 128 variable-length integer. Requires Long.js.
+         * @param {number=} offset Offset to read from. Will use and increase {@link ByteBuffer#offset} by the number of bytes
+         *  read if omitted.
+         * @returns {!Long|!{value: Long, length: number}} The value read if offset is omitted, else the value read and
+         *  the actual number of bytes read.
+         * @throws {Error} If it's not a valid varint
+         * @expose
+         */
+        ByteBufferPrototype.readVarint64 = function(offset) {
+            var relative = typeof offset === 'undefined';
+            if (relative) offset = this.offset;
+            if (!this.noAssert) {
+                if (typeof offset !== 'number' || offset % 1 !== 0)
+                    throw TypeError("Illegal offset: "+offset+" (not an integer)");
+                offset >>>= 0;
+                if (offset < 0 || offset + 1 > this.buffer.byteLength)
+                    throw RangeError("Illegal offset: 0 <= "+offset+" (+"+1+") <= "+this.buffer.byteLength);
+            }
+            // ref: src/google/protobuf/io/coded_stream.cc
+            var start = offset,
+                part0 = 0,
+                part1 = 0,
+                part2 = 0,
+                b  = 0;
+            b = this.view[offset++]; part0  = (b & 0x7F)      ; if ( b & 0x80                                                   ) {
+            b = this.view[offset++]; part0 |= (b & 0x7F) <<  7; if ((b & 0x80) || (this.noAssert && typeof b === 'undefined')) {
+            b = this.view[offset++]; part0 |= (b & 0x7F) << 14; if ((b & 0x80) || (this.noAssert && typeof b === 'undefined')) {
+            b = this.view[offset++]; part0 |= (b & 0x7F) << 21; if ((b & 0x80) || (this.noAssert && typeof b === 'undefined')) {
+            b = this.view[offset++]; part1  = (b & 0x7F)      ; if ((b & 0x80) || (this.noAssert && typeof b === 'undefined')) {
+            b = this.view[offset++]; part1 |= (b & 0x7F) <<  7; if ((b & 0x80) || (this.noAssert && typeof b === 'undefined')) {
+            b = this.view[offset++]; part1 |= (b & 0x7F) << 14; if ((b & 0x80) || (this.noAssert && typeof b === 'undefined')) {
+            b = this.view[offset++]; part1 |= (b & 0x7F) << 21; if ((b & 0x80) || (this.noAssert && typeof b === 'undefined')) {
+            b = this.view[offset++]; part2  = (b & 0x7F)      ; if ((b & 0x80) || (this.noAssert && typeof b === 'undefined')) {
+            b = this.view[offset++]; part2 |= (b & 0x7F) <<  7; if ((b & 0x80) || (this.noAssert && typeof b === 'undefined')) {
+            throw Error("Buffer overrun"); }}}}}}}}}}
+            var value = Long.fromBits(part0 | (part1 << 28), (part1 >>> 4) | (part2) << 24, false);
+            if (relative) {
+                this.offset = offset;
+                return value;
+            } else {
+                return {
+                    'value': value,
+                    'length': offset-start
+                };
+            }
+        };
+
+        /**
+         * Reads a zig-zag encoded 64bit base 128 variable-length integer. Requires Long.js.
+         * @param {number=} offset Offset to read from. Will use and increase {@link ByteBuffer#offset} by the number of bytes
+         *  read if omitted.
+         * @returns {!Long|!{value: Long, length: number}} The value read if offset is omitted, else the value read and
+         *  the actual number of bytes read.
+         * @throws {Error} If it's not a valid varint
+         * @expose
+         */
+        ByteBufferPrototype.readVarint64ZigZag = function(offset) {
+            var val = this.readVarint64(offset);
+            if (val && val['value'] instanceof Long)
+                val["value"] = ByteBuffer.zigZagDecode64(val["value"]);
+            else
+                val = ByteBuffer.zigZagDecode64(val);
+            return val;
+        };
+
+    } // Long
+
+
+    // types/strings/cstring
+
+    /**
+     * Writes a NULL-terminated UTF8 encoded string. For this to work the specified string must not contain any NULL
+     *  characters itself.
+     * @param {string} str String to write
+     * @param {number=} offset Offset to write to. Will use and increase {@link ByteBuffer#offset} by the number of bytes
+     *  contained in `str` + 1 if omitted.
+     * @returns {!ByteBuffer|number} this if offset is omitted, else the actual number of bytes written
+     * @expose
+     */
+    ByteBufferPrototype.writeCString = function(str, offset) {
+        var relative = typeof offset === 'undefined';
+        if (relative) offset = this.offset;
+        var i,
+            k = str.length;
+        if (!this.noAssert) {
+            if (typeof str !== 'string')
+                throw TypeError("Illegal str: Not a string");
+            for (i=0; i<k; ++i) {
+                if (str.charCodeAt(i) === 0)
+                    throw RangeError("Illegal str: Contains NULL-characters");
+            }
+            if (typeof offset !== 'number' || offset % 1 !== 0)
+                throw TypeError("Illegal offset: "+offset+" (not an integer)");
+            offset >>>= 0;
+            if (offset < 0 || offset + 0 > this.buffer.byteLength)
+                throw RangeError("Illegal offset: 0 <= "+offset+" (+"+0+") <= "+this.buffer.byteLength);
+        }
+        // UTF8 strings do not contain zero bytes in between except for the zero character, so:
+        k = utfx.calculateUTF16asUTF8(stringSource(str))[1];
+        offset += k+1;
+        var capacity12 = this.buffer.byteLength;
+        if (offset > capacity12)
+            this.resize((capacity12 *= 2) > offset ? capacity12 : offset);
+        offset -= k+1;
+        utfx.encodeUTF16toUTF8(stringSource(str), function(b) {
+            this.view[offset++] = b;
+        }.bind(this));
+        this.view[offset++] = 0;
+        if (relative) {
+            this.offset = offset;
+            return this;
+        }
+        return k;
+    };
+
+    /**
+     * Reads a NULL-terminated UTF8 encoded string. For this to work the string read must not contain any NULL characters
+     *  itself.
+     * @param {number=} offset Offset to read from. Will use and increase {@link ByteBuffer#offset} by the number of bytes
+     *  read if omitted.
+     * @returns {string|!{string: string, length: number}} The string read if offset is omitted, else the string
+     *  read and the actual number of bytes read.
+     * @expose
+     */
+    ByteBufferPrototype.readCString = function(offset) {
+        var relative = typeof offset === 'undefined';
+        if (relative) offset = this.offset;
+        if (!this.noAssert) {
+            if (typeof offset !== 'number' || offset % 1 !== 0)
+                throw TypeError("Illegal offset: "+offset+" (not an integer)");
+            offset >>>= 0;
+            if (offset < 0 || offset + 1 > this.buffer.byteLength)
+                throw RangeError("Illegal offset: 0 <= "+offset+" (+"+1+") <= "+this.buffer.byteLength);
+        }
+        var start = offset,
+            temp;
+        // UTF8 strings do not contain zero bytes in between except for the zero character itself, so:
+        var sd, b = -1;
+        utfx.decodeUTF8toUTF16(function() {
+            if (b === 0) return null;
+            if (offset >= this.limit)
+                throw RangeError("Illegal range: Truncated data, "+offset+" < "+this.limit);
+            b = this.view[offset++];
+            return b === 0 ? null : b;
+        }.bind(this), sd = stringDestination(), true);
+        if (relative) {
+            this.offset = offset;
+            return sd();
+        } else {
+            return {
+                "string": sd(),
+                "length": offset - start
+            };
+        }
+    };
+
+    // types/strings/istring
+
+    /**
+     * Writes a length as uint32 prefixed UTF8 encoded string.
+     * @param {string} str String to write
+     * @param {number=} offset Offset to write to. Will use and increase {@link ByteBuffer#offset} by the number of bytes
+     *  written if omitted.
+     * @returns {!ByteBuffer|number} `this` if `offset` is omitted, else the actual number of bytes written
+     * @expose
+     * @see ByteBuffer#writeVarint32
+     */
+    ByteBufferPrototype.writeIString = function(str, offset) {
+        var relative = typeof offset === 'undefined';
+        if (relative) offset = this.offset;
+        if (!this.noAssert) {
+            if (typeof str !== 'string')
+                throw TypeError("Illegal str: Not a string");
+            if (typeof offset !== 'number' || offset % 1 !== 0)
+                throw TypeError("Illegal offset: "+offset+" (not an integer)");
+            offset >>>= 0;
+            if (offset < 0 || offset + 0 > this.buffer.byteLength)
+                throw RangeError("Illegal offset: 0 <= "+offset+" (+"+0+") <= "+this.buffer.byteLength);
+        }
+        var start = offset,
+            k;
+        k = utfx.calculateUTF16asUTF8(stringSource(str), this.noAssert)[1];
+        offset += 4+k;
+        var capacity13 = this.buffer.byteLength;
+        if (offset > capacity13)
+            this.resize((capacity13 *= 2) > offset ? capacity13 : offset);
+        offset -= 4+k;
+        if (this.littleEndian) {
+            this.view[offset+3] = (k >>> 24) & 0xFF;
+            this.view[offset+2] = (k >>> 16) & 0xFF;
+            this.view[offset+1] = (k >>>  8) & 0xFF;
+            this.view[offset  ] =  k         & 0xFF;
+        } else {
+            this.view[offset  ] = (k >>> 24) & 0xFF;
+            this.view[offset+1] = (k >>> 16) & 0xFF;
+            this.view[offset+2] = (k >>>  8) & 0xFF;
+            this.view[offset+3] =  k         & 0xFF;
+        }
+        offset += 4;
+        utfx.encodeUTF16toUTF8(stringSource(str), function(b) {
+            this.view[offset++] = b;
+        }.bind(this));
+        if (offset !== start + 4 + k)
+            throw RangeError("Illegal range: Truncated data, "+offset+" == "+(offset+4+k));
+        if (relative) {
+            this.offset = offset;
+            return this;
+        }
+        return offset - start;
+    };
+
+    /**
+     * Reads a length as uint32 prefixed UTF8 encoded string.
+     * @param {number=} offset Offset to read from. Will use and increase {@link ByteBuffer#offset} by the number of bytes
+     *  read if omitted.
+     * @returns {string|!{string: string, length: number}} The string read if offset is omitted, else the string
+     *  read and the actual number of bytes read.
+     * @expose
+     * @see ByteBuffer#readVarint32
+     */
+    ByteBufferPrototype.readIString = function(offset) {
+        var relative = typeof offset === 'undefined';
+        if (relative) offset = this.offset;
+        if (!this.noAssert) {
+            if (typeof offset !== 'number' || offset % 1 !== 0)
+                throw TypeError("Illegal offset: "+offset+" (not an integer)");
+            offset >>>= 0;
+            if (offset < 0 || offset + 4 > this.buffer.byteLength)
+                throw RangeError("Illegal offset: 0 <= "+offset+" (+"+4+") <= "+this.buffer.byteLength);
+        }
+        var start = offset;
+        var len = this.readUint32(offset);
+        var str = this.readUTF8String(len, ByteBuffer.METRICS_BYTES, offset += 4);
+        offset += str['length'];
+        if (relative) {
+            this.offset = offset;
+            return str['string'];
+        } else {
+            return {
+                'string': str['string'],
+                'length': offset - start
+            };
+        }
+    };
+
+    // types/strings/utf8string
+
+    /**
+     * Metrics representing number of UTF8 characters. Evaluates to `c`.
+     * @type {string}
+     * @const
+     * @expose
+     */
+    ByteBuffer.METRICS_CHARS = 'c';
+
+    /**
+     * Metrics representing number of bytes. Evaluates to `b`.
+     * @type {string}
+     * @const
+     * @expose
+     */
+    ByteBuffer.METRICS_BYTES = 'b';
+
+    /**
+     * Writes an UTF8 encoded string.
+     * @param {string} str String to write
+     * @param {number=} offset Offset to write to. Will use and increase {@link ByteBuffer#offset} if omitted.
+     * @returns {!ByteBuffer|number} this if offset is omitted, else the actual number of bytes written.
+     * @expose
+     */
+    ByteBufferPrototype.writeUTF8String = function(str, offset) {
+        var relative = typeof offset === 'undefined';
+        if (relative) offset = this.offset;
+        if (!this.noAssert) {
+            if (typeof offset !== 'number' || offset % 1 !== 0)
+                throw TypeError("Illegal offset: "+offset+" (not an integer)");
+            offset >>>= 0;
+            if (offset < 0 || offset + 0 > this.buffer.byteLength)
+                throw RangeError("Illegal offset: 0 <= "+offset+" (+"+0+") <= "+this.buffer.byteLength);
+        }
+        var k;
+        var start = offset;
+        k = utfx.calculateUTF16asUTF8(stringSource(str))[1];
+        offset += k;
+        var capacity14 = this.buffer.byteLength;
+        if (offset > capacity14)
+            this.resize((capacity14 *= 2) > offset ? capacity14 : offset);
+        offset -= k;
+        utfx.encodeUTF16toUTF8(stringSource(str), function(b) {
+            this.view[offset++] = b;
+        }.bind(this));
+        if (relative) {
+            this.offset = offset;
+            return this;
+        }
+        return offset - start;
+    };
+
+    /**
+     * Writes an UTF8 encoded string. This is an alias of {@link ByteBuffer#writeUTF8String}.
+     * @function
+     * @param {string} str String to write
+     * @param {number=} offset Offset to write to. Will use and increase {@link ByteBuffer#offset} if omitted.
+     * @returns {!ByteBuffer|number} this if offset is omitted, else the actual number of bytes written.
+     * @expose
+     */
+    ByteBufferPrototype.writeString = ByteBufferPrototype.writeUTF8String;
+
+    /**
+     * Calculates the number of UTF8 characters of a string. JavaScript itself uses UTF-16, so that a string's
+     *  `length` property does not reflect its actual UTF8 size if it contains code points larger than 0xFFFF.
+     * @param {string} str String to calculate
+     * @returns {number} Number of UTF8 characters
+     * @expose
+     */
+    ByteBuffer.calculateUTF8Chars = function(str) {
+        return utfx.calculateUTF16asUTF8(stringSource(str))[0];
+    };
+
+    /**
+     * Calculates the number of UTF8 bytes of a string.
+     * @param {string} str String to calculate
+     * @returns {number} Number of UTF8 bytes
+     * @expose
+     */
+    ByteBuffer.calculateUTF8Bytes = function(str) {
+        return utfx.calculateUTF16asUTF8(stringSource(str))[1];
+    };
+
+    /**
+     * Calculates the number of UTF8 bytes of a string. This is an alias of {@link ByteBuffer.calculateUTF8Bytes}.
+     * @function
+     * @param {string} str String to calculate
+     * @returns {number} Number of UTF8 bytes
+     * @expose
+     */
+    ByteBuffer.calculateString = ByteBuffer.calculateUTF8Bytes;
+
+    /**
+     * Reads an UTF8 encoded string.
+     * @param {number} length Number of characters or bytes to read.
+     * @param {string=} metrics Metrics specifying what `length` is meant to count. Defaults to
+     *  {@link ByteBuffer.METRICS_CHARS}.
+     * @param {number=} offset Offset to read from. Will use and increase {@link ByteBuffer#offset} by the number of bytes
+     *  read if omitted.
+     * @returns {string|!{string: string, length: number}} The string read if offset is omitted, else the string
+     *  read and the actual number of bytes read.
+     * @expose
+     */
+    ByteBufferPrototype.readUTF8String = function(length, metrics, offset) {
+        if (typeof metrics === 'number') {
+            offset = metrics;
+            metrics = undefined;
+        }
+        var relative = typeof offset === 'undefined';
+        if (relative) offset = this.offset;
+        if (typeof metrics === 'undefined') metrics = ByteBuffer.METRICS_CHARS;
+        if (!this.noAssert) {
+            if (typeof length !== 'number' || length % 1 !== 0)
+                throw TypeError("Illegal length: "+length+" (not an integer)");
+            length |= 0;
+            if (typeof offset !== 'number' || offset % 1 !== 0)
+                throw TypeError("Illegal offset: "+offset+" (not an integer)");
+            offset >>>= 0;
+            if (offset < 0 || offset + 0 > this.buffer.byteLength)
+                throw RangeError("Illegal offset: 0 <= "+offset+" (+"+0+") <= "+this.buffer.byteLength);
+        }
+        var i = 0,
+            start = offset,
+            sd;
+        if (metrics === ByteBuffer.METRICS_CHARS) { // The same for node and the browser
+            sd = stringDestination();
+            utfx.decodeUTF8(function() {
+                return i < length && offset < this.limit ? this.view[offset++] : null;
+            }.bind(this), function(cp) {
+                ++i; utfx.UTF8toUTF16(cp, sd);
+            });
+            if (i !== length)
+                throw RangeError("Illegal range: Truncated data, "+i+" == "+length);
+            if (relative) {
+                this.offset = offset;
+                return sd();
+            } else {
+                return {
+                    "string": sd(),
+                    "length": offset - start
+                };
+            }
+        } else if (metrics === ByteBuffer.METRICS_BYTES) {
+            if (!this.noAssert) {
+                if (typeof offset !== 'number' || offset % 1 !== 0)
+                    throw TypeError("Illegal offset: "+offset+" (not an integer)");
+                offset >>>= 0;
+                if (offset < 0 || offset + length > this.buffer.byteLength)
+                    throw RangeError("Illegal offset: 0 <= "+offset+" (+"+length+") <= "+this.buffer.byteLength);
+            }
+            var k = offset + length;
+            utfx.decodeUTF8toUTF16(function() {
+                return offset < k ? this.view[offset++] : null;
+            }.bind(this), sd = stringDestination(), this.noAssert);
+            if (offset !== k)
+                throw RangeError("Illegal range: Truncated data, "+offset+" == "+k);
+            if (relative) {
+                this.offset = offset;
+                return sd();
+            } else {
+                return {
+                    'string': sd(),
+                    'length': offset - start
+                };
+            }
+        } else
+            throw TypeError("Unsupported metrics: "+metrics);
+    };
+
+    /**
+     * Reads an UTF8 encoded string. This is an alias of {@link ByteBuffer#readUTF8String}.
+     * @function
+     * @param {number} length Number of characters or bytes to read
+     * @param {number=} metrics Metrics specifying what `n` is meant to count. Defaults to
+     *  {@link ByteBuffer.METRICS_CHARS}.
+     * @param {number=} offset Offset to read from. Will use and increase {@link ByteBuffer#offset} by the number of bytes
+     *  read if omitted.
+     * @returns {string|!{string: string, length: number}} The string read if offset is omitted, else the string
+     *  read and the actual number of bytes read.
+     * @expose
+     */
+    ByteBufferPrototype.readString = ByteBufferPrototype.readUTF8String;
+
+    // types/strings/vstring
+
+    /**
+     * Writes a length as varint32 prefixed UTF8 encoded string.
+     * @param {string} str String to write
+     * @param {number=} offset Offset to write to. Will use and increase {@link ByteBuffer#offset} by the number of bytes
+     *  written if omitted.
+     * @returns {!ByteBuffer|number} `this` if `offset` is omitted, else the actual number of bytes written
+     * @expose
+     * @see ByteBuffer#writeVarint32
+     */
+    ByteBufferPrototype.writeVString = function(str, offset) {
+        var relative = typeof offset === 'undefined';
+        if (relative) offset = this.offset;
+        if (!this.noAssert) {
+            if (typeof str !== 'string')
+                throw TypeError("Illegal str: Not a string");
+            if (typeof offset !== 'number' || offset % 1 !== 0)
+                throw TypeError("Illegal offset: "+offset+" (not an integer)");
+            offset >>>= 0;
+            if (offset < 0 || offset + 0 > this.buffer.byteLength)
+                throw RangeError("Illegal offset: 0 <= "+offset+" (+"+0+") <= "+this.buffer.byteLength);
+        }
+        var start = offset,
+            k, l;
+        k = utfx.calculateUTF16asUTF8(stringSource(str), this.noAssert)[1];
+        l = ByteBuffer.calculateVarint32(k);
+        offset += l+k;
+        var capacity15 = this.buffer.byteLength;
+        if (offset > capacity15)
+            this.resize((capacity15 *= 2) > offset ? capacity15 : offset);
+        offset -= l+k;
+        offset += this.writeVarint32(k, offset);
+        utfx.encodeUTF16toUTF8(stringSource(str), function(b) {
+            this.view[offset++] = b;
+        }.bind(this));
+        if (offset !== start+k+l)
+            throw RangeError("Illegal range: Truncated data, "+offset+" == "+(offset+k+l));
+        if (relative) {
+            this.offset = offset;
+            return this;
+        }
+        return offset - start;
+    };
+
+    /**
+     * Reads a length as varint32 prefixed UTF8 encoded string.
+     * @param {number=} offset Offset to read from. Will use and increase {@link ByteBuffer#offset} by the number of bytes
+     *  read if omitted.
+     * @returns {string|!{string: string, length: number}} The string read if offset is omitted, else the string
+     *  read and the actual number of bytes read.
+     * @expose
+     * @see ByteBuffer#readVarint32
+     */
+    ByteBufferPrototype.readVString = function(offset) {
+        var relative = typeof offset === 'undefined';
+        if (relative) offset = this.offset;
+        if (!this.noAssert) {
+            if (typeof offset !== 'number' || offset % 1 !== 0)
+                throw TypeError("Illegal offset: "+offset+" (not an integer)");
+            offset >>>= 0;
+            if (offset < 0 || offset + 1 > this.buffer.byteLength)
+                throw RangeError("Illegal offset: 0 <= "+offset+" (+"+1+") <= "+this.buffer.byteLength);
+        }
+        var start = offset;
+        var len = this.readVarint32(offset);
+        var str = this.readUTF8String(len['value'], ByteBuffer.METRICS_BYTES, offset += len['length']);
+        offset += str['length'];
+        if (relative) {
+            this.offset = offset;
+            return str['string'];
+        } else {
+            return {
+                'string': str['string'],
+                'length': offset - start
+            };
+        }
+    };
+
+
+    /**
+     * Appends some data to this ByteBuffer. This will overwrite any contents behind the specified offset up to the appended
+     *  data's length.
+     * @param {!ByteBuffer|!ArrayBuffer|!Uint8Array|string} source Data to append. If `source` is a ByteBuffer, its offsets
+     *  will be modified according to the performed read operation.
+     * @param {(string|number)=} encoding Encoding if `data` is a string ("base64", "hex", "binary", defaults to "utf8")
+     * @param {number=} offset Offset to append at. Will use and increase {@link ByteBuffer#offset} by the number of bytes
+     *  written if omitted.
+     * @returns {!ByteBuffer} this
+     * @expose
+     * @example A relative `<01 02>03.append(<04 05>)` will result in `<01 02 04 05>, 04 05|`
+     * @example An absolute `<01 02>03.append(04 05>, 1)` will result in `<01 04>05, 04 05|`
+     */
+    ByteBufferPrototype.append = function(source, encoding, offset) {
+        if (typeof encoding === 'number' || typeof encoding !== 'string') {
+            offset = encoding;
+            encoding = undefined;
+        }
+        var relative = typeof offset === 'undefined';
+        if (relative) offset = this.offset;
+        if (!this.noAssert) {
+            if (typeof offset !== 'number' || offset % 1 !== 0)
+                throw TypeError("Illegal offset: "+offset+" (not an integer)");
+            offset >>>= 0;
+            if (offset < 0 || offset + 0 > this.buffer.byteLength)
+                throw RangeError("Illegal offset: 0 <= "+offset+" (+"+0+") <= "+this.buffer.byteLength);
+        }
+        if (!(source instanceof ByteBuffer))
+            source = ByteBuffer.wrap(source, encoding);
+        var length = source.limit - source.offset;
+        if (length <= 0) return this; // Nothing to append
+        offset += length;
+        var capacity16 = this.buffer.byteLength;
+        if (offset > capacity16)
+            this.resize((capacity16 *= 2) > offset ? capacity16 : offset);
+        offset -= length;
+        this.view.set(source.view.subarray(source.offset, source.limit), offset);
+        source.offset += length;
+        if (relative) this.offset += length;
+        return this;
+    };
+
+    /**
+     * Appends this ByteBuffer's contents to another ByteBuffer. This will overwrite any contents at and after the
+        specified offset up to the length of this ByteBuffer's data.
+     * @param {!ByteBuffer} target Target ByteBuffer
+     * @param {number=} offset Offset to append to. Will use and increase {@link ByteBuffer#offset} by the number of bytes
+     *  read if omitted.
+     * @returns {!ByteBuffer} this
+     * @expose
+     * @see ByteBuffer#append
+     */
+    ByteBufferPrototype.appendTo = function(target, offset) {
+        target.append(this, offset);
+        return this;
+    };
+
+    /**
+     * Enables or disables assertions of argument types and offsets. Assertions are enabled by default but you can opt to
+     *  disable them if your code already makes sure that everything is valid.
+     * @param {boolean} assert `true` to enable assertions, otherwise `false`
+     * @returns {!ByteBuffer} this
+     * @expose
+     */
+    ByteBufferPrototype.assert = function(assert) {
+        this.noAssert = !assert;
+        return this;
+    };
+
+    /**
+     * Gets the capacity of this ByteBuffer's backing buffer.
+     * @returns {number} Capacity of the backing buffer
+     * @expose
+     */
+    ByteBufferPrototype.capacity = function() {
+        return this.buffer.byteLength;
+    };
+    /**
+     * Clears this ByteBuffer's offsets by setting {@link ByteBuffer#offset} to `0` and {@link ByteBuffer#limit} to the
+     *  backing buffer's capacity. Discards {@link ByteBuffer#markedOffset}.
+     * @returns {!ByteBuffer} this
+     * @expose
+     */
+    ByteBufferPrototype.clear = function() {
+        this.offset = 0;
+        this.limit = this.buffer.byteLength;
+        this.markedOffset = -1;
+        return this;
+    };
+
+    /**
+     * Creates a cloned instance of this ByteBuffer, preset with this ByteBuffer's values for {@link ByteBuffer#offset},
+     *  {@link ByteBuffer#markedOffset} and {@link ByteBuffer#limit}.
+     * @param {boolean=} copy Whether to copy the backing buffer or to return another view on the same, defaults to `false`
+     * @returns {!ByteBuffer} Cloned instance
+     * @expose
+     */
+    ByteBufferPrototype.clone = function(copy) {
+        var bb = new ByteBuffer(0, this.littleEndian, this.noAssert);
+        if (copy) {
+            bb.buffer = new ArrayBuffer(this.buffer.byteLength);
+            bb.view = new Uint8Array(bb.buffer);
+        } else {
+            bb.buffer = this.buffer;
+            bb.view = this.view;
+        }
+        bb.offset = this.offset;
+        bb.markedOffset = this.markedOffset;
+        bb.limit = this.limit;
+        return bb;
+    };
+
+    /**
+     * Compacts this ByteBuffer to be backed by a {@link ByteBuffer#buffer} of its contents' length. Contents are the bytes
+     *  between {@link ByteBuffer#offset} and {@link ByteBuffer#limit}. Will set `offset = 0` and `limit = capacity` and
+     *  adapt {@link ByteBuffer#markedOffset} to the same relative position if set.
+     * @param {number=} begin Offset to start at, defaults to {@link ByteBuffer#offset}
+     * @param {number=} end Offset to end at, defaults to {@link ByteBuffer#limit}
+     * @returns {!ByteBuffer} this
+     * @expose
+     */
+    ByteBufferPrototype.compact = function(begin, end) {
+        if (typeof begin === 'undefined') begin = this.offset;
+        if (typeof end === 'undefined') end = this.limit;
+        if (!this.noAssert) {
+            if (typeof begin !== 'number' || begin % 1 !== 0)
+                throw TypeError("Illegal begin: Not an integer");
+            begin >>>= 0;
+            if (typeof end !== 'number' || end % 1 !== 0)
+                throw TypeError("Illegal end: Not an integer");
+            end >>>= 0;
+            if (begin < 0 || begin > end || end > this.buffer.byteLength)
+                throw RangeError("Illegal range: 0 <= "+begin+" <= "+end+" <= "+this.buffer.byteLength);
+        }
+        if (begin === 0 && end === this.buffer.byteLength)
+            return this; // Already compacted
+        var len = end - begin;
+        if (len === 0) {
+            this.buffer = EMPTY_BUFFER;
+            this.view = null;
+            if (this.markedOffset >= 0) this.markedOffset -= begin;
+            this.offset = 0;
+            this.limit = 0;
+            return this;
+        }
+        var buffer = new ArrayBuffer(len);
+        var view = new Uint8Array(buffer);
+        view.set(this.view.subarray(begin, end));
+        this.buffer = buffer;
+        this.view = view;
+        if (this.markedOffset >= 0) this.markedOffset -= begin;
+        this.offset = 0;
+        this.limit = len;
+        return this;
+    };
+
+    /**
+     * Creates a copy of this ByteBuffer's contents. Contents are the bytes between {@link ByteBuffer#offset} and
+     *  {@link ByteBuffer#limit}.
+     * @param {number=} begin Begin offset, defaults to {@link ByteBuffer#offset}.
+     * @param {number=} end End offset, defaults to {@link ByteBuffer#limit}.
+     * @returns {!ByteBuffer} Copy
+     * @expose
+     */
+    ByteBufferPrototype.copy = function(begin, end) {
+        if (typeof begin === 'undefined') begin = this.offset;
+        if (typeof end === 'undefined') end = this.limit;
+        if (!this.noAssert) {
+            if (typeof begin !== 'number' || begin % 1 !== 0)
+                throw TypeError("Illegal begin: Not an integer");
+            begin >>>= 0;
+            if (typeof end !== 'number' || end % 1 !== 0)
+                throw TypeError("Illegal end: Not an integer");
+            end >>>= 0;
+            if (begin < 0 || begin > end || end > this.buffer.byteLength)
+                throw RangeError("Illegal range: 0 <= "+begin+" <= "+end+" <= "+this.buffer.byteLength);
+        }
+        if (begin === end)
+            return new ByteBuffer(0, this.littleEndian, this.noAssert);
+        var capacity = end - begin,
+            bb = new ByteBuffer(capacity, this.littleEndian, this.noAssert);
+        bb.offset = 0;
+        bb.limit = capacity;
+        if (bb.markedOffset >= 0) bb.markedOffset -= begin;
+        this.copyTo(bb, 0, begin, end);
+        return bb;
+    };
+
+    /**
+     * Copies this ByteBuffer's contents to another ByteBuffer. Contents are the bytes between {@link ByteBuffer#offset} and
+     *  {@link ByteBuffer#limit}.
+     * @param {!ByteBuffer} target Target ByteBuffer
+     * @param {number=} targetOffset Offset to copy to. Will use and increase the target's {@link ByteBuffer#offset}
+     *  by the number of bytes copied if omitted.
+     * @param {number=} sourceOffset Offset to start copying from. Will use and increase {@link ByteBuffer#offset} by the
+     *  number of bytes copied if omitted.
+     * @param {number=} sourceLimit Offset to end copying from, defaults to {@link ByteBuffer#limit}
+     * @returns {!ByteBuffer} this
+     * @expose
+     */
+    ByteBufferPrototype.copyTo = function(target, targetOffset, sourceOffset, sourceLimit) {
+        var relative,
+            targetRelative;
+        if (!this.noAssert) {
+            if (!ByteBuffer.isByteBuffer(target))
+                throw TypeError("Illegal target: Not a ByteBuffer");
+        }
+        targetOffset = (targetRelative = typeof targetOffset === 'undefined') ? target.offset : targetOffset | 0;
+        sourceOffset = (relative = typeof sourceOffset === 'undefined') ? this.offset : sourceOffset | 0;
+        sourceLimit = typeof sourceLimit === 'undefined' ? this.limit : sourceLimit | 0;
+
+        if (targetOffset < 0 || targetOffset > target.buffer.byteLength)
+            throw RangeError("Illegal target range: 0 <= "+targetOffset+" <= "+target.buffer.byteLength);
+        if (sourceOffset < 0 || sourceLimit > this.buffer.byteLength)
+            throw RangeError("Illegal source range: 0 <= "+sourceOffset+" <= "+this.buffer.byteLength);
+
+        var len = sourceLimit - sourceOffset;
+        if (len === 0)
+            return target; // Nothing to copy
+
+        target.ensureCapacity(targetOffset + len);
+
+        target.view.set(this.view.subarray(sourceOffset, sourceLimit), targetOffset);
+
+        if (relative) this.offset += len;
+        if (targetRelative) target.offset += len;
+
+        return this;
+    };
+
+    /**
+     * Makes sure that this ByteBuffer is backed by a {@link ByteBuffer#buffer} of at least the specified capacity. If the
+     *  current capacity is exceeded, it will be doubled. If double the current capacity is less than the required capacity,
+     *  the required capacity will be used instead.
+     * @param {number} capacity Required capacity
+     * @returns {!ByteBuffer} this
+     * @expose
+     */
+    ByteBufferPrototype.ensureCapacity = function(capacity) {
+        var current = this.buffer.byteLength;
+        if (current < capacity)
+            return this.resize((current *= 2) > capacity ? current : capacity);
+        return this;
+    };
+
+    /**
+     * Overwrites this ByteBuffer's contents with the specified value. Contents are the bytes between
+     *  {@link ByteBuffer#offset} and {@link ByteBuffer#limit}.
+     * @param {number|string} value Byte value to fill with. If given as a string, the first character is used.
+     * @param {number=} begin Begin offset. Will use and increase {@link ByteBuffer#offset} by the number of bytes
+     *  written if omitted. defaults to {@link ByteBuffer#offset}.
+     * @param {number=} end End offset, defaults to {@link ByteBuffer#limit}.
+     * @returns {!ByteBuffer} this
+     * @expose
+     * @example `someByteBuffer.clear().fill(0)` fills the entire backing buffer with zeroes
+     */
+    ByteBufferPrototype.fill = function(value, begin, end) {
+        var relative = typeof begin === 'undefined';
+        if (relative) begin = this.offset;
+        if (typeof value === 'string' && value.length > 0)
+            value = value.charCodeAt(0);
+        if (typeof begin === 'undefined') begin = this.offset;
+        if (typeof end === 'undefined') end = this.limit;
+        if (!this.noAssert) {
+            if (typeof value !== 'number' || value % 1 !== 0)
+                throw TypeError("Illegal value: "+value+" (not an integer)");
+            value |= 0;
+            if (typeof begin !== 'number' || begin % 1 !== 0)
+                throw TypeError("Illegal begin: Not an integer");
+            begin >>>= 0;
+            if (typeof end !== 'number' || end % 1 !== 0)
+                throw TypeError("Illegal end: Not an integer");
+            end >>>= 0;
+            if (begin < 0 || begin > end || end > this.buffer.byteLength)
+                throw RangeError("Illegal range: 0 <= "+begin+" <= "+end+" <= "+this.buffer.byteLength);
+        }
+        if (begin >= end)
+            return this; // Nothing to fill
+        while (begin < end) this.view[begin++] = value;
+        if (relative) this.offset = begin;
+        return this;
+    };
+
+    /**
+     * Makes this ByteBuffer ready for a new sequence of write or relative read operations. Sets `limit = offset` and
+     *  `offset = 0`. Make sure always to flip a ByteBuffer when all relative read or write operations are complete.
+     * @returns {!ByteBuffer} this
+     * @expose
+     */
+    ByteBufferPrototype.flip = function() {
+        this.limit = this.offset;
+        this.offset = 0;
+        return this;
+    };
+    /**
+     * Marks an offset on this ByteBuffer to be used later.
+     * @param {number=} offset Offset to mark. Defaults to {@link ByteBuffer#offset}.
+     * @returns {!ByteBuffer} this
+     * @throws {TypeError} If `offset` is not a valid number
+     * @throws {RangeError} If `offset` is out of bounds
+     * @see ByteBuffer#reset
+     * @expose
+     */
+    ByteBufferPrototype.mark = function(offset) {
+        offset = typeof offset === 'undefined' ? this.offset : offset;
+        if (!this.noAssert) {
+            if (typeof offset !== 'number' || offset % 1 !== 0)
+                throw TypeError("Illegal offset: "+offset+" (not an integer)");
+            offset >>>= 0;
+            if (offset < 0 || offset + 0 > this.buffer.byteLength)
+                throw RangeError("Illegal offset: 0 <= "+offset+" (+"+0+") <= "+this.buffer.byteLength);
+        }
+        this.markedOffset = offset;
+        return this;
+    };
+    /**
+     * Sets the byte order.
+     * @param {boolean} littleEndian `true` for little endian byte order, `false` for big endian
+     * @returns {!ByteBuffer} this
+     * @expose
+     */
+    ByteBufferPrototype.order = function(littleEndian) {
+        if (!this.noAssert) {
+            if (typeof littleEndian !== 'boolean')
+                throw TypeError("Illegal littleEndian: Not a boolean");
+        }
+        this.littleEndian = !!littleEndian;
+        return this;
+    };
+
+    /**
+     * Switches (to) little endian byte order.
+     * @param {boolean=} littleEndian Defaults to `true`, otherwise uses big endian
+     * @returns {!ByteBuffer} this
+     * @expose
+     */
+    ByteBufferPrototype.LE = function(littleEndian) {
+        this.littleEndian = typeof littleEndian !== 'undefined' ? !!littleEndian : true;
+        return this;
+    };
+
+    /**
+     * Switches (to) big endian byte order.
+     * @param {boolean=} bigEndian Defaults to `true`, otherwise uses little endian
+     * @returns {!ByteBuffer} this
+     * @expose
+     */
+    ByteBufferPrototype.BE = function(bigEndian) {
+        this.littleEndian = typeof bigEndian !== 'undefined' ? !bigEndian : false;
+        return this;
+    };
+    /**
+     * Prepends some data to this ByteBuffer. This will overwrite any contents before the specified offset up to the
+     *  prepended data's length. If there is not enough space available before the specified `offset`, the backing buffer
+     *  will be resized and its contents moved accordingly.
+     * @param {!ByteBuffer|string|!ArrayBuffer} source Data to prepend. If `source` is a ByteBuffer, its offset will be
+     *  modified according to the performed read operation.
+     * @param {(string|number)=} encoding Encoding if `data` is a string ("base64", "hex", "binary", defaults to "utf8")
+     * @param {number=} offset Offset to prepend at. Will use and decrease {@link ByteBuffer#offset} by the number of bytes
+     *  prepended if omitted.
+     * @returns {!ByteBuffer} this
+     * @expose
+     * @example A relative `00<01 02 03>.prepend(<04 05>)` results in `<04 05 01 02 03>, 04 05|`
+     * @example An absolute `00<01 02 03>.prepend(<04 05>, 2)` results in `04<05 02 03>, 04 05|`
+     */
+    ByteBufferPrototype.prepend = function(source, encoding, offset) {
+        if (typeof encoding === 'number' || typeof encoding !== 'string') {
+            offset = encoding;
+            encoding = undefined;
+        }
+        var relative = typeof offset === 'undefined';
+        if (relative) offset = this.offset;
+        if (!this.noAssert) {
+            if (typeof offset !== 'number' || offset % 1 !== 0)
+                throw TypeError("Illegal offset: "+offset+" (not an integer)");
+            offset >>>= 0;
+            if (offset < 0 || offset + 0 > this.buffer.byteLength)
+                throw RangeError("Illegal offset: 0 <= "+offset+" (+"+0+") <= "+this.buffer.byteLength);
+        }
+        if (!(source instanceof ByteBuffer))
+            source = ByteBuffer.wrap(source, encoding);
+        var len = source.limit - source.offset;
+        if (len <= 0) return this; // Nothing to prepend
+        var diff = len - offset;
+        if (diff > 0) { // Not enough space before offset, so resize + move
+            var buffer = new ArrayBuffer(this.buffer.byteLength + diff);
+            var view = new Uint8Array(buffer);
+            view.set(this.view.subarray(offset, this.buffer.byteLength), len);
+            this.buffer = buffer;
+            this.view = view;
+            this.offset += diff;
+            if (this.markedOffset >= 0) this.markedOffset += diff;
+            this.limit += diff;
+            offset += diff;
+        } else {
+            var arrayView = new Uint8Array(this.buffer);
+        }
+        this.view.set(source.view.subarray(source.offset, source.limit), offset - len);
+
+        source.offset = source.limit;
+        if (relative)
+            this.offset -= len;
+        return this;
+    };
+
+    /**
+     * Prepends this ByteBuffer to another ByteBuffer. This will overwrite any contents before the specified offset up to the
+     *  prepended data's length. If there is not enough space available before the specified `offset`, the backing buffer
+     *  will be resized and its contents moved accordingly.
+     * @param {!ByteBuffer} target Target ByteBuffer
+     * @param {number=} offset Offset to prepend at. Will use and decrease {@link ByteBuffer#offset} by the number of bytes
+     *  prepended if omitted.
+     * @returns {!ByteBuffer} this
+     * @expose
+     * @see ByteBuffer#prepend
+     */
+    ByteBufferPrototype.prependTo = function(target, offset) {
+        target.prepend(this, offset);
+        return this;
+    };
+    /**
+     * Prints debug information about this ByteBuffer's contents.
+     * @param {function(string)=} out Output function to call, defaults to console.log
+     * @expose
+     */
+    ByteBufferPrototype.printDebug = function(out) {
+        if (typeof out !== 'function') out = console.log.bind(console);
+        out(
+            this.toString()+"\n"+
+            "-------------------------------------------------------------------\n"+
+            this.toDebug(/* columns */ true)
+        );
+    };
+
+    /**
+     * Gets the number of remaining readable bytes. Contents are the bytes between {@link ByteBuffer#offset} and
+     *  {@link ByteBuffer#limit}, so this returns `limit - offset`.
+     * @returns {number} Remaining readable bytes. May be negative if `offset > limit`.
+     * @expose
+     */
+    ByteBufferPrototype.remaining = function() {
+        return this.limit - this.offset;
+    };
+    /**
+     * Resets this ByteBuffer's {@link ByteBuffer#offset}. If an offset has been marked through {@link ByteBuffer#mark}
+     *  before, `offset` will be set to {@link ByteBuffer#markedOffset}, which will then be discarded. If no offset has been
+     *  marked, sets `offset = 0`.
+     * @returns {!ByteBuffer} this
+     * @see ByteBuffer#mark
+     * @expose
+     */
+    ByteBufferPrototype.reset = function() {
+        if (this.markedOffset >= 0) {
+            this.offset = this.markedOffset;
+            this.markedOffset = -1;
+        } else {
+            this.offset = 0;
+        }
+        return this;
+    };
+    /**
+     * Resizes this ByteBuffer to be backed by a buffer of at least the given capacity. Will do nothing if already that
+     *  large or larger.
+     * @param {number} capacity Capacity required
+     * @returns {!ByteBuffer} this
+     * @throws {TypeError} If `capacity` is not a number
+     * @throws {RangeError} If `capacity < 0`
+     * @expose
+     */
+    ByteBufferPrototype.resize = function(capacity) {
+        if (!this.noAssert) {
+            if (typeof capacity !== 'number' || capacity % 1 !== 0)
+                throw TypeError("Illegal capacity: "+capacity+" (not an integer)");
+            capacity |= 0;
+            if (capacity < 0)
+                throw RangeError("Illegal capacity: 0 <= "+capacity);
+        }
+        if (this.buffer.byteLength < capacity) {
+            var buffer = new ArrayBuffer(capacity);
+            var view = new Uint8Array(buffer);
+            view.set(this.view);
+            this.buffer = buffer;
+            this.view = view;
+        }
+        return this;
+    };
+    /**
+     * Reverses this ByteBuffer's contents.
+     * @param {number=} begin Offset to start at, defaults to {@link ByteBuffer#offset}
+     * @param {number=} end Offset to end at, defaults to {@link ByteBuffer#limit}
+     * @returns {!ByteBuffer} this
+     * @expose
+     */
+    ByteBufferPrototype.reverse = function(begin, end) {
+        if (typeof begin === 'undefined') begin = this.offset;
+        if (typeof end === 'undefined') end = this.limit;
+        if (!this.noAssert) {
+            if (typeof begin !== 'number' || begin % 1 !== 0)
+                throw TypeError("Illegal begin: Not an integer");
+            begin >>>= 0;
+            if (typeof end !== 'number' || end % 1 !== 0)
+                throw TypeError("Illegal end: Not an integer");
+            end >>>= 0;
+            if (begin < 0 || begin > end || end > this.buffer.byteLength)
+                throw RangeError("Illegal range: 0 <= "+begin+" <= "+end+" <= "+this.buffer.byteLength);
+        }
+        if (begin === end)
+            return this; // Nothing to reverse
+        Array.prototype.reverse.call(this.view.subarray(begin, end));
+        return this;
+    };
+    /**
+     * Skips the next `length` bytes. This will just advance
+     * @param {number} length Number of bytes to skip. May also be negative to move the offset back.
+     * @returns {!ByteBuffer} this
+     * @expose
+     */
+    ByteBufferPrototype.skip = function(length) {
+        if (!this.noAssert) {
+            if (typeof length !== 'number' || length % 1 !== 0)
+                throw TypeError("Illegal length: "+length+" (not an integer)");
+            length |= 0;
+        }
+        var offset = this.offset + length;
+        if (!this.noAssert) {
+            if (offset < 0 || offset > this.buffer.byteLength)
+                throw RangeError("Illegal length: 0 <= "+this.offset+" + "+length+" <= "+this.buffer.byteLength);
+        }
+        this.offset = offset;
+        return this;
+    };
+
+    /**
+     * Slices this ByteBuffer by creating a cloned instance with `offset = begin` and `limit = end`.
+     * @param {number=} begin Begin offset, defaults to {@link ByteBuffer#offset}.
+     * @param {number=} end End offset, defaults to {@link ByteBuffer#limit}.
+     * @returns {!ByteBuffer} Clone of this ByteBuffer with slicing applied, backed by the same {@link ByteBuffer#buffer}
+     * @expose
+     */
+    ByteBufferPrototype.slice = function(begin, end) {
+        if (typeof begin === 'undefined') begin = this.offset;
+        if (typeof end === 'undefined') end = this.limit;
+        if (!this.noAssert) {
+            if (typeof begin !== 'number' || begin % 1 !== 0)
+                throw TypeError("Illegal begin: Not an integer");
+            begin >>>= 0;
+            if (typeof end !== 'number' || end % 1 !== 0)
+                throw TypeError("Illegal end: Not an integer");
+            end >>>= 0;
+            if (begin < 0 || begin > end || end > this.buffer.byteLength)
+                throw RangeError("Illegal range: 0 <= "+begin+" <= "+end+" <= "+this.buffer.byteLength);
+        }
+        var bb = this.clone();
+        bb.offset = begin;
+        bb.limit = end;
+        return bb;
+    };
+    /**
+     * Returns a copy of the backing buffer that contains this ByteBuffer's contents. Contents are the bytes between
+     *  {@link ByteBuffer#offset} and {@link ByteBuffer#limit}.
+     * @param {boolean=} forceCopy If `true` returns a copy, otherwise returns a view referencing the same memory if
+     *  possible. Defaults to `false`
+     * @returns {!ArrayBuffer} Contents as an ArrayBuffer
+     * @expose
+     */
+    ByteBufferPrototype.toBuffer = function(forceCopy) {
+        var offset = this.offset,
+            limit = this.limit;
+        if (!this.noAssert) {
+            if (typeof offset !== 'number' || offset % 1 !== 0)
+                throw TypeError("Illegal offset: Not an integer");
+            offset >>>= 0;
+            if (typeof limit !== 'number' || limit % 1 !== 0)
+                throw TypeError("Illegal limit: Not an integer");
+            limit >>>= 0;
+            if (offset < 0 || offset > limit || limit > this.buffer.byteLength)
+                throw RangeError("Illegal range: 0 <= "+offset+" <= "+limit+" <= "+this.buffer.byteLength);
+        }
+        // NOTE: It's not possible to have another ArrayBuffer reference the same memory as the backing buffer. This is
+        // possible with Uint8Array#subarray only, but we have to return an ArrayBuffer by contract. So:
+        if (!forceCopy && offset === 0 && limit === this.buffer.byteLength)
+            return this.buffer;
+        if (offset === limit)
+            return EMPTY_BUFFER;
+        var buffer = new ArrayBuffer(limit - offset);
+        new Uint8Array(buffer).set(new Uint8Array(this.buffer).subarray(offset, limit), 0);
+        return buffer;
+    };
+
+    /**
+     * Returns a raw buffer compacted to contain this ByteBuffer's contents. Contents are the bytes between
+     *  {@link ByteBuffer#offset} and {@link ByteBuffer#limit}. This is an alias of {@link ByteBuffer#toBuffer}.
+     * @function
+     * @param {boolean=} forceCopy If `true` returns a copy, otherwise returns a view referencing the same memory.
+     *  Defaults to `false`
+     * @returns {!ArrayBuffer} Contents as an ArrayBuffer
+     * @expose
+     */
+    ByteBufferPrototype.toArrayBuffer = ByteBufferPrototype.toBuffer;
+
+    /**
+     * Converts the ByteBuffer's contents to a string.
+     * @param {string=} encoding Output encoding. Returns an informative string representation if omitted but also allows
+     *  direct conversion to "utf8", "hex", "base64" and "binary" encoding. "debug" returns a hex representation with
+     *  highlighted offsets.
+     * @param {number=} begin Offset to begin at, defaults to {@link ByteBuffer#offset}
+     * @param {number=} end Offset to end at, defaults to {@link ByteBuffer#limit}
+     * @returns {string} String representation
+     * @throws {Error} If `encoding` is invalid
+     * @expose
+     */
+    ByteBufferPrototype.toString = function(encoding, begin, end) {
+        if (typeof encoding === 'undefined')
+            return "ByteBufferAB(offset="+this.offset+",markedOffset="+this.markedOffset+",limit="+this.limit+",capacity="+this.capacity()+")";
+        if (typeof encoding === 'number')
+            encoding = "utf8",
+            begin = encoding,
+            end = begin;
+        switch (encoding) {
+            case "utf8":
+                return this.toUTF8(begin, end);
+            case "base64":
+                return this.toBase64(begin, end);
+            case "hex":
+                return this.toHex(begin, end);
+            case "binary":
+                return this.toBinary(begin, end);
+            case "debug":
+                return this.toDebug();
+            case "columns":
+                return this.toColumns();
+            default:
+                throw Error("Unsupported encoding: "+encoding);
+        }
+    };
+
+    // lxiv-embeddable
+
+    /**
+     * lxiv-embeddable (c) 2014 Daniel Wirtz <dcode@dcode.io>
+     * Released under the Apache License, Version 2.0
+     * see: https://github.com/dcodeIO/lxiv for details
+     */
+    var lxiv = function() {
+        "use strict";
+
+        /**
+         * lxiv namespace.
+         * @type {!Object.<string,*>}
+         * @exports lxiv
+         */
+        var lxiv = {};
+
+        /**
+         * Character codes for output.
+         * @type {!Array.<number>}
+         * @inner
+         */
+        var aout = [
+            65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80,
+            81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 97, 98, 99, 100, 101, 102,
+            103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118,
+            119, 120, 121, 122, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 43, 47
+        ];
+
+        /**
+         * Character codes for input.
+         * @type {!Array.<number>}
+         * @inner
+         */
+        var ain = [];
+        for (var i=0, k=aout.length; i<k; ++i)
+            ain[aout[i]] = i;
+
+        /**
+         * Encodes bytes to base64 char codes.
+         * @param {!function():number|null} src Bytes source as a function returning the next byte respectively `null` if
+         *  there are no more bytes left.
+         * @param {!function(number)} dst Characters destination as a function successively called with each encoded char
+         *  code.
+         */
+        lxiv.encode = function(src, dst) {
+            var b, t;
+            while ((b = src()) !== null) {
+                dst(aout[(b>>2)&0x3f]);
+                t = (b&0x3)<<4;
+                if ((b = src()) !== null) {
+                    t |= (b>>4)&0xf;
+                    dst(aout[(t|((b>>4)&0xf))&0x3f]);
+                    t = (b&0xf)<<2;
+                    if ((b = src()) !== null)
+                        dst(aout[(t|((b>>6)&0x3))&0x3f]),
+                        dst(aout[b&0x3f]);
+                    else
+                        dst(aout[t&0x3f]),
+                        dst(61);
+                } else
+                    dst(aout[t&0x3f]),
+                    dst(61),
+                    dst(61);
+            }
+        };
+
+        /**
+         * Decodes base64 char codes to bytes.
+         * @param {!function():number|null} src Characters source as a function returning the next char code respectively
+         *  `null` if there are no more characters left.
+         * @param {!function(number)} dst Bytes destination as a function successively called with the next byte.
+         * @throws {Error} If a character code is invalid
+         */
+        lxiv.decode = function(src, dst) {
+            var c, t1, t2;
+            function fail(c) {
+                throw Error("Illegal character code: "+c);
+            }
+            while ((c = src()) !== null) {
+                t1 = ain[c];
+                if (typeof t1 === 'undefined') fail(c);
+                if ((c = src()) !== null) {
+                    t2 = ain[c];
+                    if (typeof t2 === 'undefined') fail(c);
+                    dst((t1<<2)>>>0|(t2&0x30)>>4);
+                    if ((c = src()) !== null) {
+                        t1 = ain[c];
+                        if (typeof t1 === 'undefined')
+                            if (c === 61) break; else fail(c);
+                        dst(((t2&0xf)<<4)>>>0|(t1&0x3c)>>2);
+                        if ((c = src()) !== null) {
+                            t2 = ain[c];
+                            if (typeof t2 === 'undefined')
+                                if (c === 61) break; else fail(c);
+                            dst(((t1&0x3)<<6)>>>0|t2);
+                        }
+                    }
+                }
+            }
+        };
+
+        /**
+         * Tests if a string is valid base64.
+         * @param {string} str String to test
+         * @returns {boolean} `true` if valid, otherwise `false`
+         */
+        lxiv.test = function(str) {
+            return /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(str);
+        };
+
+        return lxiv;
+    }();
+
+    // encodings/base64
+
+    /**
+     * Encodes this ByteBuffer's contents to a base64 encoded string.
+     * @param {number=} begin Offset to begin at, defaults to {@link ByteBuffer#offset}.
+     * @param {number=} end Offset to end at, defaults to {@link ByteBuffer#limit}.
+     * @returns {string} Base64 encoded string
+     * @throws {RangeError} If `begin` or `end` is out of bounds
+     * @expose
+     */
+    ByteBufferPrototype.toBase64 = function(begin, end) {
+        if (typeof begin === 'undefined')
+            begin = this.offset;
+        if (typeof end === 'undefined')
+            end = this.limit;
+        begin = begin | 0; end = end | 0;
+        if (begin < 0 || end > this.capacity || begin > end)
+            throw RangeError("begin, end");
+        var sd; lxiv.encode(function() {
+            return begin < end ? this.view[begin++] : null;
+        }.bind(this), sd = stringDestination());
+        return sd();
+    };
+
+    /**
+     * Decodes a base64 encoded string to a ByteBuffer.
+     * @param {string} str String to decode
+     * @param {boolean=} littleEndian Whether to use little or big endian byte order. Defaults to
+     *  {@link ByteBuffer.DEFAULT_ENDIAN}.
+     * @returns {!ByteBuffer} ByteBuffer
+     * @expose
+     */
+    ByteBuffer.fromBase64 = function(str, littleEndian) {
+        if (typeof str !== 'string')
+            throw TypeError("str");
+        var bb = new ByteBuffer(str.length/4*3, littleEndian),
+            i = 0;
+        lxiv.decode(stringSource(str), function(b) {
+            bb.view[i++] = b;
+        });
+        bb.limit = i;
+        return bb;
+    };
+
+    /**
+     * Encodes a binary string to base64 like `window.btoa` does.
+     * @param {string} str Binary string
+     * @returns {string} Base64 encoded string
+     * @see https://developer.mozilla.org/en-US/docs/Web/API/Window.btoa
+     * @expose
+     */
+    ByteBuffer.btoa = function(str) {
+        return ByteBuffer.fromBinary(str).toBase64();
+    };
+
+    /**
+     * Decodes a base64 encoded string to binary like `window.atob` does.
+     * @param {string} b64 Base64 encoded string
+     * @returns {string} Binary string
+     * @see https://developer.mozilla.org/en-US/docs/Web/API/Window.atob
+     * @expose
+     */
+    ByteBuffer.atob = function(b64) {
+        return ByteBuffer.fromBase64(b64).toBinary();
+    };
+
+    // encodings/binary
+
+    /**
+     * Encodes this ByteBuffer to a binary encoded string, that is using only characters 0x00-0xFF as bytes.
+     * @param {number=} begin Offset to begin at. Defaults to {@link ByteBuffer#offset}.
+     * @param {number=} end Offset to end at. Defaults to {@link ByteBuffer#limit}.
+     * @returns {string} Binary encoded string
+     * @throws {RangeError} If `offset > limit`
+     * @expose
+     */
+    ByteBufferPrototype.toBinary = function(begin, end) {
+        if (typeof begin === 'undefined')
+            begin = this.offset;
+        if (typeof end === 'undefined')
+            end = this.limit;
+        begin |= 0; end |= 0;
+        if (begin < 0 || end > this.capacity() || begin > end)
+            throw RangeError("begin, end");
+        if (begin === end)
+            return "";
+        var chars = [],
+            parts = [];
+        while (begin < end) {
+            chars.push(this.view[begin++]);
+            if (chars.length >= 1024)
+                parts.push(String.fromCharCode.apply(String, chars)),
+                chars = [];
+        }
+        return parts.join('') + String.fromCharCode.apply(String, chars);
+    };
+
+    /**
+     * Decodes a binary encoded string, that is using only characters 0x00-0xFF as bytes, to a ByteBuffer.
+     * @param {string} str String to decode
+     * @param {boolean=} littleEndian Whether to use little or big endian byte order. Defaults to
+     *  {@link ByteBuffer.DEFAULT_ENDIAN}.
+     * @returns {!ByteBuffer} ByteBuffer
+     * @expose
+     */
+    ByteBuffer.fromBinary = function(str, littleEndian) {
+        if (typeof str !== 'string')
+            throw TypeError("str");
+        var i = 0,
+            k = str.length,
+            charCode,
+            bb = new ByteBuffer(k, littleEndian);
+        while (i<k) {
+            charCode = str.charCodeAt(i);
+            if (charCode > 0xff)
+                throw RangeError("illegal char code: "+charCode);
+            bb.view[i++] = charCode;
+        }
+        bb.limit = k;
+        return bb;
+    };
+
+    // encodings/debug
+
+    /**
+     * Encodes this ByteBuffer to a hex encoded string with marked offsets. Offset symbols are:
+     * * `<` : offset,
+     * * `'` : markedOffset,
+     * * `>` : limit,
+     * * `|` : offset and limit,
+     * * `[` : offset and markedOffset,
+     * * `]` : markedOffset and limit,
+     * * `!` : offset, markedOffset and limit
+     * @param {boolean=} columns If `true` returns two columns hex + ascii, defaults to `false`
+     * @returns {string|!Array.<string>} Debug string or array of lines if `asArray = true`
+     * @expose
+     * @example `>00'01 02<03` contains four bytes with `limit=0, markedOffset=1, offset=3`
+     * @example `00[01 02 03>` contains four bytes with `offset=markedOffset=1, limit=4`
+     * @example `00|01 02 03` contains four bytes with `offset=limit=1, markedOffset=-1`
+     * @example `|` contains zero bytes with `offset=limit=0, markedOffset=-1`
+     */
+    ByteBufferPrototype.toDebug = function(columns) {
+        var i = -1,
+            k = this.buffer.byteLength,
+            b,
+            hex = "",
+            asc = "",
+            out = "";
+        while (i<k) {
+            if (i !== -1) {
+                b = this.view[i];
+                if (b < 0x10) hex += "0"+b.toString(16).toUpperCase();
+                else hex += b.toString(16).toUpperCase();
+                if (columns)
+                    asc += b > 32 && b < 127 ? String.fromCharCode(b) : '.';
+            }
+            ++i;
+            if (columns) {
+                if (i > 0 && i % 16 === 0 && i !== k) {
+                    while (hex.length < 3*16+3) hex += " ";
+                    out += hex+asc+"\n";
+                    hex = asc = "";
+                }
+            }
+            if (i === this.offset && i === this.limit)
+                hex += i === this.markedOffset ? "!" : "|";
+            else if (i === this.offset)
+                hex += i === this.markedOffset ? "[" : "<";
+            else if (i === this.limit)
+                hex += i === this.markedOffset ? "]" : ">";
+            else
+                hex += i === this.markedOffset ? "'" : (columns || (i !== 0 && i !== k) ? " " : "");
+        }
+        if (columns && hex !== " ") {
+            while (hex.length < 3*16+3)
+                hex += " ";
+            out += hex + asc + "\n";
+        }
+        return columns ? out : hex;
+    };
+
+    /**
+     * Decodes a hex encoded string with marked offsets to a ByteBuffer.
+     * @param {string} str Debug string to decode (not be generated with `columns = true`)
+     * @param {boolean=} littleEndian Whether to use little or big endian byte order. Defaults to
+     *  {@link ByteBuffer.DEFAULT_ENDIAN}.
+     * @param {boolean=} noAssert Whether to skip assertions of offsets and values. Defaults to
+     *  {@link ByteBuffer.DEFAULT_NOASSERT}.
+     * @returns {!ByteBuffer} ByteBuffer
+     * @expose
+     * @see ByteBuffer#toDebug
+     */
+    ByteBuffer.fromDebug = function(str, littleEndian, noAssert) {
+        var k = str.length,
+            bb = new ByteBuffer(((k+1)/3)|0, littleEndian, noAssert);
+        var i = 0, j = 0, ch, b,
+            rs = false, // Require symbol next
+            ho = false, hm = false, hl = false, // Already has offset (ho), markedOffset (hm), limit (hl)?
+            fail = false;
+        while (i<k) {
+            switch (ch = str.charAt(i++)) {
+                case '!':
+                    if (!noAssert) {
+                        if (ho || hm || hl) {
+                            fail = true;
+                            break;
+                        }
+                        ho = hm = hl = true;
+                    }
+                    bb.offset = bb.markedOffset = bb.limit = j;
+                    rs = false;
+                    break;
+                case '|':
+                    if (!noAssert) {
+                        if (ho || hl) {
+                            fail = true;
+                            break;
+                        }
+                        ho = hl = true;
+                    }
+                    bb.offset = bb.limit = j;
+                    rs = false;
+                    break;
+                case '[':
+                    if (!noAssert) {
+                        if (ho || hm) {
+                            fail = true;
+                            break;
+                        }
+                        ho = hm = true;
+                    }
+                    bb.offset = bb.markedOffset = j;
+                    rs = false;
+                    break;
+                case '<':
+                    if (!noAssert) {
+                        if (ho) {
+                            fail = true;
+                            break;
+                        }
+                        ho = true;
+                    }
+                    bb.offset = j;
+                    rs = false;
+                    break;
+                case ']':
+                    if (!noAssert) {
+                        if (hl || hm) {
+                            fail = true;
+                            break;
+                        }
+                        hl = hm = true;
+                    }
+                    bb.limit = bb.markedOffset = j;
+                    rs = false;
+                    break;
+                case '>':
+                    if (!noAssert) {
+                        if (hl) {
+                            fail = true;
+                            break;
+                        }
+                        hl = true;
+                    }
+                    bb.limit = j;
+                    rs = false;
+                    break;
+                case "'":
+                    if (!noAssert) {
+                        if (hm) {
+                            fail = true;
+                            break;
+                        }
+                        hm = true;
+                    }
+                    bb.markedOffset = j;
+                    rs = false;
+                    break;
+                case ' ':
+                    rs = false;
+                    break;
+                default:
+                    if (!noAssert) {
+                        if (rs) {
+                            fail = true;
+                            break;
+                        }
+                    }
+                    b = parseInt(ch+str.charAt(i++), 16);
+                    if (!noAssert) {
+                        if (isNaN(b) || b < 0 || b > 255)
+                            throw TypeError("Illegal str: Not a debug encoded string");
+                    }
+                    bb.view[j++] = b;
+                    rs = true;
+            }
+            if (fail)
+                throw TypeError("Illegal str: Invalid symbol at "+i);
+        }
+        if (!noAssert) {
+            if (!ho || !hl)
+                throw TypeError("Illegal str: Missing offset or limit");
+            if (j<bb.buffer.byteLength)
+                throw TypeError("Illegal str: Not a debug encoded string (is it hex?) "+j+" < "+k);
+        }
+        return bb;
+    };
+
+    // encodings/hex
+
+    /**
+     * Encodes this ByteBuffer's contents to a hex encoded string.
+     * @param {number=} begin Offset to begin at. Defaults to {@link ByteBuffer#offset}.
+     * @param {number=} end Offset to end at. Defaults to {@link ByteBuffer#limit}.
+     * @returns {string} Hex encoded string
+     * @expose
+     */
+    ByteBufferPrototype.toHex = function(begin, end) {
+        begin = typeof begin === 'undefined' ? this.offset : begin;
+        end = typeof end === 'undefined' ? this.limit : end;
+        if (!this.noAssert) {
+            if (typeof begin !== 'number' || begin % 1 !== 0)
+                throw TypeError("Illegal begin: Not an integer");
+            begin >>>= 0;
+            if (typeof end !== 'number' || end % 1 !== 0)
+                throw TypeError("Illegal end: Not an integer");
+            end >>>= 0;
+            if (begin < 0 || begin > end || end > this.buffer.byteLength)
+                throw RangeError("Illegal range: 0 <= "+begin+" <= "+end+" <= "+this.buffer.byteLength);
+        }
+        var out = new Array(end - begin),
+            b;
+        while (begin < end) {
+            b = this.view[begin++];
+            if (b < 0x10)
+                out.push("0", b.toString(16));
+            else out.push(b.toString(16));
+        }
+        return out.join('');
+    };
+
+    /**
+     * Decodes a hex encoded string to a ByteBuffer.
+     * @param {string} str String to decode
+     * @param {boolean=} littleEndian Whether to use little or big endian byte order. Defaults to
+     *  {@link ByteBuffer.DEFAULT_ENDIAN}.
+     * @param {boolean=} noAssert Whether to skip assertions of offsets and values. Defaults to
+     *  {@link ByteBuffer.DEFAULT_NOASSERT}.
+     * @returns {!ByteBuffer} ByteBuffer
+     * @expose
+     */
+    ByteBuffer.fromHex = function(str, littleEndian, noAssert) {
+        if (!noAssert) {
+            if (typeof str !== 'string')
+                throw TypeError("Illegal str: Not a string");
+            if (str.length % 2 !== 0)
+                throw TypeError("Illegal str: Length not a multiple of 2");
+        }
+        var k = str.length,
+            bb = new ByteBuffer((k / 2) | 0, littleEndian),
+            b;
+        for (var i=0, j=0; i<k; i+=2) {
+            b = parseInt(str.substring(i, i+2), 16);
+            if (!noAssert)
+                if (!isFinite(b) || b < 0 || b > 255)
+                    throw TypeError("Illegal str: Contains non-hex characters");
+            bb.view[j++] = b;
+        }
+        bb.limit = j;
+        return bb;
+    };
+
+    // utfx-embeddable
+
+    /**
+     * utfx-embeddable (c) 2014 Daniel Wirtz <dcode@dcode.io>
+     * Released under the Apache License, Version 2.0
+     * see: https://github.com/dcodeIO/utfx for details
+     */
+    var utfx = function() {
+        "use strict";
+
+        /**
+         * utfx namespace.
+         * @inner
+         * @type {!Object.<string,*>}
+         */
+        var utfx = {};
+
+        /**
+         * Maximum valid code point.
+         * @type {number}
+         * @const
+         */
+        utfx.MAX_CODEPOINT = 0x10FFFF;
+
+        /**
+         * Encodes UTF8 code points to UTF8 bytes.
+         * @param {(!function():number|null) | number} src Code points source, either as a function returning the next code point
+         *  respectively `null` if there are no more code points left or a single numeric code point.
+         * @param {!function(number)} dst Bytes destination as a function successively called with the next byte
+         */
+        utfx.encodeUTF8 = function(src, dst) {
+            var cp = null;
+            if (typeof src === 'number')
+                cp = src,
+                src = function() { return null; };
+            while (cp !== null || (cp = src()) !== null) {
+                if (cp < 0x80)
+                    dst(cp&0x7F);
+                else if (cp < 0x800)
+                    dst(((cp>>6)&0x1F)|0xC0),
+                    dst((cp&0x3F)|0x80);
+                else if (cp < 0x10000)
+                    dst(((cp>>12)&0x0F)|0xE0),
+                    dst(((cp>>6)&0x3F)|0x80),
+                    dst((cp&0x3F)|0x80);
+                else
+                    dst(((cp>>18)&0x07)|0xF0),
+                    dst(((cp>>12)&0x3F)|0x80),
+                    dst(((cp>>6)&0x3F)|0x80),
+                    dst((cp&0x3F)|0x80);
+                cp = null;
+            }
+        };
+
+        /**
+         * Decodes UTF8 bytes to UTF8 code points.
+         * @param {!function():number|null} src Bytes source as a function returning the next byte respectively `null` if there
+         *  are no more bytes left.
+         * @param {!function(number)} dst Code points destination as a function successively called with each decoded code point.
+         * @throws {RangeError} If a starting byte is invalid in UTF8
+         * @throws {Error} If the last sequence is truncated. Has an array property `bytes` holding the
+         *  remaining bytes.
+         */
+        utfx.decodeUTF8 = function(src, dst) {
+            var a, b, c, d, fail = function(b) {
+                b = b.slice(0, b.indexOf(null));
+                var err = Error(b.toString());
+                err.name = "TruncatedError";
+                err['bytes'] = b;
+                throw err;
+            };
+            while ((a = src()) !== null) {
+                if ((a&0x80) === 0)
+                    dst(a);
+                else if ((a&0xE0) === 0xC0)
+                    ((b = src()) === null) && fail([a, b]),
+                    dst(((a&0x1F)<<6) | (b&0x3F));
+                else if ((a&0xF0) === 0xE0)
+                    ((b=src()) === null || (c=src()) === null) && fail([a, b, c]),
+                    dst(((a&0x0F)<<12) | ((b&0x3F)<<6) | (c&0x3F));
+                else if ((a&0xF8) === 0xF0)
+                    ((b=src()) === null || (c=src()) === null || (d=src()) === null) && fail([a, b, c ,d]),
+                    dst(((a&0x07)<<18) | ((b&0x3F)<<12) | ((c&0x3F)<<6) | (d&0x3F));
+                else throw RangeError("Illegal starting byte: "+a);
+            }
+        };
+
+        /**
+         * Converts UTF16 characters to UTF8 code points.
+         * @param {!function():number|null} src Characters source as a function returning the next char code respectively
+         *  `null` if there are no more characters left.
+         * @param {!function(number)} dst Code points destination as a function successively called with each converted code
+         *  point.
+         */
+        utfx.UTF16toUTF8 = function(src, dst) {
+            var c1, c2 = null;
+            while (true) {
+                if ((c1 = c2 !== null ? c2 : src()) === null)
+                    break;
+                if (c1 >= 0xD800 && c1 <= 0xDFFF) {
+                    if ((c2 = src()) !== null) {
+                        if (c2 >= 0xDC00 && c2 <= 0xDFFF) {
+                            dst((c1-0xD800)*0x400+c2-0xDC00+0x10000);
+                            c2 = null; continue;
+                        }
+                    }
+                }
+                dst(c1);
+            }
+            if (c2 !== null) dst(c2);
+        };
+
+        /**
+         * Converts UTF8 code points to UTF16 characters.
+         * @param {(!function():number|null) | number} src Code points source, either as a function returning the next code point
+         *  respectively `null` if there are no more code points left or a single numeric code point.
+         * @param {!function(number)} dst Characters destination as a function successively called with each converted char code.
+         * @throws {RangeError} If a code point is out of range
+         */
+        utfx.UTF8toUTF16 = function(src, dst) {
+            var cp = null;
+            if (typeof src === 'number')
+                cp = src, src = function() { return null; };
+            while (cp !== null || (cp = src()) !== null) {
+                if (cp <= 0xFFFF)
+                    dst(cp);
+                else
+                    cp -= 0x10000,
+                    dst((cp>>10)+0xD800),
+                    dst((cp%0x400)+0xDC00);
+                cp = null;
+            }
+        };
+
+        /**
+         * Converts and encodes UTF16 characters to UTF8 bytes.
+         * @param {!function():number|null} src Characters source as a function returning the next char code respectively `null`
+         *  if there are no more characters left.
+         * @param {!function(number)} dst Bytes destination as a function successively called with the next byte.
+         */
+        utfx.encodeUTF16toUTF8 = function(src, dst) {
+            utfx.UTF16toUTF8(src, function(cp) {
+                utfx.encodeUTF8(cp, dst);
+            });
+        };
+
+        /**
+         * Decodes and converts UTF8 bytes to UTF16 characters.
+         * @param {!function():number|null} src Bytes source as a function returning the next byte respectively `null` if there
+         *  are no more bytes left.
+         * @param {!function(number)} dst Characters destination as a function successively called with each converted char code.
+         * @throws {RangeError} If a starting byte is invalid in UTF8
+         * @throws {Error} If the last sequence is truncated. Has an array property `bytes` holding the remaining bytes.
+         */
+        utfx.decodeUTF8toUTF16 = function(src, dst) {
+            utfx.decodeUTF8(src, function(cp) {
+                utfx.UTF8toUTF16(cp, dst);
+            });
+        };
+
+        /**
+         * Calculates the byte length of an UTF8 code point.
+         * @param {number} cp UTF8 code point
+         * @returns {number} Byte length
+         */
+        utfx.calculateCodePoint = function(cp) {
+            return (cp < 0x80) ? 1 : (cp < 0x800) ? 2 : (cp < 0x10000) ? 3 : 4;
+        };
+
+        /**
+         * Calculates the number of UTF8 bytes required to store UTF8 code points.
+         * @param {(!function():number|null)} src Code points source as a function returning the next code point respectively
+         *  `null` if there are no more code points left.
+         * @returns {number} The number of UTF8 bytes required
+         */
+        utfx.calculateUTF8 = function(src) {
+            var cp, l=0;
+            while ((cp = src()) !== null)
+                l += (cp < 0x80) ? 1 : (cp < 0x800) ? 2 : (cp < 0x10000) ? 3 : 4;
+            return l;
+        };
+
+        /**
+         * Calculates the number of UTF8 code points respectively UTF8 bytes required to store UTF16 char codes.
+         * @param {(!function():number|null)} src Characters source as a function returning the next char code respectively
+         *  `null` if there are no more characters left.
+         * @returns {!Array.<number>} The number of UTF8 code points at index 0 and the number of UTF8 bytes required at index 1.
+         */
+        utfx.calculateUTF16asUTF8 = function(src) {
+            var n=0, l=0;
+            utfx.UTF16toUTF8(src, function(cp) {
+                ++n; l += (cp < 0x80) ? 1 : (cp < 0x800) ? 2 : (cp < 0x10000) ? 3 : 4;
+            });
+            return [n,l];
+        };
+
+        return utfx;
+    }();
+
+    // encodings/utf8
+
+    /**
+     * Encodes this ByteBuffer's contents between {@link ByteBuffer#offset} and {@link ByteBuffer#limit} to an UTF8 encoded
+     *  string.
+     * @returns {string} Hex encoded string
+     * @throws {RangeError} If `offset > limit`
+     * @expose
+     */
+    ByteBufferPrototype.toUTF8 = function(begin, end) {
+        if (typeof begin === 'undefined') begin = this.offset;
+        if (typeof end === 'undefined') end = this.limit;
+        if (!this.noAssert) {
+            if (typeof begin !== 'number' || begin % 1 !== 0)
+                throw TypeError("Illegal begin: Not an integer");
+            begin >>>= 0;
+            if (typeof end !== 'number' || end % 1 !== 0)
+                throw TypeError("Illegal end: Not an integer");
+            end >>>= 0;
+            if (begin < 0 || begin > end || end > this.buffer.byteLength)
+                throw RangeError("Illegal range: 0 <= "+begin+" <= "+end+" <= "+this.buffer.byteLength);
+        }
+        var sd; try {
+            utfx.decodeUTF8toUTF16(function() {
+                return begin < end ? this.view[begin++] : null;
+            }.bind(this), sd = stringDestination());
+        } catch (e) {
+            if (begin !== end)
+                throw RangeError("Illegal range: Truncated data, "+begin+" != "+end);
+        }
+        return sd();
+    };
+
+    /**
+     * Decodes an UTF8 encoded string to a ByteBuffer.
+     * @param {string} str String to decode
+     * @param {boolean=} littleEndian Whether to use little or big endian byte order. Defaults to
+     *  {@link ByteBuffer.DEFAULT_ENDIAN}.
+     * @param {boolean=} noAssert Whether to skip assertions of offsets and values. Defaults to
+     *  {@link ByteBuffer.DEFAULT_NOASSERT}.
+     * @returns {!ByteBuffer} ByteBuffer
+     * @expose
+     */
+    ByteBuffer.fromUTF8 = function(str, littleEndian, noAssert) {
+        if (!noAssert)
+            if (typeof str !== 'string')
+                throw TypeError("Illegal str: Not a string");
+        var bb = new ByteBuffer(utfx.calculateUTF16asUTF8(stringSource(str), true)[1], littleEndian, noAssert),
+            i = 0;
+        utfx.encodeUTF16toUTF8(stringSource(str), function(b) {
+            bb.view[i++] = b;
+        });
+        bb.limit = i;
+        return bb;
+    };
+
+    return ByteBuffer;
+});
+
+
+/***/ }),
+
 /***/ "./node_modules/debug/src/browser.js":
 /*!*******************************************!*\
   !*** ./node_modules/debug/src/browser.js ***!
@@ -934,6 +4687,1225 @@ try {
   // when trying to create
   module.exports = false;
 }
+
+
+/***/ }),
+
+/***/ "./node_modules/long/dist/long.js":
+/*!****************************************!*\
+  !*** ./node_modules/long/dist/long.js ***!
+  \****************************************/
+/***/ (function(module, exports) {
+
+var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;/*
+ Copyright 2013 Daniel Wirtz <dcode@dcode.io>
+ Copyright 2009 The Closure Library Authors. All Rights Reserved.
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+ http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS-IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+ */
+
+/**
+ * @license long.js (c) 2013 Daniel Wirtz <dcode@dcode.io>
+ * Released under the Apache License, Version 2.0
+ * see: https://github.com/dcodeIO/long.js for details
+ */
+(function(global, factory) {
+
+    /* AMD */ if (true)
+        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory),
+		__WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ?
+		(__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__),
+		__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+    /* CommonJS */ else {}
+
+})(this, function() {
+    "use strict";
+
+    /**
+     * Constructs a 64 bit two's-complement integer, given its low and high 32 bit values as *signed* integers.
+     *  See the from* functions below for more convenient ways of constructing Longs.
+     * @exports Long
+     * @class A Long class for representing a 64 bit two's-complement integer value.
+     * @param {number} low The low (signed) 32 bits of the long
+     * @param {number} high The high (signed) 32 bits of the long
+     * @param {boolean=} unsigned Whether unsigned or not, defaults to `false` for signed
+     * @constructor
+     */
+    function Long(low, high, unsigned) {
+
+        /**
+         * The low 32 bits as a signed value.
+         * @type {number}
+         */
+        this.low = low | 0;
+
+        /**
+         * The high 32 bits as a signed value.
+         * @type {number}
+         */
+        this.high = high | 0;
+
+        /**
+         * Whether unsigned or not.
+         * @type {boolean}
+         */
+        this.unsigned = !!unsigned;
+    }
+
+    // The internal representation of a long is the two given signed, 32-bit values.
+    // We use 32-bit pieces because these are the size of integers on which
+    // Javascript performs bit-operations.  For operations like addition and
+    // multiplication, we split each number into 16 bit pieces, which can easily be
+    // multiplied within Javascript's floating-point representation without overflow
+    // or change in sign.
+    //
+    // In the algorithms below, we frequently reduce the negative case to the
+    // positive case by negating the input(s) and then post-processing the result.
+    // Note that we must ALWAYS check specially whether those values are MIN_VALUE
+    // (-2^63) because -MIN_VALUE == MIN_VALUE (since 2^63 cannot be represented as
+    // a positive number, it overflows back into a negative).  Not handling this
+    // case would often result in infinite recursion.
+    //
+    // Common constant values ZERO, ONE, NEG_ONE, etc. are defined below the from*
+    // methods on which they depend.
+
+    /**
+     * An indicator used to reliably determine if an object is a Long or not.
+     * @type {boolean}
+     * @const
+     * @private
+     */
+    Long.prototype.__isLong__;
+
+    Object.defineProperty(Long.prototype, "__isLong__", {
+        value: true,
+        enumerable: false,
+        configurable: false
+    });
+
+    /**
+     * @function
+     * @param {*} obj Object
+     * @returns {boolean}
+     * @inner
+     */
+    function isLong(obj) {
+        return (obj && obj["__isLong__"]) === true;
+    }
+
+    /**
+     * Tests if the specified object is a Long.
+     * @function
+     * @param {*} obj Object
+     * @returns {boolean}
+     */
+    Long.isLong = isLong;
+
+    /**
+     * A cache of the Long representations of small integer values.
+     * @type {!Object}
+     * @inner
+     */
+    var INT_CACHE = {};
+
+    /**
+     * A cache of the Long representations of small unsigned integer values.
+     * @type {!Object}
+     * @inner
+     */
+    var UINT_CACHE = {};
+
+    /**
+     * @param {number} value
+     * @param {boolean=} unsigned
+     * @returns {!Long}
+     * @inner
+     */
+    function fromInt(value, unsigned) {
+        var obj, cachedObj, cache;
+        if (unsigned) {
+            value >>>= 0;
+            if (cache = (0 <= value && value < 256)) {
+                cachedObj = UINT_CACHE[value];
+                if (cachedObj)
+                    return cachedObj;
+            }
+            obj = fromBits(value, (value | 0) < 0 ? -1 : 0, true);
+            if (cache)
+                UINT_CACHE[value] = obj;
+            return obj;
+        } else {
+            value |= 0;
+            if (cache = (-128 <= value && value < 128)) {
+                cachedObj = INT_CACHE[value];
+                if (cachedObj)
+                    return cachedObj;
+            }
+            obj = fromBits(value, value < 0 ? -1 : 0, false);
+            if (cache)
+                INT_CACHE[value] = obj;
+            return obj;
+        }
+    }
+
+    /**
+     * Returns a Long representing the given 32 bit integer value.
+     * @function
+     * @param {number} value The 32 bit integer in question
+     * @param {boolean=} unsigned Whether unsigned or not, defaults to `false` for signed
+     * @returns {!Long} The corresponding Long value
+     */
+    Long.fromInt = fromInt;
+
+    /**
+     * @param {number} value
+     * @param {boolean=} unsigned
+     * @returns {!Long}
+     * @inner
+     */
+    function fromNumber(value, unsigned) {
+        if (isNaN(value) || !isFinite(value))
+            return unsigned ? UZERO : ZERO;
+        if (unsigned) {
+            if (value < 0)
+                return UZERO;
+            if (value >= TWO_PWR_64_DBL)
+                return MAX_UNSIGNED_VALUE;
+        } else {
+            if (value <= -TWO_PWR_63_DBL)
+                return MIN_VALUE;
+            if (value + 1 >= TWO_PWR_63_DBL)
+                return MAX_VALUE;
+        }
+        if (value < 0)
+            return fromNumber(-value, unsigned).neg();
+        return fromBits((value % TWO_PWR_32_DBL) | 0, (value / TWO_PWR_32_DBL) | 0, unsigned);
+    }
+
+    /**
+     * Returns a Long representing the given value, provided that it is a finite number. Otherwise, zero is returned.
+     * @function
+     * @param {number} value The number in question
+     * @param {boolean=} unsigned Whether unsigned or not, defaults to `false` for signed
+     * @returns {!Long} The corresponding Long value
+     */
+    Long.fromNumber = fromNumber;
+
+    /**
+     * @param {number} lowBits
+     * @param {number} highBits
+     * @param {boolean=} unsigned
+     * @returns {!Long}
+     * @inner
+     */
+    function fromBits(lowBits, highBits, unsigned) {
+        return new Long(lowBits, highBits, unsigned);
+    }
+
+    /**
+     * Returns a Long representing the 64 bit integer that comes by concatenating the given low and high bits. Each is
+     *  assumed to use 32 bits.
+     * @function
+     * @param {number} lowBits The low 32 bits
+     * @param {number} highBits The high 32 bits
+     * @param {boolean=} unsigned Whether unsigned or not, defaults to `false` for signed
+     * @returns {!Long} The corresponding Long value
+     */
+    Long.fromBits = fromBits;
+
+    /**
+     * @function
+     * @param {number} base
+     * @param {number} exponent
+     * @returns {number}
+     * @inner
+     */
+    var pow_dbl = Math.pow; // Used 4 times (4*8 to 15+4)
+
+    /**
+     * @param {string} str
+     * @param {(boolean|number)=} unsigned
+     * @param {number=} radix
+     * @returns {!Long}
+     * @inner
+     */
+    function fromString(str, unsigned, radix) {
+        if (str.length === 0)
+            throw Error('empty string');
+        if (str === "NaN" || str === "Infinity" || str === "+Infinity" || str === "-Infinity")
+            return ZERO;
+        if (typeof unsigned === 'number') {
+            // For goog.math.long compatibility
+            radix = unsigned,
+            unsigned = false;
+        } else {
+            unsigned = !! unsigned;
+        }
+        radix = radix || 10;
+        if (radix < 2 || 36 < radix)
+            throw RangeError('radix');
+
+        var p;
+        if ((p = str.indexOf('-')) > 0)
+            throw Error('interior hyphen');
+        else if (p === 0) {
+            return fromString(str.substring(1), unsigned, radix).neg();
+        }
+
+        // Do several (8) digits each time through the loop, so as to
+        // minimize the calls to the very expensive emulated div.
+        var radixToPower = fromNumber(pow_dbl(radix, 8));
+
+        var result = ZERO;
+        for (var i = 0; i < str.length; i += 8) {
+            var size = Math.min(8, str.length - i),
+                value = parseInt(str.substring(i, i + size), radix);
+            if (size < 8) {
+                var power = fromNumber(pow_dbl(radix, size));
+                result = result.mul(power).add(fromNumber(value));
+            } else {
+                result = result.mul(radixToPower);
+                result = result.add(fromNumber(value));
+            }
+        }
+        result.unsigned = unsigned;
+        return result;
+    }
+
+    /**
+     * Returns a Long representation of the given string, written using the specified radix.
+     * @function
+     * @param {string} str The textual representation of the Long
+     * @param {(boolean|number)=} unsigned Whether unsigned or not, defaults to `false` for signed
+     * @param {number=} radix The radix in which the text is written (2-36), defaults to 10
+     * @returns {!Long} The corresponding Long value
+     */
+    Long.fromString = fromString;
+
+    /**
+     * @function
+     * @param {!Long|number|string|!{low: number, high: number, unsigned: boolean}} val
+     * @returns {!Long}
+     * @inner
+     */
+    function fromValue(val) {
+        if (val /* is compatible */ instanceof Long)
+            return val;
+        if (typeof val === 'number')
+            return fromNumber(val);
+        if (typeof val === 'string')
+            return fromString(val);
+        // Throws for non-objects, converts non-instanceof Long:
+        return fromBits(val.low, val.high, val.unsigned);
+    }
+
+    /**
+     * Converts the specified value to a Long.
+     * @function
+     * @param {!Long|number|string|!{low: number, high: number, unsigned: boolean}} val Value
+     * @returns {!Long}
+     */
+    Long.fromValue = fromValue;
+
+    // NOTE: the compiler should inline these constant values below and then remove these variables, so there should be
+    // no runtime penalty for these.
+
+    /**
+     * @type {number}
+     * @const
+     * @inner
+     */
+    var TWO_PWR_16_DBL = 1 << 16;
+
+    /**
+     * @type {number}
+     * @const
+     * @inner
+     */
+    var TWO_PWR_24_DBL = 1 << 24;
+
+    /**
+     * @type {number}
+     * @const
+     * @inner
+     */
+    var TWO_PWR_32_DBL = TWO_PWR_16_DBL * TWO_PWR_16_DBL;
+
+    /**
+     * @type {number}
+     * @const
+     * @inner
+     */
+    var TWO_PWR_64_DBL = TWO_PWR_32_DBL * TWO_PWR_32_DBL;
+
+    /**
+     * @type {number}
+     * @const
+     * @inner
+     */
+    var TWO_PWR_63_DBL = TWO_PWR_64_DBL / 2;
+
+    /**
+     * @type {!Long}
+     * @const
+     * @inner
+     */
+    var TWO_PWR_24 = fromInt(TWO_PWR_24_DBL);
+
+    /**
+     * @type {!Long}
+     * @inner
+     */
+    var ZERO = fromInt(0);
+
+    /**
+     * Signed zero.
+     * @type {!Long}
+     */
+    Long.ZERO = ZERO;
+
+    /**
+     * @type {!Long}
+     * @inner
+     */
+    var UZERO = fromInt(0, true);
+
+    /**
+     * Unsigned zero.
+     * @type {!Long}
+     */
+    Long.UZERO = UZERO;
+
+    /**
+     * @type {!Long}
+     * @inner
+     */
+    var ONE = fromInt(1);
+
+    /**
+     * Signed one.
+     * @type {!Long}
+     */
+    Long.ONE = ONE;
+
+    /**
+     * @type {!Long}
+     * @inner
+     */
+    var UONE = fromInt(1, true);
+
+    /**
+     * Unsigned one.
+     * @type {!Long}
+     */
+    Long.UONE = UONE;
+
+    /**
+     * @type {!Long}
+     * @inner
+     */
+    var NEG_ONE = fromInt(-1);
+
+    /**
+     * Signed negative one.
+     * @type {!Long}
+     */
+    Long.NEG_ONE = NEG_ONE;
+
+    /**
+     * @type {!Long}
+     * @inner
+     */
+    var MAX_VALUE = fromBits(0xFFFFFFFF|0, 0x7FFFFFFF|0, false);
+
+    /**
+     * Maximum signed value.
+     * @type {!Long}
+     */
+    Long.MAX_VALUE = MAX_VALUE;
+
+    /**
+     * @type {!Long}
+     * @inner
+     */
+    var MAX_UNSIGNED_VALUE = fromBits(0xFFFFFFFF|0, 0xFFFFFFFF|0, true);
+
+    /**
+     * Maximum unsigned value.
+     * @type {!Long}
+     */
+    Long.MAX_UNSIGNED_VALUE = MAX_UNSIGNED_VALUE;
+
+    /**
+     * @type {!Long}
+     * @inner
+     */
+    var MIN_VALUE = fromBits(0, 0x80000000|0, false);
+
+    /**
+     * Minimum signed value.
+     * @type {!Long}
+     */
+    Long.MIN_VALUE = MIN_VALUE;
+
+    /**
+     * @alias Long.prototype
+     * @inner
+     */
+    var LongPrototype = Long.prototype;
+
+    /**
+     * Converts the Long to a 32 bit integer, assuming it is a 32 bit integer.
+     * @returns {number}
+     */
+    LongPrototype.toInt = function toInt() {
+        return this.unsigned ? this.low >>> 0 : this.low;
+    };
+
+    /**
+     * Converts the Long to a the nearest floating-point representation of this value (double, 53 bit mantissa).
+     * @returns {number}
+     */
+    LongPrototype.toNumber = function toNumber() {
+        if (this.unsigned)
+            return ((this.high >>> 0) * TWO_PWR_32_DBL) + (this.low >>> 0);
+        return this.high * TWO_PWR_32_DBL + (this.low >>> 0);
+    };
+
+    /**
+     * Converts the Long to a string written in the specified radix.
+     * @param {number=} radix Radix (2-36), defaults to 10
+     * @returns {string}
+     * @override
+     * @throws {RangeError} If `radix` is out of range
+     */
+    LongPrototype.toString = function toString(radix) {
+        radix = radix || 10;
+        if (radix < 2 || 36 < radix)
+            throw RangeError('radix');
+        if (this.isZero())
+            return '0';
+        if (this.isNegative()) { // Unsigned Longs are never negative
+            if (this.eq(MIN_VALUE)) {
+                // We need to change the Long value before it can be negated, so we remove
+                // the bottom-most digit in this base and then recurse to do the rest.
+                var radixLong = fromNumber(radix),
+                    div = this.div(radixLong),
+                    rem1 = div.mul(radixLong).sub(this);
+                return div.toString(radix) + rem1.toInt().toString(radix);
+            } else
+                return '-' + this.neg().toString(radix);
+        }
+
+        // Do several (6) digits each time through the loop, so as to
+        // minimize the calls to the very expensive emulated div.
+        var radixToPower = fromNumber(pow_dbl(radix, 6), this.unsigned),
+            rem = this;
+        var result = '';
+        while (true) {
+            var remDiv = rem.div(radixToPower),
+                intval = rem.sub(remDiv.mul(radixToPower)).toInt() >>> 0,
+                digits = intval.toString(radix);
+            rem = remDiv;
+            if (rem.isZero())
+                return digits + result;
+            else {
+                while (digits.length < 6)
+                    digits = '0' + digits;
+                result = '' + digits + result;
+            }
+        }
+    };
+
+    /**
+     * Gets the high 32 bits as a signed integer.
+     * @returns {number} Signed high bits
+     */
+    LongPrototype.getHighBits = function getHighBits() {
+        return this.high;
+    };
+
+    /**
+     * Gets the high 32 bits as an unsigned integer.
+     * @returns {number} Unsigned high bits
+     */
+    LongPrototype.getHighBitsUnsigned = function getHighBitsUnsigned() {
+        return this.high >>> 0;
+    };
+
+    /**
+     * Gets the low 32 bits as a signed integer.
+     * @returns {number} Signed low bits
+     */
+    LongPrototype.getLowBits = function getLowBits() {
+        return this.low;
+    };
+
+    /**
+     * Gets the low 32 bits as an unsigned integer.
+     * @returns {number} Unsigned low bits
+     */
+    LongPrototype.getLowBitsUnsigned = function getLowBitsUnsigned() {
+        return this.low >>> 0;
+    };
+
+    /**
+     * Gets the number of bits needed to represent the absolute value of this Long.
+     * @returns {number}
+     */
+    LongPrototype.getNumBitsAbs = function getNumBitsAbs() {
+        if (this.isNegative()) // Unsigned Longs are never negative
+            return this.eq(MIN_VALUE) ? 64 : this.neg().getNumBitsAbs();
+        var val = this.high != 0 ? this.high : this.low;
+        for (var bit = 31; bit > 0; bit--)
+            if ((val & (1 << bit)) != 0)
+                break;
+        return this.high != 0 ? bit + 33 : bit + 1;
+    };
+
+    /**
+     * Tests if this Long's value equals zero.
+     * @returns {boolean}
+     */
+    LongPrototype.isZero = function isZero() {
+        return this.high === 0 && this.low === 0;
+    };
+
+    /**
+     * Tests if this Long's value is negative.
+     * @returns {boolean}
+     */
+    LongPrototype.isNegative = function isNegative() {
+        return !this.unsigned && this.high < 0;
+    };
+
+    /**
+     * Tests if this Long's value is positive.
+     * @returns {boolean}
+     */
+    LongPrototype.isPositive = function isPositive() {
+        return this.unsigned || this.high >= 0;
+    };
+
+    /**
+     * Tests if this Long's value is odd.
+     * @returns {boolean}
+     */
+    LongPrototype.isOdd = function isOdd() {
+        return (this.low & 1) === 1;
+    };
+
+    /**
+     * Tests if this Long's value is even.
+     * @returns {boolean}
+     */
+    LongPrototype.isEven = function isEven() {
+        return (this.low & 1) === 0;
+    };
+
+    /**
+     * Tests if this Long's value equals the specified's.
+     * @param {!Long|number|string} other Other value
+     * @returns {boolean}
+     */
+    LongPrototype.equals = function equals(other) {
+        if (!isLong(other))
+            other = fromValue(other);
+        if (this.unsigned !== other.unsigned && (this.high >>> 31) === 1 && (other.high >>> 31) === 1)
+            return false;
+        return this.high === other.high && this.low === other.low;
+    };
+
+    /**
+     * Tests if this Long's value equals the specified's. This is an alias of {@link Long#equals}.
+     * @function
+     * @param {!Long|number|string} other Other value
+     * @returns {boolean}
+     */
+    LongPrototype.eq = LongPrototype.equals;
+
+    /**
+     * Tests if this Long's value differs from the specified's.
+     * @param {!Long|number|string} other Other value
+     * @returns {boolean}
+     */
+    LongPrototype.notEquals = function notEquals(other) {
+        return !this.eq(/* validates */ other);
+    };
+
+    /**
+     * Tests if this Long's value differs from the specified's. This is an alias of {@link Long#notEquals}.
+     * @function
+     * @param {!Long|number|string} other Other value
+     * @returns {boolean}
+     */
+    LongPrototype.neq = LongPrototype.notEquals;
+
+    /**
+     * Tests if this Long's value is less than the specified's.
+     * @param {!Long|number|string} other Other value
+     * @returns {boolean}
+     */
+    LongPrototype.lessThan = function lessThan(other) {
+        return this.comp(/* validates */ other) < 0;
+    };
+
+    /**
+     * Tests if this Long's value is less than the specified's. This is an alias of {@link Long#lessThan}.
+     * @function
+     * @param {!Long|number|string} other Other value
+     * @returns {boolean}
+     */
+    LongPrototype.lt = LongPrototype.lessThan;
+
+    /**
+     * Tests if this Long's value is less than or equal the specified's.
+     * @param {!Long|number|string} other Other value
+     * @returns {boolean}
+     */
+    LongPrototype.lessThanOrEqual = function lessThanOrEqual(other) {
+        return this.comp(/* validates */ other) <= 0;
+    };
+
+    /**
+     * Tests if this Long's value is less than or equal the specified's. This is an alias of {@link Long#lessThanOrEqual}.
+     * @function
+     * @param {!Long|number|string} other Other value
+     * @returns {boolean}
+     */
+    LongPrototype.lte = LongPrototype.lessThanOrEqual;
+
+    /**
+     * Tests if this Long's value is greater than the specified's.
+     * @param {!Long|number|string} other Other value
+     * @returns {boolean}
+     */
+    LongPrototype.greaterThan = function greaterThan(other) {
+        return this.comp(/* validates */ other) > 0;
+    };
+
+    /**
+     * Tests if this Long's value is greater than the specified's. This is an alias of {@link Long#greaterThan}.
+     * @function
+     * @param {!Long|number|string} other Other value
+     * @returns {boolean}
+     */
+    LongPrototype.gt = LongPrototype.greaterThan;
+
+    /**
+     * Tests if this Long's value is greater than or equal the specified's.
+     * @param {!Long|number|string} other Other value
+     * @returns {boolean}
+     */
+    LongPrototype.greaterThanOrEqual = function greaterThanOrEqual(other) {
+        return this.comp(/* validates */ other) >= 0;
+    };
+
+    /**
+     * Tests if this Long's value is greater than or equal the specified's. This is an alias of {@link Long#greaterThanOrEqual}.
+     * @function
+     * @param {!Long|number|string} other Other value
+     * @returns {boolean}
+     */
+    LongPrototype.gte = LongPrototype.greaterThanOrEqual;
+
+    /**
+     * Compares this Long's value with the specified's.
+     * @param {!Long|number|string} other Other value
+     * @returns {number} 0 if they are the same, 1 if the this is greater and -1
+     *  if the given one is greater
+     */
+    LongPrototype.compare = function compare(other) {
+        if (!isLong(other))
+            other = fromValue(other);
+        if (this.eq(other))
+            return 0;
+        var thisNeg = this.isNegative(),
+            otherNeg = other.isNegative();
+        if (thisNeg && !otherNeg)
+            return -1;
+        if (!thisNeg && otherNeg)
+            return 1;
+        // At this point the sign bits are the same
+        if (!this.unsigned)
+            return this.sub(other).isNegative() ? -1 : 1;
+        // Both are positive if at least one is unsigned
+        return (other.high >>> 0) > (this.high >>> 0) || (other.high === this.high && (other.low >>> 0) > (this.low >>> 0)) ? -1 : 1;
+    };
+
+    /**
+     * Compares this Long's value with the specified's. This is an alias of {@link Long#compare}.
+     * @function
+     * @param {!Long|number|string} other Other value
+     * @returns {number} 0 if they are the same, 1 if the this is greater and -1
+     *  if the given one is greater
+     */
+    LongPrototype.comp = LongPrototype.compare;
+
+    /**
+     * Negates this Long's value.
+     * @returns {!Long} Negated Long
+     */
+    LongPrototype.negate = function negate() {
+        if (!this.unsigned && this.eq(MIN_VALUE))
+            return MIN_VALUE;
+        return this.not().add(ONE);
+    };
+
+    /**
+     * Negates this Long's value. This is an alias of {@link Long#negate}.
+     * @function
+     * @returns {!Long} Negated Long
+     */
+    LongPrototype.neg = LongPrototype.negate;
+
+    /**
+     * Returns the sum of this and the specified Long.
+     * @param {!Long|number|string} addend Addend
+     * @returns {!Long} Sum
+     */
+    LongPrototype.add = function add(addend) {
+        if (!isLong(addend))
+            addend = fromValue(addend);
+
+        // Divide each number into 4 chunks of 16 bits, and then sum the chunks.
+
+        var a48 = this.high >>> 16;
+        var a32 = this.high & 0xFFFF;
+        var a16 = this.low >>> 16;
+        var a00 = this.low & 0xFFFF;
+
+        var b48 = addend.high >>> 16;
+        var b32 = addend.high & 0xFFFF;
+        var b16 = addend.low >>> 16;
+        var b00 = addend.low & 0xFFFF;
+
+        var c48 = 0, c32 = 0, c16 = 0, c00 = 0;
+        c00 += a00 + b00;
+        c16 += c00 >>> 16;
+        c00 &= 0xFFFF;
+        c16 += a16 + b16;
+        c32 += c16 >>> 16;
+        c16 &= 0xFFFF;
+        c32 += a32 + b32;
+        c48 += c32 >>> 16;
+        c32 &= 0xFFFF;
+        c48 += a48 + b48;
+        c48 &= 0xFFFF;
+        return fromBits((c16 << 16) | c00, (c48 << 16) | c32, this.unsigned);
+    };
+
+    /**
+     * Returns the difference of this and the specified Long.
+     * @param {!Long|number|string} subtrahend Subtrahend
+     * @returns {!Long} Difference
+     */
+    LongPrototype.subtract = function subtract(subtrahend) {
+        if (!isLong(subtrahend))
+            subtrahend = fromValue(subtrahend);
+        return this.add(subtrahend.neg());
+    };
+
+    /**
+     * Returns the difference of this and the specified Long. This is an alias of {@link Long#subtract}.
+     * @function
+     * @param {!Long|number|string} subtrahend Subtrahend
+     * @returns {!Long} Difference
+     */
+    LongPrototype.sub = LongPrototype.subtract;
+
+    /**
+     * Returns the product of this and the specified Long.
+     * @param {!Long|number|string} multiplier Multiplier
+     * @returns {!Long} Product
+     */
+    LongPrototype.multiply = function multiply(multiplier) {
+        if (this.isZero())
+            return ZERO;
+        if (!isLong(multiplier))
+            multiplier = fromValue(multiplier);
+        if (multiplier.isZero())
+            return ZERO;
+        if (this.eq(MIN_VALUE))
+            return multiplier.isOdd() ? MIN_VALUE : ZERO;
+        if (multiplier.eq(MIN_VALUE))
+            return this.isOdd() ? MIN_VALUE : ZERO;
+
+        if (this.isNegative()) {
+            if (multiplier.isNegative())
+                return this.neg().mul(multiplier.neg());
+            else
+                return this.neg().mul(multiplier).neg();
+        } else if (multiplier.isNegative())
+            return this.mul(multiplier.neg()).neg();
+
+        // If both longs are small, use float multiplication
+        if (this.lt(TWO_PWR_24) && multiplier.lt(TWO_PWR_24))
+            return fromNumber(this.toNumber() * multiplier.toNumber(), this.unsigned);
+
+        // Divide each long into 4 chunks of 16 bits, and then add up 4x4 products.
+        // We can skip products that would overflow.
+
+        var a48 = this.high >>> 16;
+        var a32 = this.high & 0xFFFF;
+        var a16 = this.low >>> 16;
+        var a00 = this.low & 0xFFFF;
+
+        var b48 = multiplier.high >>> 16;
+        var b32 = multiplier.high & 0xFFFF;
+        var b16 = multiplier.low >>> 16;
+        var b00 = multiplier.low & 0xFFFF;
+
+        var c48 = 0, c32 = 0, c16 = 0, c00 = 0;
+        c00 += a00 * b00;
+        c16 += c00 >>> 16;
+        c00 &= 0xFFFF;
+        c16 += a16 * b00;
+        c32 += c16 >>> 16;
+        c16 &= 0xFFFF;
+        c16 += a00 * b16;
+        c32 += c16 >>> 16;
+        c16 &= 0xFFFF;
+        c32 += a32 * b00;
+        c48 += c32 >>> 16;
+        c32 &= 0xFFFF;
+        c32 += a16 * b16;
+        c48 += c32 >>> 16;
+        c32 &= 0xFFFF;
+        c32 += a00 * b32;
+        c48 += c32 >>> 16;
+        c32 &= 0xFFFF;
+        c48 += a48 * b00 + a32 * b16 + a16 * b32 + a00 * b48;
+        c48 &= 0xFFFF;
+        return fromBits((c16 << 16) | c00, (c48 << 16) | c32, this.unsigned);
+    };
+
+    /**
+     * Returns the product of this and the specified Long. This is an alias of {@link Long#multiply}.
+     * @function
+     * @param {!Long|number|string} multiplier Multiplier
+     * @returns {!Long} Product
+     */
+    LongPrototype.mul = LongPrototype.multiply;
+
+    /**
+     * Returns this Long divided by the specified. The result is signed if this Long is signed or
+     *  unsigned if this Long is unsigned.
+     * @param {!Long|number|string} divisor Divisor
+     * @returns {!Long} Quotient
+     */
+    LongPrototype.divide = function divide(divisor) {
+        if (!isLong(divisor))
+            divisor = fromValue(divisor);
+        if (divisor.isZero())
+            throw Error('division by zero');
+        if (this.isZero())
+            return this.unsigned ? UZERO : ZERO;
+        var approx, rem, res;
+        if (!this.unsigned) {
+            // This section is only relevant for signed longs and is derived from the
+            // closure library as a whole.
+            if (this.eq(MIN_VALUE)) {
+                if (divisor.eq(ONE) || divisor.eq(NEG_ONE))
+                    return MIN_VALUE;  // recall that -MIN_VALUE == MIN_VALUE
+                else if (divisor.eq(MIN_VALUE))
+                    return ONE;
+                else {
+                    // At this point, we have |other| >= 2, so |this/other| < |MIN_VALUE|.
+                    var halfThis = this.shr(1);
+                    approx = halfThis.div(divisor).shl(1);
+                    if (approx.eq(ZERO)) {
+                        return divisor.isNegative() ? ONE : NEG_ONE;
+                    } else {
+                        rem = this.sub(divisor.mul(approx));
+                        res = approx.add(rem.div(divisor));
+                        return res;
+                    }
+                }
+            } else if (divisor.eq(MIN_VALUE))
+                return this.unsigned ? UZERO : ZERO;
+            if (this.isNegative()) {
+                if (divisor.isNegative())
+                    return this.neg().div(divisor.neg());
+                return this.neg().div(divisor).neg();
+            } else if (divisor.isNegative())
+                return this.div(divisor.neg()).neg();
+            res = ZERO;
+        } else {
+            // The algorithm below has not been made for unsigned longs. It's therefore
+            // required to take special care of the MSB prior to running it.
+            if (!divisor.unsigned)
+                divisor = divisor.toUnsigned();
+            if (divisor.gt(this))
+                return UZERO;
+            if (divisor.gt(this.shru(1))) // 15 >>> 1 = 7 ; with divisor = 8 ; true
+                return UONE;
+            res = UZERO;
+        }
+
+        // Repeat the following until the remainder is less than other:  find a
+        // floating-point that approximates remainder / other *from below*, add this
+        // into the result, and subtract it from the remainder.  It is critical that
+        // the approximate value is less than or equal to the real value so that the
+        // remainder never becomes negative.
+        rem = this;
+        while (rem.gte(divisor)) {
+            // Approximate the result of division. This may be a little greater or
+            // smaller than the actual value.
+            approx = Math.max(1, Math.floor(rem.toNumber() / divisor.toNumber()));
+
+            // We will tweak the approximate result by changing it in the 48-th digit or
+            // the smallest non-fractional digit, whichever is larger.
+            var log2 = Math.ceil(Math.log(approx) / Math.LN2),
+                delta = (log2 <= 48) ? 1 : pow_dbl(2, log2 - 48),
+
+            // Decrease the approximation until it is smaller than the remainder.  Note
+            // that if it is too large, the product overflows and is negative.
+                approxRes = fromNumber(approx),
+                approxRem = approxRes.mul(divisor);
+            while (approxRem.isNegative() || approxRem.gt(rem)) {
+                approx -= delta;
+                approxRes = fromNumber(approx, this.unsigned);
+                approxRem = approxRes.mul(divisor);
+            }
+
+            // We know the answer can't be zero... and actually, zero would cause
+            // infinite recursion since we would make no progress.
+            if (approxRes.isZero())
+                approxRes = ONE;
+
+            res = res.add(approxRes);
+            rem = rem.sub(approxRem);
+        }
+        return res;
+    };
+
+    /**
+     * Returns this Long divided by the specified. This is an alias of {@link Long#divide}.
+     * @function
+     * @param {!Long|number|string} divisor Divisor
+     * @returns {!Long} Quotient
+     */
+    LongPrototype.div = LongPrototype.divide;
+
+    /**
+     * Returns this Long modulo the specified.
+     * @param {!Long|number|string} divisor Divisor
+     * @returns {!Long} Remainder
+     */
+    LongPrototype.modulo = function modulo(divisor) {
+        if (!isLong(divisor))
+            divisor = fromValue(divisor);
+        return this.sub(this.div(divisor).mul(divisor));
+    };
+
+    /**
+     * Returns this Long modulo the specified. This is an alias of {@link Long#modulo}.
+     * @function
+     * @param {!Long|number|string} divisor Divisor
+     * @returns {!Long} Remainder
+     */
+    LongPrototype.mod = LongPrototype.modulo;
+
+    /**
+     * Returns the bitwise NOT of this Long.
+     * @returns {!Long}
+     */
+    LongPrototype.not = function not() {
+        return fromBits(~this.low, ~this.high, this.unsigned);
+    };
+
+    /**
+     * Returns the bitwise AND of this Long and the specified.
+     * @param {!Long|number|string} other Other Long
+     * @returns {!Long}
+     */
+    LongPrototype.and = function and(other) {
+        if (!isLong(other))
+            other = fromValue(other);
+        return fromBits(this.low & other.low, this.high & other.high, this.unsigned);
+    };
+
+    /**
+     * Returns the bitwise OR of this Long and the specified.
+     * @param {!Long|number|string} other Other Long
+     * @returns {!Long}
+     */
+    LongPrototype.or = function or(other) {
+        if (!isLong(other))
+            other = fromValue(other);
+        return fromBits(this.low | other.low, this.high | other.high, this.unsigned);
+    };
+
+    /**
+     * Returns the bitwise XOR of this Long and the given one.
+     * @param {!Long|number|string} other Other Long
+     * @returns {!Long}
+     */
+    LongPrototype.xor = function xor(other) {
+        if (!isLong(other))
+            other = fromValue(other);
+        return fromBits(this.low ^ other.low, this.high ^ other.high, this.unsigned);
+    };
+
+    /**
+     * Returns this Long with bits shifted to the left by the given amount.
+     * @param {number|!Long} numBits Number of bits
+     * @returns {!Long} Shifted Long
+     */
+    LongPrototype.shiftLeft = function shiftLeft(numBits) {
+        if (isLong(numBits))
+            numBits = numBits.toInt();
+        if ((numBits &= 63) === 0)
+            return this;
+        else if (numBits < 32)
+            return fromBits(this.low << numBits, (this.high << numBits) | (this.low >>> (32 - numBits)), this.unsigned);
+        else
+            return fromBits(0, this.low << (numBits - 32), this.unsigned);
+    };
+
+    /**
+     * Returns this Long with bits shifted to the left by the given amount. This is an alias of {@link Long#shiftLeft}.
+     * @function
+     * @param {number|!Long} numBits Number of bits
+     * @returns {!Long} Shifted Long
+     */
+    LongPrototype.shl = LongPrototype.shiftLeft;
+
+    /**
+     * Returns this Long with bits arithmetically shifted to the right by the given amount.
+     * @param {number|!Long} numBits Number of bits
+     * @returns {!Long} Shifted Long
+     */
+    LongPrototype.shiftRight = function shiftRight(numBits) {
+        if (isLong(numBits))
+            numBits = numBits.toInt();
+        if ((numBits &= 63) === 0)
+            return this;
+        else if (numBits < 32)
+            return fromBits((this.low >>> numBits) | (this.high << (32 - numBits)), this.high >> numBits, this.unsigned);
+        else
+            return fromBits(this.high >> (numBits - 32), this.high >= 0 ? 0 : -1, this.unsigned);
+    };
+
+    /**
+     * Returns this Long with bits arithmetically shifted to the right by the given amount. This is an alias of {@link Long#shiftRight}.
+     * @function
+     * @param {number|!Long} numBits Number of bits
+     * @returns {!Long} Shifted Long
+     */
+    LongPrototype.shr = LongPrototype.shiftRight;
+
+    /**
+     * Returns this Long with bits logically shifted to the right by the given amount.
+     * @param {number|!Long} numBits Number of bits
+     * @returns {!Long} Shifted Long
+     */
+    LongPrototype.shiftRightUnsigned = function shiftRightUnsigned(numBits) {
+        if (isLong(numBits))
+            numBits = numBits.toInt();
+        numBits &= 63;
+        if (numBits === 0)
+            return this;
+        else {
+            var high = this.high;
+            if (numBits < 32) {
+                var low = this.low;
+                return fromBits((low >>> numBits) | (high << (32 - numBits)), high >>> numBits, this.unsigned);
+            } else if (numBits === 32)
+                return fromBits(high, 0, this.unsigned);
+            else
+                return fromBits(high >>> (numBits - 32), 0, this.unsigned);
+        }
+    };
+
+    /**
+     * Returns this Long with bits logically shifted to the right by the given amount. This is an alias of {@link Long#shiftRightUnsigned}.
+     * @function
+     * @param {number|!Long} numBits Number of bits
+     * @returns {!Long} Shifted Long
+     */
+    LongPrototype.shru = LongPrototype.shiftRightUnsigned;
+
+    /**
+     * Converts this Long to signed.
+     * @returns {!Long} Signed long
+     */
+    LongPrototype.toSigned = function toSigned() {
+        if (!this.unsigned)
+            return this;
+        return fromBits(this.low, this.high, false);
+    };
+
+    /**
+     * Converts this Long to unsigned.
+     * @returns {!Long} Unsigned long
+     */
+    LongPrototype.toUnsigned = function toUnsigned() {
+        if (this.unsigned)
+            return this;
+        return fromBits(this.low, this.high, true);
+    };
+
+    /**
+     * Converts this Long to its byte representation.
+     * @param {boolean=} le Whether little or big endian, defaults to big endian
+     * @returns {!Array.<number>} Byte representation
+     */
+    LongPrototype.toBytes = function(le) {
+        return le ? this.toBytesLE() : this.toBytesBE();
+    }
+
+    /**
+     * Converts this Long to its little endian byte representation.
+     * @returns {!Array.<number>} Little endian byte representation
+     */
+    LongPrototype.toBytesLE = function() {
+        var hi = this.high,
+            lo = this.low;
+        return [
+             lo         & 0xff,
+            (lo >>>  8) & 0xff,
+            (lo >>> 16) & 0xff,
+            (lo >>> 24) & 0xff,
+             hi         & 0xff,
+            (hi >>>  8) & 0xff,
+            (hi >>> 16) & 0xff,
+            (hi >>> 24) & 0xff
+        ];
+    }
+
+    /**
+     * Converts this Long to its big endian byte representation.
+     * @returns {!Array.<number>} Big endian byte representation
+     */
+    LongPrototype.toBytesBE = function() {
+        var hi = this.high,
+            lo = this.low;
+        return [
+            (hi >>> 24) & 0xff,
+            (hi >>> 16) & 0xff,
+            (hi >>>  8) & 0xff,
+             hi         & 0xff,
+            (lo >>> 24) & 0xff,
+            (lo >>> 16) & 0xff,
+            (lo >>>  8) & 0xff,
+             lo         & 0xff
+        ];
+    }
+
+    return Long;
+});
 
 
 /***/ }),
@@ -11707,15 +16679,17 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const matter_js_1 = __importDefault(__webpack_require__(/*! matter-js */ "./node_modules/matter-js/build/matter.js"));
-const gameClient_1 = __webpack_require__(/*! ../src/game/gameClient */ "./src/game/gameClient.ts");
-const game = new gameClient_1.GameClient(document.getElementById('game'));
-game.start();
-window['game'] = game;
+const gameface_1 = __webpack_require__(/*! ../src/gameface/gameface */ "./src/gameface/gameface.ts");
+const render_1 = __webpack_require__(/*! ../src/gameface/render */ "./src/gameface/render.ts");
+const gameface = new gameface_1.Gameface(document.getElementById('game'));
+gameface.start();
+window['gameface'] = gameface;
+window['Render'] = render_1.Render;
 const width = 800;
 const height = 600;
 const s = 3;
 // renderer
-const engine = game.mainServer.worlds[0].engine;
+const engine = gameface.game.worlds[0].matter.engine;
 const render = matter_js_1.default.Render.create({
     element: document.body,
     engine: engine,
@@ -11738,7 +16712,7 @@ const render = matter_js_1.default.Render.create({
 });
 matter_js_1.default.Render.run(render);
 // mouse constraint
-const matterWorld = game.mainServer.worlds[0].matterWorld;
+const matterWorld = gameface.game.worlds[0].matter.world;
 const constraint = {
     stiffness: 0.2,
     render: {
@@ -11856,9 +16830,8 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.Camera = void 0;
 const pc = __importStar(__webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs"));
-const positionComponent_1 = __webpack_require__(/*! ../component/positionComponent */ "./src/component/positionComponent.ts");
-const playcanvas_1 = __webpack_require__(/*! ../playcanvas/playcanvas */ "./src/playcanvas/playcanvas.ts");
-const render_1 = __webpack_require__(/*! ../render/render */ "./src/render/render.ts");
+const gameface_1 = __webpack_require__(/*! ../gameface/gameface */ "./src/gameface/gameface.ts");
+const render_1 = __webpack_require__(/*! ../gameface/render */ "./src/gameface/render.ts");
 class Camera {
     static get positon() { return this._position; }
     static init() {
@@ -11866,14 +16839,13 @@ class Camera {
     }
     static update(dt) {
         if (this.followPlayer) {
-            const player = render_1.Render.player;
+            const player = gameface_1.Gameface.Instance.player;
             if (!player)
                 return;
-            const positionComponent = player.getComponent(positionComponent_1.PositionComponent);
-            this.setPosition(positionComponent.x, positionComponent.y);
+            this.setPosition(player.transform.position.x, player.transform.position.y);
         }
         this._position.z = this.height;
-        playcanvas_1.PlayCanvas.camera.setPosition(this._position.x / 10, this._position.z / 10, this._position.y / 10);
+        render_1.Render.camera.setPosition(this._position.x * 0.01, this._position.z * 0.01, this._position.y * 0.01);
     }
     static setPosition(x, y) {
         this._position.x = x;
@@ -11881,152 +16853,9 @@ class Camera {
     }
 }
 exports.Camera = Camera;
-Camera.height = 150;
+Camera.height = 1500;
 Camera.followPlayer = true;
 Camera._position = new pc.Vec3();
-
-
-/***/ }),
-
-/***/ "./src/component/buildingSpriteComponent.ts":
-/*!**************************************************!*\
-  !*** ./src/component/buildingSpriteComponent.ts ***!
-  \**************************************************/
-/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.BuildingSpriteComponent = void 0;
-const glbLoader_1 = __webpack_require__(/*! ../glbLoader/glbLoader */ "./src/glbLoader/glbLoader.ts");
-const render_1 = __webpack_require__(/*! ../render/render */ "./src/render/render.ts");
-const component_1 = __webpack_require__(/*! ./component */ "./src/component/component.ts");
-class BuildingSpriteComponent extends component_1.Component {
-    init() {
-        super.init();
-        this.loadModel();
-    }
-    loadModel() {
-        var app = render_1.Render.app;
-        var world = this.entity.world;
-        const pcEntity = this.entity.pcEntity;
-        glbLoader_1.GLBLoader.loadModel('assets/building.glb', (renderRootEntity) => {
-            console.log(renderRootEntity);
-            /*
-            var bdl = renderRootEntity.children[1] as pc.Entity;
-
-            console.log(bdl, 'bld')
-
-            const obj = world.spawnObject();
-            obj.position.set(20, 40);
-            obj.setPcEntity(bdl);
-            */
-            /*
-            CREATE COLLISION
-
-            const bodies: Matter.Body[] = [];
-            const positions: pc.Vec2[] = [];
-
-
-            for (const node of renderRootEntity.children) {
-                    
-                if(node.name.startsWith("Collision")) {
-                    console.log(node)
-
-                    const localPosition = node.getLocalPosition();
-                    const localScale = node.getLocalScale();
-                    
-                    const position = new pc.Vec2();
-                    position.x = localPosition.x * 100;
-                    position.y = localPosition.z * 100;
-
-                    
-                    positions.push(position)
-
-                    const size = {
-                        x: localScale.x * 100 * 2,
-                        y: localScale.z * 100 * 2
-                    }
-
-                    const body = Matter.Bodies.rectangle(position.x, position.y, size.x, size.y, {isStatic: true});
-                    
-                    bodies.push(body);
-                    
-                    
-                }
-            }
-
-     
-
-            const bodyCenter = Matter.Body.create({isStatic: true, parts: Object.assign([], bodies)});
-            
-            Matter.Composite.add(world.matterWorld, bodyCenter);
-
-            Matter.Body.setCentre(bodyCenter, {x: 0, y: 0})
-
-            console.log(bodies)
-            console.log(positions)
-
-            for (let index = 0; index <= bodies.length-1; index++) {
-                var b = bodies[index];
-                var p = positions[index];
-
-                console.log("index", index)
-
-                console.log(p)
-
-            
-            }
-
-
-            setInterval(() => {
-                
-                
-                const positionComponent = this.entity.getComponent(PositionComponent);
-
-                Matter.Body.setAngle(bodyCenter, positionComponent.angle);
-                Matter.Body.setPosition(bodyCenter, {
-                    x: positionComponent.x * 10,
-                    y: positionComponent.y * 10
-                });
-                
-            }, 0)
-            */
-            //
-            pcEntity.addChild(renderRootEntity);
-            console.log(renderRootEntity);
-        });
-        /*
-        
-        */
-        /*
-        loadGltf(gltf, app.graphicsDevice, function (err, res) {
-            // Wrap the model as an asset and add to the asset registry
-            var asset = new pc.Asset('gltf', 'model', {
-                url: ''
-            });
-
-            asset.resource = res.model;
-            asset.loaded = true;
-            app.assets.add(asset);
-
-            // Add the loaded scene to the hierarchy
-            self.entity.addComponent('model', {
-                asset: asset
-            });
-        }, {
-            buffers : self.binAsset.resources
-        });
-        */
-    }
-    update(dt) {
-        super.update(dt);
-    }
-    postupdate(dt) {
-        super.postupdate(dt);
-    }
-}
-exports.BuildingSpriteComponent = BuildingSpriteComponent;
 
 
 /***/ }),
@@ -12039,50 +16868,111 @@ exports.BuildingSpriteComponent = BuildingSpriteComponent;
 
 "use strict";
 
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.CollisionComponent = void 0;
 const matter_js_1 = __importDefault(__webpack_require__(/*! matter-js */ "./node_modules/matter-js/build/matter.js"));
-const pc = __importStar(__webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs"));
 const component_1 = __webpack_require__(/*! ./component */ "./src/component/component.ts");
+class BodyPart {
+    constructor(key, x, y, type) {
+        this.Width = 0;
+        this.Height = 0;
+        this.Radius = 0;
+        this.Key = key;
+        this.X = x;
+        this.Y = y;
+        this.Type = type;
+    }
+}
+var BodyType;
+(function (BodyType) {
+    BodyType[BodyType["RECTANGLE"] = 0] = "RECTANGLE";
+    BodyType[BodyType["CIRCLE"] = 1] = "CIRCLE";
+})(BodyType || (BodyType = {}));
 class CollisionComponent extends component_1.Component {
     constructor() {
         super(...arguments);
-        this.size = new pc.Vec2(10, 10);
-        this.frictionAir = 0.2;
+        this.priority = 0;
+        this.options = { friction: 0.001, frictionAir: 0.3 };
+        this._bodyParts = new Map();
     }
     get body() { return this._body; }
     init() {
+        console.log("colision init");
         super.init();
-        const body = this._body = matter_js_1.default.Bodies.rectangle(0, 0, this.size.x * 10, this.size.y * 10, { friction: 0.001, frictionAir: this.frictionAir });
-        matter_js_1.default.Composite.add(this.entity.world.matterWorld, body);
+        this.createBody();
+        //const body = this._body = Matter.Bodies.rectangle(0, 0, 100, 100, this.options);
+        //Matter.Composite.add(this.entity.world.matter.world!, body);
+    }
+    createBody() {
+        const options = Object.assign({}, this.options);
+        const parts = [];
+        const matterWorld = this.entity.world.matter.world;
+        for (const bodyPart of this._bodyParts.values()) {
+            if (bodyPart.Type == BodyType.RECTANGLE)
+                bodyPart.Body = matter_js_1.default.Bodies.rectangle(bodyPart.X, bodyPart.Y, bodyPart.Width, bodyPart.Height, options);
+            if (bodyPart.Type == BodyType.CIRCLE)
+                bodyPart.Body = matter_js_1.default.Bodies.circle(bodyPart.X, bodyPart.Y, bodyPart.Radius, options);
+            parts.push(bodyPart.Body);
+        }
+        options.parts = parts;
+        var body = matter_js_1.default.Body.create(options);
+        matter_js_1.default.Composite.add(matterWorld, body);
+        //matter.world.add(body)
+        this._body = body;
+        //this.setPosition(this.entity.transform.position.x, this.entity.transform.position.y)
     }
     update(dt) {
         super.update(dt);
     }
+    postupdate(dt) {
+        super.postupdate(dt);
+    }
+    getBodyPart(key) {
+        return this._bodyParts.get(key);
+    }
+    addRectangle(key, x, y, width, height) {
+        var bodyPart = new BodyPart(key, x, y, BodyType.RECTANGLE);
+        bodyPart.Width = width;
+        bodyPart.Height = height;
+        this._bodyParts.set(key, bodyPart);
+        return bodyPart;
+    }
+    addCircle(key, x, y, radius) {
+        var bodyPart = new BodyPart(key, x, y, BodyType.CIRCLE);
+        bodyPart.Radius = radius;
+        this._bodyParts.set(key, bodyPart);
+        return bodyPart;
+    }
+    setPosition(x, y) {
+        var body = this.body;
+        matter_js_1.default.Body.setPosition(body, { x: x, y: y });
+    }
 }
 exports.CollisionComponent = CollisionComponent;
+/*
+xport class CollisionComponent extends Component {
+    private _body: Matter.Body;
+
+    public get body() { return this._body; }
+
+    public size = new pc.Vec2(10, 10);
+    public frictionAir: number = 0.2;
+
+    public init() {
+        super.init();
+
+        const body = this._body = Matter.Bodies.rectangle(0, 0, this.size.x * 10, this.size.y * 10, { friction: 0.001, frictionAir: this.frictionAir });
+        Matter.Composite.add(this.entity.world.matterWorld, body);
+    }
+
+    public update(dt: number) {
+        super.update(dt);
+    }
+}
+*/ 
 
 
 /***/ }),
@@ -12101,11 +16991,18 @@ class Component {
     constructor() {
         this.priority = 0;
     }
-    init() { }
+    init() {
+        console.log(`[${this.constructor.name}] init`);
+    }
     update(dt) { }
     postupdate(dt) { }
-    serialize() { }
-    unserialize(data) { }
+    serialize(packet) {
+        return packet;
+    }
+    unserialize(packet) {
+        return packet;
+    }
+    ;
 }
 exports.Component = Component;
 
@@ -12124,9 +17021,11 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.InputHandlerComponent = void 0;
 const input_1 = __webpack_require__(/*! ../input/input */ "./src/input/input.ts");
 const component_1 = __webpack_require__(/*! ./component */ "./src/component/component.ts");
+const syncComponent_1 = __webpack_require__(/*! ./syncComponent */ "./src/component/syncComponent.ts");
 class InputHandlerComponent extends component_1.Component {
     constructor() {
         super(...arguments);
+        this.priority = 0;
         this.enabled = false;
         this.speed = 4;
         this.horizontal = 0;
@@ -12144,7 +17043,27 @@ class InputHandlerComponent extends component_1.Component {
             const KEY_DOWN = 83;
             this.horizontal = (input_1.Input.getKeyDown(KEY_RIGHT) ? 1 : 0) + ((input_1.Input.getKeyDown(KEY_LEFT) ? -1 : 0));
             this.vertical = (input_1.Input.getKeyDown(KEY_DOWN) ? 1 : 0) + ((input_1.Input.getKeyDown(KEY_UP) ? -1 : 0));
+            //console.log(this.horizontal, this.vertical)
         }
+    }
+    serialize(packet) {
+        packet.writeDouble(this.horizontal);
+        packet.writeDouble(this.vertical);
+        return packet;
+    }
+    unserialize(packet) {
+        const horizontal = packet.readDouble();
+        const vertical = packet.readDouble();
+        let sync = true;
+        if (this.entity.hasComponent(syncComponent_1.SyncComponent)) {
+            if (this.entity.getComponent(syncComponent_1.SyncComponent).syncType == syncComponent_1.SyncType.DONT_SYNC)
+                sync = false;
+        }
+        if (sync) {
+            this.horizontal = horizontal;
+            this.vertical = vertical;
+        }
+        return packet;
     }
 }
 exports.InputHandlerComponent = InputHandlerComponent;
@@ -12152,66 +17071,45 @@ exports.InputHandlerComponent = InputHandlerComponent;
 
 /***/ }),
 
-/***/ "./src/component/objectSpriteComponent.ts":
-/*!************************************************!*\
-  !*** ./src/component/objectSpriteComponent.ts ***!
-  \************************************************/
-/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+/***/ "./src/component/modelComponent.ts":
+/*!*****************************************!*\
+  !*** ./src/component/modelComponent.ts ***!
+  \*****************************************/
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 "use strict";
 
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.ObjectSpriteComponent = void 0;
-const pc = __importStar(__webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs"));
-const animatedMaterial_1 = __webpack_require__(/*! ../animatedMaterial/animatedMaterial */ "./src/animatedMaterial/animatedMaterial.ts");
-const render_1 = __webpack_require__(/*! ../render/render */ "./src/render/render.ts");
+exports.ModelComponent = void 0;
+const render_1 = __webpack_require__(/*! ../gameface/render */ "./src/gameface/render.ts");
+const glbLoader_1 = __webpack_require__(/*! ../glbLoader/glbLoader */ "./src/glbLoader/glbLoader.ts");
 const component_1 = __webpack_require__(/*! ./component */ "./src/component/component.ts");
-class ObjectSpriteComponent extends component_1.Component {
-    get animatedMaterial() { return this._animatedMaterial; }
+class ModelComponent extends component_1.Component {
+    constructor() {
+        super(...arguments);
+        this.priority = 0;
+        this.path = "";
+    }
     init() {
         super.init();
-        this.initAnimatedMaterial();
-        const pcEntity = new pc.Entity();
-        pcEntity.addComponent("render", {
-            material: this.animatedMaterial.material,
-            type: "box",
+        if (!render_1.Render.app)
+            return;
+        console.log("start loading", this.path);
+        const entity = this.entity;
+        glbLoader_1.GLBLoader.loadModel(this.path, (renderRootEntity) => {
+            console.log(renderRootEntity);
+            entity.pcEntity.addChild(renderRootEntity);
+            console.log(renderRootEntity);
         });
-        this.getPcEntity().addChild(pcEntity);
     }
-    getPcEntity() {
-        return this.entity.pcEntity;
-    }
-    initAnimatedMaterial() {
-        const animatedMaterial = this._animatedMaterial = new animatedMaterial_1.AnimatedMaterial(1, 1, 200);
-        render_1.Render.loadAsset('assets/crate.png', (asset) => {
-            animatedMaterial.setAsset(asset);
-        });
+    update(dt) {
+        super.update(dt);
     }
     postupdate(dt) {
         super.postupdate(dt);
-        this.animatedMaterial.update(dt);
     }
 }
-exports.ObjectSpriteComponent = ObjectSpriteComponent;
+exports.ModelComponent = ModelComponent;
 
 
 /***/ }),
@@ -12263,11 +17161,13 @@ class PlayerComponent extends component_1.Component {
     }
     update(dt) {
         super.update(dt);
+        if (!this.entity.hasComponent(inputHandlerComponent_1.InputHandlerComponent))
+            return;
         const inputHandler = this.entity.getComponent(inputHandlerComponent_1.InputHandlerComponent);
         const move = new pc.Vec2(inputHandler.horizontal, inputHandler.vertical);
         if (move.length() > 0) {
             const collisionComponent = this.entity.getComponent(collisionComponent_1.CollisionComponent);
-            const s = this.speed * 0.001;
+            const s = this.speed * 0.05 * dt;
             matter_js_1.default.Body.applyForce(collisionComponent.body, collisionComponent.body.position, { x: move.x * s, y: move.y * s });
         }
     }
@@ -12277,43 +17177,190 @@ exports.PlayerComponent = PlayerComponent;
 
 /***/ }),
 
-/***/ "./src/component/positionComponent.ts":
-/*!********************************************!*\
-  !*** ./src/component/positionComponent.ts ***!
-  \********************************************/
+/***/ "./src/component/spriteComponent.ts":
+/*!******************************************!*\
+  !*** ./src/component/spriteComponent.ts ***!
+  \******************************************/
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.SpriteComponent = void 0;
+const render_1 = __webpack_require__(/*! ../gameface/render */ "./src/gameface/render.ts");
+const planeSprite_1 = __webpack_require__(/*! ../planeSprite/planeSprite */ "./src/planeSprite/planeSprite.ts");
+const component_1 = __webpack_require__(/*! ./component */ "./src/component/component.ts");
+class SpriteComponent extends component_1.Component {
+    constructor() {
+        super(...arguments);
+        this.priority = 0;
+        this.path = "";
+        this._spriteOptions = new Map();
+    }
+    init() {
+        super.init();
+    }
+    add(id, texture, frames, width, height) {
+        const spriteOptions = {
+            texture: texture,
+            frames: frames,
+            width: width,
+            height: height
+        };
+        this._spriteOptions.set(id, spriteOptions);
+    }
+    update(dt) {
+        super.update(dt);
+        if (!render_1.Render.app)
+            return;
+        Array.from(this._spriteOptions.keys()).map(id => {
+            const spriteOptions = this._spriteOptions.get(id);
+            if (!spriteOptions.planeSprite) {
+                spriteOptions.planeSprite = new planeSprite_1.PlaneSprite(spriteOptions.texture, spriteOptions.frames, spriteOptions.width, spriteOptions.height);
+                this.entity.pcEntity.addChild(spriteOptions.planeSprite.pcEntity);
+            }
+            spriteOptions.planeSprite.update(dt);
+        });
+    }
+    postupdate(dt) {
+        super.postupdate(dt);
+    }
+}
+exports.SpriteComponent = SpriteComponent;
+
+
+/***/ }),
+
+/***/ "./src/component/syncComponent.ts":
+/*!****************************************!*\
+  !*** ./src/component/syncComponent.ts ***!
+  \****************************************/
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
 
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.SyncComponent = exports.SyncType = void 0;
+const pc = __importStar(__webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs"));
+const component_1 = __webpack_require__(/*! ./component */ "./src/component/component.ts");
+var SyncType;
+(function (SyncType) {
+    SyncType[SyncType["DONT_SYNC"] = 0] = "DONT_SYNC";
+    SyncType[SyncType["CLIENT_SYNC"] = 1] = "CLIENT_SYNC";
+    SyncType[SyncType["SERVER_SYNC"] = 2] = "SERVER_SYNC";
+})(SyncType = exports.SyncType || (exports.SyncType = {}));
+class SyncComponent extends component_1.Component {
+    constructor() {
+        super(...arguments);
+        this.priority = 0;
+        this.syncType = SyncType.CLIENT_SYNC;
+        this._targetPosition = new pc.Vec2();
+        this._targetAngle = 0;
+    }
+    init() {
+        super.init();
+    }
+    update(dt) {
+        super.update(dt);
+        if (this.syncType == SyncType.DONT_SYNC)
+            return;
+        const transform = this.entity.transform;
+        const x = pc.math.lerp(transform.position.x, this._targetPosition.x, 0.3);
+        const y = pc.math.lerp(transform.position.y, this._targetPosition.y, 0.3);
+        const agle = pc.math.lerp(transform.angle, this._targetAngle, 0.3);
+        transform.setPosition(x, y);
+        transform.setAngle(this._targetAngle);
+    }
+    setPosition(x, y) {
+        this._targetPosition.set(x, y);
+    }
+    setAngle(angle) {
+        this._targetAngle = angle;
+    }
+}
+exports.SyncComponent = SyncComponent;
+
+
+/***/ }),
+
+/***/ "./src/component/transformComponent.ts":
+/*!*********************************************!*\
+  !*** ./src/component/transformComponent.ts ***!
+  \*********************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.PositionComponent = void 0;
+exports.TransformComponent = void 0;
 const matter_js_1 = __importDefault(__webpack_require__(/*! matter-js */ "./node_modules/matter-js/build/matter.js"));
+const pc = __importStar(__webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs"));
 const collisionComponent_1 = __webpack_require__(/*! ./collisionComponent */ "./src/component/collisionComponent.ts");
 const component_1 = __webpack_require__(/*! ./component */ "./src/component/component.ts");
-class PositionComponent extends component_1.Component {
+const syncComponent_1 = __webpack_require__(/*! ./syncComponent */ "./src/component/syncComponent.ts");
+class TransformComponent extends component_1.Component {
     constructor() {
         super(...arguments);
-        this.priority = 1000;
-        this._x = 0;
-        this._y = 0;
+        this.priority = 0;
+        this.position = new pc.Vec2();
         this._angle = 0;
     }
-    get x() { return this._x; }
-    get y() { return this._y; }
     get angle() { return this._angle; }
+    ;
+    init() {
+        super.init();
+    }
     update(dt) {
         super.update(dt);
         this.handleCollisionComponent();
     }
-    set(x, y) {
-        this._x = x;
-        this._y = y;
+    setPosition(x, y) {
+        this.position.x = x;
+        this.position.y = y;
         if (this.entity.hasComponent(collisionComponent_1.CollisionComponent)) {
             const c = this.entity.getComponent(collisionComponent_1.CollisionComponent);
-            matter_js_1.default.Body.setPosition(c.body, { x: this._x * 10, y: this._y * 10 });
+            c.setPosition(this.position.x, this.position.y);
         }
     }
     setAngle(angle) {
@@ -12326,227 +17373,118 @@ class PositionComponent extends component_1.Component {
     handleCollisionComponent() {
         if (this.entity.hasComponent(collisionComponent_1.CollisionComponent)) {
             const c = this.entity.getComponent(collisionComponent_1.CollisionComponent);
-            this._x = c.body.position.x * 0.1;
-            this._y = c.body.position.y * 0.1;
+            this.position.x = c.body.position.x * 1;
+            this.position.y = c.body.position.y * 1;
             this._angle = c.body.angle;
         }
     }
-    serialize() {
-        const data = {
-            x: this.x,
-            y: this.y,
-            a: this.angle
-        };
-        return data;
+    postupdate(dt) {
+        super.postupdate(dt);
     }
-    unserialize(data) {
-        const newPos = { x: this.x, y: this.y };
-        if (data.x != undefined)
-            newPos.x = data.x;
-        if (data.y != undefined)
-            newPos.y = data.y;
-        if (data.a != undefined)
-            this.setAngle(data.a);
-        this.set(newPos.x, newPos.y);
+    serialize(packet) {
+        packet.writeDouble(this.position.x);
+        packet.writeDouble(this.position.y);
+        packet.writeDouble(this.angle); //change
+        return packet;
+    }
+    unserialize(packet) {
+        const x = packet.readDouble();
+        const y = packet.readDouble();
+        const angle = packet.readDouble();
+        //console.log('unserialzied', x, y);
+        if (this.entity.hasComponent(syncComponent_1.SyncComponent)) {
+            this.entity.getComponent(syncComponent_1.SyncComponent).setPosition(x, y);
+            this.entity.getComponent(syncComponent_1.SyncComponent).setAngle(angle);
+        }
+        else {
+            this.setPosition(x, y);
+            this.setAngle(angle);
+        }
+        return packet;
     }
 }
-exports.PositionComponent = PositionComponent;
+exports.TransformComponent = TransformComponent;
 
 
 /***/ }),
 
-/***/ "./src/component/testAnimSprite.ts":
-/*!*****************************************!*\
-  !*** ./src/component/testAnimSprite.ts ***!
-  \*****************************************/
-/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+/***/ "./src/entityFactory/entityFactory.ts":
+/*!********************************************!*\
+  !*** ./src/entityFactory/entityFactory.ts ***!
+  \********************************************/
+/***/ ((__unused_webpack_module, exports) => {
 
 "use strict";
 
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.TestAnimSpriteComponent = void 0;
-const pc = __importStar(__webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs"));
-const animatedMaterial_1 = __webpack_require__(/*! ../animatedMaterial/animatedMaterial */ "./src/animatedMaterial/animatedMaterial.ts");
-const render_1 = __webpack_require__(/*! ../render/render */ "./src/render/render.ts");
-const component_1 = __webpack_require__(/*! ./component */ "./src/component/component.ts");
-class TestAnimSpriteComponent extends component_1.Component {
-    get animatedMaterial() { return this._animatedMaterial; }
-    init() {
-        super.init();
-        this.initAnimatedMaterial();
-        const pcEntity = new pc.Entity();
-        pcEntity.addComponent("render", {
-            material: this.animatedMaterial.material,
-            type: "plane",
-        });
-        this.getPcEntity().addChild(pcEntity);
+exports.EntityFactory = void 0;
+class EntityFactory {
+    constructor() {
+        this._allComponents = [];
+        this._allEntities = new Map();
     }
-    getPcEntity() {
-        return this.entity.pcEntity;
+    registerEntity(name, constr) {
+        this._allEntities.set(name, constr);
     }
-    initAnimatedMaterial() {
-        const animatedMaterial = this._animatedMaterial = new animatedMaterial_1.AnimatedMaterial(3, 1, 200);
-        render_1.Render.loadAsset('assets/player.png', (asset) => {
-            animatedMaterial.setAsset(asset);
-        });
+    registerComponent(constr) {
+        this._allComponents.push(constr);
     }
-    postupdate(dt) {
-        super.postupdate(dt);
-        this.animatedMaterial.update(dt);
+    getIndexOfComponent(c) {
+        let i = 0;
+        for (const constr of this._allComponents) {
+            if (c instanceof constr)
+                return i;
+            i++;
+        }
+        throw "Component " + c.constructor.name + " not found";
+    }
+    getEntityByIndex(index) {
+        return Array.from(this._allEntities.values())[index];
+    }
+    getIndexOfEntity(c) {
+        let i = 0;
+        for (const constr of this._allEntities.values()) {
+            if (c instanceof constr)
+                return i;
+            i++;
+        }
+        throw "Entity " + c.constructor.name + " not found";
     }
 }
-exports.TestAnimSpriteComponent = TestAnimSpriteComponent;
+exports.EntityFactory = EntityFactory;
 
 
 /***/ }),
 
-/***/ "./src/component/testComponent.ts":
-/*!****************************************!*\
-  !*** ./src/component/testComponent.ts ***!
-  \****************************************/
+/***/ "./src/entity/building/entityBuilding.ts":
+/*!***********************************************!*\
+  !*** ./src/entity/building/entityBuilding.ts ***!
+  \***********************************************/
 /***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.TestComponent = void 0;
-const component_1 = __webpack_require__(/*! ./component */ "./src/component/component.ts");
-class TestComponent extends component_1.Component {
-    init() {
-        super.init();
+exports.EntityBuilding = void 0;
+const collisionComponent_1 = __webpack_require__(/*! ../../component/collisionComponent */ "./src/component/collisionComponent.ts");
+const modelComponent_1 = __webpack_require__(/*! ../../component/modelComponent */ "./src/component/modelComponent.ts");
+const entity_1 = __webpack_require__(/*! ../entity */ "./src/entity/entity.ts");
+class EntityBuilding extends entity_1.Entity {
+    constructor(world) {
+        super(world);
+        //this.addComponent(new PlayerComponent());
+        //const sprite = this.addComponent(new SpriteComponent());
+        //sprite.add('default', 'assets/car.png', 1, 200, 100);
+        const collision = this.addComponent(new collisionComponent_1.CollisionComponent());
+        collision.options.frictionAir = 0.1;
+        //collision.options.isStatic = true;
+        collision.addRectangle('default', 0, 0, 20, 20);
+        //collision.addRectangle('part2', 0, 300, 200, 100);
+        const model = this.addComponent(new modelComponent_1.ModelComponent());
+        model.path = "assets/building.glb";
     }
 }
-exports.TestComponent = TestComponent;
-
-
-/***/ }),
-
-/***/ "./src/component/vehicleComponent.ts":
-/*!*******************************************!*\
-  !*** ./src/component/vehicleComponent.ts ***!
-  \*******************************************/
-/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
-
-"use strict";
-
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.VehicleComponent = void 0;
-const matter_js_1 = __importDefault(__webpack_require__(/*! matter-js */ "./node_modules/matter-js/build/matter.js"));
-const collisionComponent_1 = __webpack_require__(/*! ./collisionComponent */ "./src/component/collisionComponent.ts");
-const component_1 = __webpack_require__(/*! ./component */ "./src/component/component.ts");
-const inputHandlerComponent_1 = __webpack_require__(/*! ./inputHandlerComponent */ "./src/component/inputHandlerComponent.ts");
-const positionComponent_1 = __webpack_require__(/*! ./positionComponent */ "./src/component/positionComponent.ts");
-class VehicleComponent extends component_1.Component {
-    constructor() {
-        super(...arguments);
-        this.speed = 3;
-    }
-    init() {
-        super.init();
-    }
-    update(dt) {
-        super.update(dt);
-        const inputHandler = this.entity.getComponent(inputHandlerComponent_1.InputHandlerComponent);
-        const positionComponent = this.entity.getComponent(positionComponent_1.PositionComponent);
-        const collisionComponent = this.entity.getComponent(collisionComponent_1.CollisionComponent);
-        const body = collisionComponent.body;
-        const angle = positionComponent.angle;
-        const s = this.speed * 0.01;
-        const force = {
-            x: inputHandler.vertical * Math.cos(angle) * s,
-            y: inputHandler.vertical * Math.sin(angle) * s
-        };
-        matter_js_1.default.Body.applyForce(collisionComponent.body, collisionComponent.body.position, { x: force.x, y: force.y });
-        matter_js_1.default.Body.setAngularVelocity(body, inputHandler.horizontal * 0.1);
-    }
-}
-exports.VehicleComponent = VehicleComponent;
-
-
-/***/ }),
-
-/***/ "./src/component/vehicleSpriteComponent.ts":
-/*!*************************************************!*\
-  !*** ./src/component/vehicleSpriteComponent.ts ***!
-  \*************************************************/
-/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
-
-"use strict";
-
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.VehicleSpriteComponent = void 0;
-const pc = __importStar(__webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs"));
-const animatedMaterial_1 = __webpack_require__(/*! ../animatedMaterial/animatedMaterial */ "./src/animatedMaterial/animatedMaterial.ts");
-const render_1 = __webpack_require__(/*! ../render/render */ "./src/render/render.ts");
-const component_1 = __webpack_require__(/*! ./component */ "./src/component/component.ts");
-class VehicleSpriteComponent extends component_1.Component {
-    get animatedMaterial() { return this._animatedMaterial; }
-    init() {
-        super.init();
-        this.initAnimatedMaterial();
-        const pcEntity = new pc.Entity();
-        pcEntity.addComponent("render", {
-            material: this.animatedMaterial.material,
-            type: "plane",
-        });
-        this.getPcEntity().addChild(pcEntity);
-    }
-    getPcEntity() {
-        return this.entity.pcEntity;
-    }
-    initAnimatedMaterial() {
-        const animatedMaterial = this._animatedMaterial = new animatedMaterial_1.AnimatedMaterial(1, 1, 200);
-        render_1.Render.loadAsset('assets/car.png', (asset) => {
-            animatedMaterial.setAsset(asset);
-        });
-    }
-    postupdate(dt) {
-        super.postupdate(dt);
-        this.animatedMaterial.update(dt);
-    }
-}
-exports.VehicleSpriteComponent = VehicleSpriteComponent;
+exports.EntityBuilding = EntityBuilding;
 
 
 /***/ }),
@@ -12582,18 +17520,22 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.Entity = void 0;
 const pc = __importStar(__webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs"));
 const uuid_1 = __webpack_require__(/*! uuid */ "./node_modules/uuid/dist/esm-browser/index.js");
+const transformComponent_1 = __webpack_require__(/*! ../component/transformComponent */ "./src/component/transformComponent.ts");
 class Entity {
     constructor(world, pcEntity) {
         this.data = {};
         this._id = (0, uuid_1.v4)();
         this._components = [];
+        this._hasInitalized = false;
         this._world = world;
         if (pcEntity)
             this._pcEntity = pcEntity;
+        this._transform = this.addComponent(new transformComponent_1.TransformComponent());
     }
     get id() { return this._id; }
     get world() { return this._world; }
     get components() { return this._components; }
+    get transform() { return this._transform; }
     get pcEntity() {
         if (!this._pcEntity)
             this._pcEntity = new pc.Entity();
@@ -12602,12 +17544,16 @@ class Entity {
     setId(id) {
         this._id = id;
     }
-    setPcEntity(entity) {
+    /*
+    public setPcEntity(entity: pc.Entity) {
         this._pcEntity = entity;
     }
+    */
     addComponent(c) {
         c.entity = this;
         this._components.push(c);
+        if (this._hasInitalized)
+            c.init();
         return c;
     }
     hasComponent(constr) {
@@ -12625,6 +17571,7 @@ class Entity {
     init() {
         for (const component of this._components)
             component.init();
+        this._hasInitalized = true;
     }
     update(dt) {
         for (const component of this._components)
@@ -12640,97 +17587,31 @@ exports.Entity = Entity;
 
 /***/ }),
 
-/***/ "./src/entity/entityBuilding.ts":
-/*!**************************************!*\
-  !*** ./src/entity/entityBuilding.ts ***!
-  \**************************************/
-/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.EntityBuilding = void 0;
-const entity_1 = __webpack_require__(/*! ./entity */ "./src/entity/entity.ts");
-const positionComponent_1 = __webpack_require__(/*! ../component/positionComponent */ "./src/component/positionComponent.ts");
-const buildingSpriteComponent_1 = __webpack_require__(/*! ../component/buildingSpriteComponent */ "./src/component/buildingSpriteComponent.ts");
-const testComponent_1 = __webpack_require__(/*! ../component/testComponent */ "./src/component/testComponent.ts");
-class EntityBuilding extends entity_1.Entity {
-    constructor(world) {
-        super(world);
-        this.position = this.addComponent(new positionComponent_1.PositionComponent());
-        //const collisionComponent = this.addComponent(new CollisionComponent());
-        //collisionComponent.size.set(10, 10)
-        this.addComponent(new testComponent_1.TestComponent());
-        if (world.server.game.isClient) {
-            this.addComponent(new buildingSpriteComponent_1.BuildingSpriteComponent());
-        }
-    }
-}
-exports.EntityBuilding = EntityBuilding;
-
-
-/***/ }),
-
-/***/ "./src/entity/entityObject.ts":
-/*!************************************!*\
-  !*** ./src/entity/entityObject.ts ***!
-  \************************************/
-/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.EntityObject = void 0;
-const entity_1 = __webpack_require__(/*! ./entity */ "./src/entity/entity.ts");
-const positionComponent_1 = __webpack_require__(/*! ../component/positionComponent */ "./src/component/positionComponent.ts");
-const collisionComponent_1 = __webpack_require__(/*! ../component/collisionComponent */ "./src/component/collisionComponent.ts");
-const objectSpriteComponent_1 = __webpack_require__(/*! ../component/objectSpriteComponent */ "./src/component/objectSpriteComponent.ts");
-class EntityObject extends entity_1.Entity {
-    constructor(world) {
-        super(world);
-        this.position = this.addComponent(new positionComponent_1.PositionComponent());
-        const collisionComponent = this.addComponent(new collisionComponent_1.CollisionComponent());
-        /*
-        const s = 100;
-        collisionComponent.size.set(s, s);
-        collisionComponent.frictionAir = 0.03;
-        */
-        if (world.server.game.isClient) {
-            this.addComponent(new objectSpriteComponent_1.ObjectSpriteComponent());
-        }
-    }
-}
-exports.EntityObject = EntityObject;
-
-
-/***/ }),
-
-/***/ "./src/entity/entityPlayer.ts":
-/*!************************************!*\
-  !*** ./src/entity/entityPlayer.ts ***!
-  \************************************/
+/***/ "./src/entity/player/entityPlayer.ts":
+/*!*******************************************!*\
+  !*** ./src/entity/player/entityPlayer.ts ***!
+  \*******************************************/
 /***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.EntityPlayer = void 0;
-const entity_1 = __webpack_require__(/*! ./entity */ "./src/entity/entity.ts");
-const positionComponent_1 = __webpack_require__(/*! ../component/positionComponent */ "./src/component/positionComponent.ts");
-const collisionComponent_1 = __webpack_require__(/*! ../component/collisionComponent */ "./src/component/collisionComponent.ts");
-const inputHandlerComponent_1 = __webpack_require__(/*! ../component/inputHandlerComponent */ "./src/component/inputHandlerComponent.ts");
-const testAnimSprite_1 = __webpack_require__(/*! ../component/testAnimSprite */ "./src/component/testAnimSprite.ts");
-const playerComponent_1 = __webpack_require__(/*! ../component/playerComponent */ "./src/component/playerComponent.ts");
+const collisionComponent_1 = __webpack_require__(/*! ../../component/collisionComponent */ "./src/component/collisionComponent.ts");
+const inputHandlerComponent_1 = __webpack_require__(/*! ../../component/inputHandlerComponent */ "./src/component/inputHandlerComponent.ts");
+const playerComponent_1 = __webpack_require__(/*! ../../component/playerComponent */ "./src/component/playerComponent.ts");
+const spriteComponent_1 = __webpack_require__(/*! ../../component/spriteComponent */ "./src/component/spriteComponent.ts");
+const entity_1 = __webpack_require__(/*! ../entity */ "./src/entity/entity.ts");
 class EntityPlayer extends entity_1.Entity {
     constructor(world) {
         super(world);
-        this.position = this.addComponent(new positionComponent_1.PositionComponent());
-        this.addComponent(new collisionComponent_1.CollisionComponent());
-        this.addComponent(new inputHandlerComponent_1.InputHandlerComponent());
         this.addComponent(new playerComponent_1.PlayerComponent());
-        if (world.server.game.isClient) {
-            this.addComponent(new testAnimSprite_1.TestAnimSpriteComponent());
-        }
+        this.addComponent(new inputHandlerComponent_1.InputHandlerComponent());
+        const sprite = this.addComponent(new spriteComponent_1.SpriteComponent());
+        sprite.add('default', 'assets/player.png', 3, 100, 100);
+        const collision = this.addComponent(new collisionComponent_1.CollisionComponent());
+        collision.options.frictionAir = 0.2;
+        collision.addRectangle('default', 0, 0, 100, 100);
     }
 }
 exports.EntityPlayer = EntityPlayer;
@@ -12738,34 +17619,30 @@ exports.EntityPlayer = EntityPlayer;
 
 /***/ }),
 
-/***/ "./src/entity/entityVehicle.ts":
-/*!*************************************!*\
-  !*** ./src/entity/entityVehicle.ts ***!
-  \*************************************/
+/***/ "./src/entity/vehicle/entityVehicle.ts":
+/*!*********************************************!*\
+  !*** ./src/entity/vehicle/entityVehicle.ts ***!
+  \*********************************************/
 /***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.EntityVehicle = void 0;
-const entity_1 = __webpack_require__(/*! ./entity */ "./src/entity/entity.ts");
-const positionComponent_1 = __webpack_require__(/*! ../component/positionComponent */ "./src/component/positionComponent.ts");
-const collisionComponent_1 = __webpack_require__(/*! ../component/collisionComponent */ "./src/component/collisionComponent.ts");
-const inputHandlerComponent_1 = __webpack_require__(/*! ../component/inputHandlerComponent */ "./src/component/inputHandlerComponent.ts");
-const vehicleSpriteComponent_1 = __webpack_require__(/*! ../component/vehicleSpriteComponent */ "./src/component/vehicleSpriteComponent.ts");
-const vehicleComponent_1 = __webpack_require__(/*! ../component/vehicleComponent */ "./src/component/vehicleComponent.ts");
+const collisionComponent_1 = __webpack_require__(/*! ../../component/collisionComponent */ "./src/component/collisionComponent.ts");
+const spriteComponent_1 = __webpack_require__(/*! ../../component/spriteComponent */ "./src/component/spriteComponent.ts");
+const entity_1 = __webpack_require__(/*! ../entity */ "./src/entity/entity.ts");
 class EntityVehicle extends entity_1.Entity {
     constructor(world) {
         super(world);
-        this.position = this.addComponent(new positionComponent_1.PositionComponent());
-        this.addComponent(new inputHandlerComponent_1.InputHandlerComponent());
-        this.addComponent(new vehicleComponent_1.VehicleComponent());
-        const collisionComponent = this.addComponent(new collisionComponent_1.CollisionComponent());
-        //collisionComponent.size.set(100, 45);
-        //collisionComponent.frictionAir = 0.4;
-        if (world.server.game.isClient) {
-            this.addComponent(new vehicleSpriteComponent_1.VehicleSpriteComponent());
-        }
+        const sprite = this.addComponent(new spriteComponent_1.SpriteComponent());
+        sprite.add('default', 'assets/car.png', 1, 200, 100);
+        const collision = this.addComponent(new collisionComponent_1.CollisionComponent());
+        collision.options.frictionAir = 0.1;
+        collision.addRectangle('default', 0, 0, 200, 100);
+        //collision.addRectangle('part2', 0, 300, 200, 100);
+        //const model = this.addComponent(new ModelComponent());
+        //model.path = "assets/building.glb";
     }
 }
 exports.EntityVehicle = EntityVehicle;
@@ -12783,30 +17660,38 @@ exports.EntityVehicle = EntityVehicle;
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.Game = void 0;
-const server_1 = __webpack_require__(/*! ../server/server */ "./src/server/server.ts");
+const inputHandlerComponent_1 = __webpack_require__(/*! ../component/inputHandlerComponent */ "./src/component/inputHandlerComponent.ts");
+const playerComponent_1 = __webpack_require__(/*! ../component/playerComponent */ "./src/component/playerComponent.ts");
+const transformComponent_1 = __webpack_require__(/*! ../component/transformComponent */ "./src/component/transformComponent.ts");
+const entityBuilding_1 = __webpack_require__(/*! ../entity/building/entityBuilding */ "./src/entity/building/entityBuilding.ts");
+const entityPlayer_1 = __webpack_require__(/*! ../entity/player/entityPlayer */ "./src/entity/player/entityPlayer.ts");
+const entityVehicle_1 = __webpack_require__(/*! ../entity/vehicle/entityVehicle */ "./src/entity/vehicle/entityVehicle.ts");
+const entityFactory_1 = __webpack_require__(/*! ../entityFactory/entityFactory */ "./src/entityFactory/entityFactory.ts");
+const world_1 = __webpack_require__(/*! ../world/world */ "./src/world/world.ts");
 class Game {
     constructor() {
-        this._servers = new Map();
-        this.isClient = false;
+        this._worlds = new Map();
+        this._entityFactory = new entityFactory_1.EntityFactory();
+        this._entityFactory.registerComponent(inputHandlerComponent_1.InputHandlerComponent);
+        this._entityFactory.registerComponent(playerComponent_1.PlayerComponent);
+        this._entityFactory.registerComponent(transformComponent_1.TransformComponent);
+        this._entityFactory.registerEntity('EntityBuilding', entityBuilding_1.EntityBuilding);
+        this._entityFactory.registerEntity('EntityPlayer', entityPlayer_1.EntityPlayer);
+        this._entityFactory.registerEntity('EntityVehicle', entityVehicle_1.EntityVehicle);
     }
-    get servers() { return Array.from(this._servers.values()); }
-    get mainServer() { return this.servers[0]; }
+    get worlds() { return Array.from(this._worlds.values()); }
+    get entityFactory() { return this._entityFactory; }
     start() {
-        console.log('start');
+        console.log(`[game] start`);
     }
     update(dt) {
-        this.servers.map(server => server.update(dt));
+        this.worlds.map(world => world.update(dt));
     }
-    createServer(id) {
-        const server = new server_1.Server(this);
-        server.id = id;
-        return this.addServer(server);
-        ;
-    }
-    addServer(server) {
-        this._servers.set(server.id, server);
-        server.init();
-        return server;
+    createWorld(name) {
+        console.log(`[game] create world '${name}'`);
+        const world = new world_1.World(this);
+        this._worlds.set(name, world);
+        return world;
     }
 }
 exports.Game = Game;
@@ -12814,65 +17699,230 @@ exports.Game = Game;
 
 /***/ }),
 
-/***/ "./src/game/gameClient.ts":
-/*!********************************!*\
-  !*** ./src/game/gameClient.ts ***!
-  \********************************/
-/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+/***/ "./src/gameface/gameface.ts":
+/*!**********************************!*\
+  !*** ./src/gameface/gameface.ts ***!
+  \**********************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
 
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.GameClient = void 0;
+exports.Gameface = void 0;
+const pc = __importStar(__webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs"));
 const camera_1 = __webpack_require__(/*! ../camera/camera */ "./src/camera/camera.ts");
+const inputHandlerComponent_1 = __webpack_require__(/*! ../component/inputHandlerComponent */ "./src/component/inputHandlerComponent.ts");
+const syncComponent_1 = __webpack_require__(/*! ../component/syncComponent */ "./src/component/syncComponent.ts");
+const entityPlayer_1 = __webpack_require__(/*! ../entity/player/entityPlayer */ "./src/entity/player/entityPlayer.ts");
+const game_1 = __webpack_require__(/*! ../game/game */ "./src/game/game.ts");
 const input_1 = __webpack_require__(/*! ../input/input */ "./src/input/input.ts");
 const network_1 = __webpack_require__(/*! ../network/network */ "./src/network/network.ts");
-const render_1 = __webpack_require__(/*! ../render/render */ "./src/render/render.ts");
-const worldSync_1 = __webpack_require__(/*! ../world/worldSync */ "./src/world/worldSync.ts");
-const game_1 = __webpack_require__(/*! ./game */ "./src/game/game.ts");
-class GameClient extends game_1.Game {
+const render_1 = __webpack_require__(/*! ./render */ "./src/gameface/render.ts");
+class Gameface {
     constructor(canvas) {
-        super();
-        this.isClient = true;
+        this.controllingEntity = "";
+        this._canvas = canvas;
+        this._game = new game_1.Game();
         this._network = new network_1.Network();
-        this._network.init();
-        render_1.Render.init(this, canvas);
-        input_1.Input.init();
-        camera_1.Camera.init();
-        render_1.Render.app.on('update', (dt) => {
-            this.update(dt);
-        });
+        Gameface.Instance = this;
     }
+    get game() { return this._game; }
     get network() { return this._network; }
-    update(dt) {
-        super.update(dt);
-        this._network.update(dt);
-        render_1.Render.update(dt);
-        input_1.Input.update(dt);
-        camera_1.Camera.update(dt);
-    }
+    get app() { return this._app; }
     start() {
-        super.start();
-        const server = this.createServer('server1');
-        this.network.connect();
-        this.startMultiplayer();
+        this.initPlaycanvas();
+        this.network.init();
+        camera_1.Camera.init();
+        render_1.Render.init(this._app);
+        input_1.Input.init(this._app);
+        this.game.start();
+        const world = this.game.createWorld('world');
+        world.init();
+        render_1.Render.world = world;
+        const isMultiplayer = true;
+        if (isMultiplayer) {
+            this.network.connect();
+            this.network.sendJoinServer('idk');
+        }
+        else {
+            world.generateWorld();
+            const entity = world.spawnEntity(entityPlayer_1.EntityPlayer);
+            this.setPlayer(entity);
+        }
     }
-    startSingleplayer() {
-        const server = this.servers[0];
-        const world = server.worlds[0];
-        //const player = server.worlds[0].spawnPlayer();
-        //Render.setPlayer(player);
-        const veh = server.worlds[0].spawnVehicle();
-        render_1.Render.setPlayer(veh);
-        world.generateBaseWorld();
+    update(dt) {
+        this.game.update(dt);
+        this.network.update(dt);
+        camera_1.Camera.update(dt);
+        render_1.Render.update(dt);
     }
-    startMultiplayer() {
-        const server = this.servers[0];
-        const world = server.worlds[0];
-        worldSync_1.WorldSync.world = world;
+    initPlaycanvas() {
+        const canvas = this._canvas;
+        const app = this._app = new pc.Application(canvas, {
+            mouse: new pc.Mouse(canvas),
+            touch: new pc.TouchDevice(canvas),
+            keyboard: new pc.Keyboard(document.body)
+        });
+        ///pc.registerScript(TextScript, 'textScript', app);
+        app.resizeCanvas(800, 600);
+        app.setCanvasFillMode(pc.FILLMODE_FILL_WINDOW);
+        app.setCanvasResolution(pc.RESOLUTION_AUTO);
+        app.scene.ambientLight = new pc.Color(0.2, 0.2, 0.2);
+        app.on('update', (dt) => this.update(dt));
+        app.start();
+    }
+    setPlayer(entity) {
+        this.player = entity;
+        this.player.getComponent(inputHandlerComponent_1.InputHandlerComponent).enabled = true;
+        this.player.getComponent(syncComponent_1.SyncComponent).syncType = syncComponent_1.SyncType.DONT_SYNC;
+    }
+    checkControllingEntity() {
+        if (this.player) {
+            if (this.player.id == this.controllingEntity)
+                return;
+        }
+        const world = this.game.worlds[0];
+        const entity = world.getEntity(this.controllingEntity);
+        if (entity) {
+            this.setPlayer(entity);
+        }
     }
 }
-exports.GameClient = GameClient;
+exports.Gameface = Gameface;
+
+
+/***/ }),
+
+/***/ "./src/gameface/render.ts":
+/*!********************************!*\
+  !*** ./src/gameface/render.ts ***!
+  \********************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Render = void 0;
+const pc = __importStar(__webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs"));
+class Render {
+    static init(app) {
+        this.app = app;
+        this.setupLocalClientScene();
+    }
+    static update(dt) {
+        this.renderWorld();
+    }
+    static renderWorld() {
+        const world = this.world;
+        const app = this.app;
+        if (!world)
+            return;
+        const pcEntities = this._pcEntities;
+        for (const entity of world.entities) {
+            const pcEntity = entity.pcEntity;
+            if (!pcEntities.includes(pcEntity)) {
+                pcEntities.push(pcEntity);
+                console.log("[render] add pcEntity");
+                app.root.addChild(pcEntity);
+                const material = new pc.StandardMaterial();
+                material.diffuse = new pc.Color(0, 1, 0);
+                material.update();
+                const centerPcEntity = new pc.Entity();
+                centerPcEntity.addComponent("render", {
+                    material: material,
+                    type: "box",
+                });
+                centerPcEntity.setLocalScale(new pc.Vec3(0.2, 0.2, 0.2));
+                entity.pcEntity.addChild(centerPcEntity);
+            }
+            const transform = entity.transform;
+            pcEntity.setPosition(transform.position.x * 0.01, 0, transform.position.y * 0.01);
+            pcEntity.setEulerAngles(0, pc.math.RAD_TO_DEG * -transform.angle, 0);
+        }
+    }
+    static setupLocalClientScene() {
+        const app = this.app;
+        const camera = this.camera = new pc.Entity('camera');
+        camera.addComponent('camera', {
+            clearColor: new pc.Color(0.1, 0.1, 0.1)
+        });
+        app.root.addChild(camera);
+        camera.setPosition(0, 20, 0);
+        //camera.lookAt(0, 0, 0);
+        camera.setEulerAngles(-90, 0, 0);
+        camera.addComponent('script').create('cameraFollow');
+        console.log('camera', camera);
+        //
+        const light = this.sunLight = new pc.Entity('light');
+        light.addComponent('light');
+        app.root.addChild(light);
+        light.setEulerAngles(30, 30, 0);
+        light.light.castShadows = true;
+        light.light.shadowType = 3;
+        light.light.shadowDistance = 40;
+        console.log('light', light);
+        window['light'] = light;
+        //
+        const text = new pc.Entity('text');
+        app.root.addChild(text);
+        text.addComponent('script').create('textScript');
+    }
+    static loadAsset(url, callback) {
+        const imageUrl = url;
+        const app = Render.app;
+        app.loader.getHandler("texture")['crossOrigin'] = "anonymous";
+        const asset = new pc.Asset("myTexture", "texture", { url: imageUrl });
+        asset.on("error", function (message) {
+            console.log(message);
+        });
+        asset.on("load", function (asset) {
+            callback(asset);
+        });
+        app.assets.add(asset);
+        app.assets.load(asset);
+        return asset;
+    }
+}
+exports.Render = Render;
+Render._pcEntities = [];
 
 
 /***/ }),
@@ -12887,11 +17937,11 @@ exports.GameClient = GameClient;
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.GLBLoader = void 0;
-const render_1 = __webpack_require__(/*! ../render/render */ "./src/render/render.ts");
+const gameface_1 = __webpack_require__(/*! ../gameface/gameface */ "./src/gameface/gameface.ts");
 class GLBLoader {
     static loadModel(url, callback) {
-        const utils = __webpack_require__(/*! ../playcanvas/glb-utils.js */ "./src/playcanvas/glb-utils.js");
-        render_1.Render.app.assets.loadFromUrl(url, 'binary', function (err, glbAsset) {
+        const utils = __webpack_require__(/*! ./glb-utils.js */ "./src/glbLoader/glb-utils.js");
+        gameface_1.Gameface.Instance.app.assets.loadFromUrl(url, 'binary', function (err, glbAsset) {
             if (!glbAsset)
                 return console.error("error");
             utils.loadGlbContainerFromAsset(glbAsset, null, glbAsset.name, function (err, asset) {
@@ -12936,11 +17986,9 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.Input = void 0;
 const pc = __importStar(__webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs"));
-const render_1 = __webpack_require__(/*! ../render/render */ "./src/render/render.ts");
 class Input {
-    static init() {
-        console.log("init");
-        const app = render_1.Render.app;
+    static init(app) {
+        console.log("[input] init");
         app.keyboard.on(pc.EVENT_KEYDOWN, this.onKeyDown, this);
         app.keyboard.on(pc.EVENT_KEYUP, this.onKeyUp, this);
     }
@@ -12981,21 +18029,30 @@ Input._keys = new Map();
 /*!********************************!*\
   !*** ./src/network/network.ts ***!
   \********************************/
-/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
 
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.Network = void 0;
+exports.Network = exports.PacketType = void 0;
+const bytebuffer_1 = __importDefault(__webpack_require__(/*! bytebuffer */ "./node_modules/bytebuffer/dist/bytebuffer.js"));
 const socket_io_client_1 = __webpack_require__(/*! socket.io-client */ "./node_modules/socket.io-client/build/cjs/index.js");
-const packets_1 = __webpack_require__(/*! ../packet/packets */ "./src/packet/packets.ts");
-const render_1 = __webpack_require__(/*! ../render/render */ "./src/render/render.ts");
-const worldSync_1 = __webpack_require__(/*! ../world/worldSync */ "./src/world/worldSync.ts");
+const inputHandlerComponent_1 = __webpack_require__(/*! ../component/inputHandlerComponent */ "./src/component/inputHandlerComponent.ts");
+const syncComponent_1 = __webpack_require__(/*! ../component/syncComponent */ "./src/component/syncComponent.ts");
+const gameface_1 = __webpack_require__(/*! ../gameface/gameface */ "./src/gameface/gameface.ts");
+const formatPacket_1 = __webpack_require__(/*! ../packet/formatPacket */ "./src/packet/formatPacket.ts");
+const packet_1 = __webpack_require__(/*! ../packet/packet */ "./src/packet/packet.ts");
+var PacketType;
+(function (PacketType) {
+    PacketType[PacketType["ENTITY_DATA"] = 0] = "ENTITY_DATA";
+    PacketType[PacketType["JOIN_SERVER"] = 1] = "JOIN_SERVER";
+    PacketType[PacketType["SPAWN_ENTITY"] = 2] = "SPAWN_ENTITY";
+    PacketType[PacketType["CONTROLL_ENTITY"] = 3] = "CONTROLL_ENTITY";
+})(PacketType = exports.PacketType || (exports.PacketType = {}));
 class Network {
-    constructor() {
-        this.sendPacketIntervalMs = 80;
-        this._sendPacketTime = 0;
-    }
     get address() {
         if (location.host.includes('localhost'))
             return `${location.protocol}//${location.host}/`;
@@ -13007,7 +18064,11 @@ class Network {
             autoConnect: false,
             reconnection: false
         });
-        this._socket.on('p', (packet) => {
+        this._socket.on("p", (data) => {
+            //console.log("p", data)
+            const buffer = bytebuffer_1.default.fromBase64(data);
+            const packet = new packet_1.Packet();
+            packet.buffer = buffer;
             this.onReceivePacket(packet);
         });
         console.log(`[network] Address: (${this.address})`);
@@ -13015,50 +18076,72 @@ class Network {
     connect() {
         this._socket.connect();
     }
-    update(dt) {
-        this._sendPacketTime += dt;
-        if (this._sendPacketTime >= this.sendPacketIntervalMs / 1000) {
-            this._sendPacketTime = 0;
-            const player = render_1.Render.player;
-            if (!player)
-                return;
-            const packet = Network.serializeEntity(player);
-            this.send(packets_1.PACKET_TYPE.ENTITY_DATA, packet);
-        }
+    sendJoinServer(id) {
+        const packet = new packet_1.Packet();
+        packet.writeShort(PacketType.JOIN_SERVER);
+        packet.writeString(id);
+        this.sendPacket(packet);
     }
-    send(packetId, data) {
-        const packet = {
-            id: packetId,
-            data: data
-        };
-        this._socket.emit('p', packet);
-        //console.log(`[network] send`, packet);
+    update(dt) {
+        const player = gameface_1.Gameface.Instance.player;
+        if (player)
+            this.sendPlayerData(player);
+    }
+    sendPlayerData(entity) {
+        const components = [entity.transform];
+        if (entity.hasComponent(inputHandlerComponent_1.InputHandlerComponent))
+            components.push(entity.getComponent(inputHandlerComponent_1.InputHandlerComponent));
+        const packet = formatPacket_1.FormatPacket.entityData(entity, components);
+        this.sendPacket(packet);
+    }
+    sendPacket(packet) {
+        packet.buffer.flip();
+        this._socket.emit('p', packet.buffer.toBase64());
     }
     onReceivePacket(packet) {
-        if (packet.id == packets_1.PACKET_TYPE.ENTITY_DATA) {
-            worldSync_1.WorldSync.processEntityPacketData(packet.data);
+        const packetType = packet.readShort();
+        /*
+        if(packetType == PacketType.COMPONENT_DATA) {
+            const entityId: string = packet.readString();
+            const cindex: number = packet.readShort();
+
+            const world = Gameface.Instance.game.worlds[0];
+
+            if(world.hasEntity(entityId)) {
+                const entity = world.getEntity(entityId)!;
+                entity.components.forEach(c => {
+                    try {
+                        if(cindex == world.game.entityFactory.getIndexOfComponent(c)) {
+                            c.unserialize(packet);
+                        }
+                    } catch (error) {}
+                });
+            }
+
         }
-        if (packet.id == packets_1.PACKET_TYPE.CONTROL_ENTITY) {
-            const data = packet.data;
-            worldSync_1.WorldSync.entityId = data.id;
+        */
+        if (packetType == PacketType.ENTITY_DATA) {
+            const entityId = packet.readString();
+            const world = gameface_1.Gameface.Instance.game.worlds[0];
+            const entity = world.getEntity(entityId);
+            if (entity) {
+                formatPacket_1.FormatPacket.unserializeEntityData(entity, packet);
+            }
         }
-    }
-    static serializeEntity(entity) {
-        const componentsData = {};
-        const entityFactory = entity.world.server.entityFactory;
-        const packet = {
-            id: entity.id,
-            type: entityFactory.getIndexOfEntity(entity),
-            cdata: componentsData
-        };
-        for (const component of entity.components) {
-            const serializedData = component.serialize();
-            if (!serializedData)
-                continue;
-            const id = entityFactory.getIndexOfComponent(component);
-            componentsData[id] = serializedData;
+        if (packetType == PacketType.SPAWN_ENTITY) {
+            const entityId = packet.readString();
+            const entityType = packet.readShort();
+            const world = gameface_1.Gameface.Instance.game.worlds[0];
+            const entity = world.spawnEntity(world.game.entityFactory.getEntityByIndex(entityType), { id: entityId });
+            entity.addComponent(new syncComponent_1.SyncComponent());
+            formatPacket_1.FormatPacket.unserializeEntityData(entity, packet);
+            console.log("spsawn entity");
         }
-        return packet;
+        if (packetType == PacketType.CONTROLL_ENTITY) {
+            const entityId = packet.readString();
+            gameface_1.Gameface.Instance.controllingEntity = entityId;
+            gameface_1.Gameface.Instance.checkControllingEntity();
+        }
     }
 }
 exports.Network = Network;
@@ -13066,409 +18149,175 @@ exports.Network = Network;
 
 /***/ }),
 
-/***/ "./src/packet/packets.ts":
-/*!*******************************!*\
-  !*** ./src/packet/packets.ts ***!
-  \*******************************/
-/***/ ((__unused_webpack_module, exports) => {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.PACKET_TYPE = void 0;
-var PACKET_TYPE;
-(function (PACKET_TYPE) {
-    PACKET_TYPE[PACKET_TYPE["ENTITY_DATA"] = 0] = "ENTITY_DATA";
-    PACKET_TYPE[PACKET_TYPE["CONTROL_ENTITY"] = 1] = "CONTROL_ENTITY";
-})(PACKET_TYPE = exports.PACKET_TYPE || (exports.PACKET_TYPE = {}));
-
-
-/***/ }),
-
-/***/ "./src/playcanvas/playcanvas.ts":
-/*!**************************************!*\
-  !*** ./src/playcanvas/playcanvas.ts ***!
-  \**************************************/
-/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
-
-"use strict";
-
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.PlayCanvas = void 0;
-const pc = __importStar(__webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs"));
-const textScript_1 = __webpack_require__(/*! ./scripts/textScript */ "./src/playcanvas/scripts/textScript.ts");
-class PlayCanvas {
-    static setupApp(canvas) {
-        const app = new pc.Application(canvas, {
-            mouse: new pc.Mouse(canvas),
-            touch: new pc.TouchDevice(canvas),
-            keyboard: new pc.Keyboard(document.body)
-        });
-        //pc.registerScript(CameraFollow, 'cameraFollow', app);
-        pc.registerScript(textScript_1.TextScript, 'textScript', app);
-        app.resizeCanvas(800, 600);
-        app.scene.ambientLight = new pc.Color(0.2, 0.2, 0.2);
-        app.setCanvasFillMode(pc.FILLMODE_FILL_WINDOW);
-        app.setCanvasResolution(pc.RESOLUTION_AUTO);
-        return app;
-    }
-    static setupLocalClientScene(app) {
-        const camera = this.camera = new pc.Entity('camera');
-        camera.addComponent('camera', {
-            clearColor: new pc.Color(0.1, 0.1, 0.1)
-        });
-        app.root.addChild(camera);
-        camera.setPosition(0, 50, 0);
-        //camera.lookAt(0, 0, 0);
-        camera.setEulerAngles(-90, 0, 0);
-        camera.addComponent('script').create('cameraFollow');
-        //
-        const light = this.sunLight = new pc.Entity('light');
-        light.addComponent('light');
-        app.root.addChild(light);
-        light.setEulerAngles(30, 30, 0);
-        light.light.castShadows = true;
-        //
-        const text = new pc.Entity('text');
-        app.root.addChild(text);
-        text.addComponent('script').create('textScript');
-    }
-}
-exports.PlayCanvas = PlayCanvas;
-
-
-/***/ }),
-
-/***/ "./src/playcanvas/scripts/textScript.ts":
-/*!**********************************************!*\
-  !*** ./src/playcanvas/scripts/textScript.ts ***!
-  \**********************************************/
-/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
-
-"use strict";
-
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.TextScript = void 0;
-const pc = __importStar(__webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs"));
-class TextScript extends pc.ScriptType {
-    constructor() {
-        super(...arguments);
-        this.text = "spawn";
-        this.fontsize = 70;
-    }
-    initialize() {
-        this.fire('initialize');
-        // Create a canvas to do the text rendering
-        this.canvas = document.createElement('canvas');
-        this.canvas.height = 128;
-        this.canvas.width = 512;
-        this.context = this.canvas.getContext("2d");
-        this.texture = new pc.Texture(this.app.graphicsDevice, {
-            format: pc.PIXELFORMAT_R8_G8_B8_A8
-        });
-        this.texture.setSource(this.canvas);
-        this.texture.minFilter = pc.FILTER_LINEAR_MIPMAP_LINEAR;
-        this.texture.magFilter = pc.FILTER_LINEAR;
-        this.texture.addressU = pc.ADDRESS_CLAMP_TO_EDGE;
-        this.texture.addressV = pc.ADDRESS_CLAMP_TO_EDGE;
-        this.updateText();
-        const material = new pc.StandardMaterial();
-        this.entity.addComponent("render", {
-            material: material,
-            type: "plane",
-        });
-        this.entity.setLocalScale(5.12, 1, 1.28);
-        this.entity.render.castShadows = false;
-        this.entity.render.receiveShadows = false;
-        material.emissiveMap = this.texture;
-        material.opacityMap = this.texture;
-        material.blendType = pc.BLEND_NORMAL;
-        material.depthTest = false;
-        material.update();
-    }
-    updateText() {
-        var ctx = this.context;
-        var w = ctx.canvas.width;
-        var h = ctx.canvas.height;
-        // Clear the context to transparent
-        ctx.fillStyle = "#00000000";
-        ctx.fillRect(0, 0, w, h);
-        // Write white text
-        ctx.fillStyle = 'red';
-        ctx.save();
-        ctx.font = 'bold ' + String(this.fontsize) + 'px Verdana';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(this.text, w / 2, h / 2);
-        ctx.restore();
-        // Copy the canvas into the texture
-        this.texture.upload();
-    }
-    postInitialize() {
-        this.fire('postInitialize');
-    }
-    update(dt) {
-        this.fire('update', dt);
-    }
-    postUpdate(dt) {
-        this.fire('postUpdate', dt);
-        //var pos = PlayCanvas.camera.getPosition();
-        //this.entity.setPosition(pos.x, 0, pos.z)
-        //this.text = `${this.app.}`;
-        //this.updateText();
-    }
-    swap() {
-        this.fire('swap');
-    }
-}
-exports.TextScript = TextScript;
-//TestScript.attributes.add('height', {type: 'number', default: 5});
-//TestScript.attributes.add('followEntity', {type: 'entity'});
-
-
-/***/ }),
-
-/***/ "./src/render/render.ts":
-/*!******************************!*\
-  !*** ./src/render/render.ts ***!
-  \******************************/
-/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
-
-"use strict";
-
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.Render = void 0;
-const pc = __importStar(__webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs"));
-const inputHandlerComponent_1 = __webpack_require__(/*! ../component/inputHandlerComponent */ "./src/component/inputHandlerComponent.ts");
-const positionComponent_1 = __webpack_require__(/*! ../component/positionComponent */ "./src/component/positionComponent.ts");
-const playcanvas_1 = __webpack_require__(/*! ../playcanvas/playcanvas */ "./src/playcanvas/playcanvas.ts");
-class Render {
-    static init(game, canvas) {
-        this.game = game;
-        this.app = playcanvas_1.PlayCanvas.setupApp(canvas);
-        this.app.start();
-        playcanvas_1.PlayCanvas.setupLocalClientScene(this.app);
-        window["Render"] = Render;
-        window["PlayCanvas"] = playcanvas_1.PlayCanvas;
-    }
-    static update(dt) {
-        const world = this.game.mainServer.worlds[0];
-        const app = this.app;
-        for (const entity of world.entities) {
-            //entity.render();
-            if (!entity.pcEntity.parent) {
-                if (!app.root.children.includes(entity.pcEntity)) {
-                    app.root.addChild(entity.pcEntity);
-                    const material = new pc.StandardMaterial();
-                    material.diffuse = new pc.Color(0, 1, 0);
-                    material.update();
-                    const centerPcEntity = new pc.Entity();
-                    centerPcEntity.addComponent("render", {
-                        material: material,
-                        type: "box",
-                    });
-                    centerPcEntity.setLocalScale(new pc.Vec3(0.2, 0.2, 0.2));
-                    entity.pcEntity.addChild(centerPcEntity);
-                }
-            }
-            const pcEntity = entity.pcEntity;
-            const positionComponent = entity.getComponent(positionComponent_1.PositionComponent);
-            pcEntity.setPosition(positionComponent.x / 10, 0, positionComponent.y / 10);
-            pcEntity.setEulerAngles(0, pc.math.RAD_TO_DEG * -positionComponent.angle, 0);
-        }
-    }
-    static setPlayer(entity) {
-        this.player = entity;
-        this.player.getComponent(inputHandlerComponent_1.InputHandlerComponent).enabled = true;
-    }
-    static loadAsset(url, callback) {
-        const imageUrl = url;
-        const app = Render.app;
-        app.loader.getHandler("texture")['crossOrigin'] = "anonymous";
-        const asset = new pc.Asset("myTexture", "texture", { url: imageUrl });
-        asset.on("error", function (message) {
-            console.log(message);
-        });
-        asset.on("load", function (asset) {
-            callback(asset);
-        });
-        app.assets.add(asset);
-        app.assets.load(asset);
-        return asset;
-    }
-}
-exports.Render = Render;
-
-
-/***/ }),
-
-/***/ "./src/server/entityFactory.ts":
-/*!*************************************!*\
-  !*** ./src/server/entityFactory.ts ***!
-  \*************************************/
-/***/ ((__unused_webpack_module, exports) => {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.EntityFactory = void 0;
-class EntityFactory {
-    constructor() {
-        this._allComponents = new Map();
-        this._allEntities = new Map();
-    }
-    registerEntity(name, constr) {
-        this._allEntities.set(name, constr);
-    }
-    registerComponent(name, constr) {
-        this._allComponents.set(name, constr);
-    }
-    getIndexOfComponent(c) {
-        let i = 0;
-        for (const constr of this._allComponents.values()) {
-            if (c instanceof constr)
-                return i;
-            i++;
-        }
-        throw "Component " + c.constructor.name + " not found";
-    }
-    getEntityByIndex(index) {
-        return Array.from(this._allEntities.values())[index];
-    }
-    getIndexOfEntity(c) {
-        let i = 0;
-        for (const constr of this._allEntities.values()) {
-            if (c instanceof constr)
-                return i;
-            i++;
-        }
-        throw "Entity " + c.constructor.name + " not found";
-    }
-}
-exports.EntityFactory = EntityFactory;
-
-
-/***/ }),
-
-/***/ "./src/server/server.ts":
-/*!******************************!*\
-  !*** ./src/server/server.ts ***!
-  \******************************/
+/***/ "./src/packet/formatPacket.ts":
+/*!************************************!*\
+  !*** ./src/packet/formatPacket.ts ***!
+  \************************************/
 /***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.Server = void 0;
-const collisionComponent_1 = __webpack_require__(/*! ../component/collisionComponent */ "./src/component/collisionComponent.ts");
-const inputHandlerComponent_1 = __webpack_require__(/*! ../component/inputHandlerComponent */ "./src/component/inputHandlerComponent.ts");
-const objectSpriteComponent_1 = __webpack_require__(/*! ../component/objectSpriteComponent */ "./src/component/objectSpriteComponent.ts");
-const positionComponent_1 = __webpack_require__(/*! ../component/positionComponent */ "./src/component/positionComponent.ts");
-const testAnimSprite_1 = __webpack_require__(/*! ../component/testAnimSprite */ "./src/component/testAnimSprite.ts");
-const vehicleComponent_1 = __webpack_require__(/*! ../component/vehicleComponent */ "./src/component/vehicleComponent.ts");
-const vehicleSpriteComponent_1 = __webpack_require__(/*! ../component/vehicleSpriteComponent */ "./src/component/vehicleSpriteComponent.ts");
-const entityObject_1 = __webpack_require__(/*! ../entity/entityObject */ "./src/entity/entityObject.ts");
-const entityPlayer_1 = __webpack_require__(/*! ../entity/entityPlayer */ "./src/entity/entityPlayer.ts");
-const entityVehicle_1 = __webpack_require__(/*! ../entity/entityVehicle */ "./src/entity/entityVehicle.ts");
-const world_1 = __webpack_require__(/*! ../world/world */ "./src/world/world.ts");
-const entityFactory_1 = __webpack_require__(/*! ./entityFactory */ "./src/server/entityFactory.ts");
-class Server {
-    constructor(game) {
-        this.id = "";
-        this._worlds = new Map();
-        this._game = game;
-        this._entityFactory = new entityFactory_1.EntityFactory();
-        this.registerEntitiesAndComponents();
+exports.FormatPacket = void 0;
+const network_1 = __webpack_require__(/*! ../network/network */ "./src/network/network.ts");
+const packet_1 = __webpack_require__(/*! ./packet */ "./src/packet/packet.ts");
+class FormatPacket {
+    /*
+    public static componentData(c: Component) {
+        const entity = c.entity;
+        const cindex = entity.world.game.entityFactory.getIndexOfComponent(c);
+
+        const packet = new Packet();
+        packet.writeShort(PacketType.COMPONENT_DATA);
+        packet.writeString(entity.id);
+        packet.writeShort(cindex);
+        c.serialize(packet);
+        return packet;
     }
-    get game() { return this._game; }
-    get worlds() { return Array.from(this._worlds.values()); }
-    get entityFactory() { return this._entityFactory; }
-    registerEntitiesAndComponents() {
-        const entityFactory = this._entityFactory;
-        entityFactory.registerEntity("EntityPlayer", entityPlayer_1.EntityPlayer);
-        entityFactory.registerEntity("EntityObject", entityObject_1.EntityObject);
-        entityFactory.registerEntity("EntityVehicle", entityVehicle_1.EntityVehicle);
-        entityFactory.registerComponent("PositionComponent", positionComponent_1.PositionComponent);
-        entityFactory.registerComponent("CollisionComponent", collisionComponent_1.CollisionComponent);
-        entityFactory.registerComponent("InputHandlerComponent", inputHandlerComponent_1.InputHandlerComponent);
-        entityFactory.registerComponent("ObjectSpriteComponent", objectSpriteComponent_1.ObjectSpriteComponent);
-        entityFactory.registerComponent("TestAnimSpriteComponent", testAnimSprite_1.TestAnimSpriteComponent);
-        entityFactory.registerComponent("VehicleComponent", vehicleComponent_1.VehicleComponent);
-        entityFactory.registerComponent("VehicleSpriteComponent", vehicleSpriteComponent_1.VehicleSpriteComponent);
+    */
+    static entityData(entity, components) {
+        const packet = new packet_1.Packet();
+        packet.writeShort(network_1.PacketType.ENTITY_DATA);
+        packet.writeString(entity.id);
+        packet.writeShort(components.length);
+        for (const component of components) {
+            packet.writeShort(entity.world.game.entityFactory.getIndexOfComponent(component));
+            component.serialize(packet);
+        }
+        return packet;
     }
-    init() {
-        console.log(`[server] init`);
-        this.createWorld('world');
-    }
-    update(dt) {
-        this.worlds.map(world => world.update(dt));
-        this.worlds.map(world => world.postupdate(dt));
-    }
-    createWorld(name) {
-        console.log(`[server] create world '${name}'`);
-        const world = new world_1.World(this);
-        this._worlds.set(name, world);
-        world.init();
+    static unserializeEntityData(entity, packet) {
+        const numComponents = packet.readShort();
+        for (let i = 0; i < numComponents; i++) {
+            const componentType = packet.readShort();
+            for (const component of entity.components) {
+                try {
+                    const cid = entity.world.game.entityFactory.getIndexOfComponent(component);
+                    if (cid == componentType) {
+                        component.unserialize(packet);
+                    }
+                }
+                catch (error) { }
+            }
+        }
+        //console.log(`[formatPacket] unserializeEntityData ${entity.id} ${numComponents} components`)
     }
 }
-exports.Server = Server;
+exports.FormatPacket = FormatPacket;
+
+
+/***/ }),
+
+/***/ "./src/packet/packet.ts":
+/*!******************************!*\
+  !*** ./src/packet/packet.ts ***!
+  \******************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Packet = void 0;
+const bytebuffer_1 = __importDefault(__webpack_require__(/*! bytebuffer */ "./node_modules/bytebuffer/dist/bytebuffer.js"));
+class Packet {
+    constructor() {
+        this.buffer = new bytebuffer_1.default();
+        this.index = [];
+    }
+    writeShort(value) {
+        this.buffer.writeShort(value);
+        this.index.push("short");
+    }
+    writeString(value) {
+        this.buffer.writeShort(value.length);
+        this.buffer.writeString(value);
+        this.index.push("short - len");
+        this.index.push("string");
+    }
+    writeFloat(value) {
+        this.buffer.writeFloat(value);
+        this.index.push("float");
+    }
+    writeDouble(value) {
+        this.buffer.writeDouble(value);
+        this.index.push("double");
+    }
+    readType() {
+        return this.buffer.readShort();
+    }
+    readShort() {
+        return this.buffer.readShort();
+    }
+    readFloat() {
+        return this.buffer.readFloat();
+    }
+    readDouble() {
+        return this.buffer.readDouble();
+    }
+    readString() {
+        const len = this.readShort();
+        return this.buffer.readUTF8String(len);
+    }
+}
+exports.Packet = Packet;
+
+
+/***/ }),
+
+/***/ "./src/planeSprite/planeSprite.ts":
+/*!****************************************!*\
+  !*** ./src/planeSprite/planeSprite.ts ***!
+  \****************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.PlaneSprite = void 0;
+const pc = __importStar(__webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs"));
+const animatedMaterial_1 = __webpack_require__(/*! ../animatedMaterial/animatedMaterial */ "./src/animatedMaterial/animatedMaterial.ts");
+const render_1 = __webpack_require__(/*! ../gameface/render */ "./src/gameface/render.ts");
+class PlaneSprite {
+    constructor(url, frames, width, height) {
+        const animatedMaterial = this._animatedMaterial = new animatedMaterial_1.AnimatedMaterial(frames, 1, 200);
+        render_1.Render.loadAsset(url, (asset) => {
+            animatedMaterial.setAsset(asset);
+        });
+        const pcEntity = this._pcEntity = new pc.Entity();
+        pcEntity.addComponent("render", {
+            material: animatedMaterial.material,
+            type: "plane",
+        });
+        pcEntity.setLocalScale(new pc.Vec3(width * 0.01, 1, height * 0.01));
+    }
+    get pcEntity() { return this._pcEntity; }
+    update(dt) {
+        this._animatedMaterial.update(dt);
+    }
+}
+exports.PlaneSprite = PlaneSprite;
 
 
 /***/ }),
@@ -13487,137 +18336,73 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.World = void 0;
 const matter_js_1 = __importDefault(__webpack_require__(/*! matter-js */ "./node_modules/matter-js/build/matter.js"));
-const entityBuilding_1 = __webpack_require__(/*! ../entity/entityBuilding */ "./src/entity/entityBuilding.ts");
-const entityObject_1 = __webpack_require__(/*! ../entity/entityObject */ "./src/entity/entityObject.ts");
-const entityPlayer_1 = __webpack_require__(/*! ../entity/entityPlayer */ "./src/entity/entityPlayer.ts");
-const entityVehicle_1 = __webpack_require__(/*! ../entity/entityVehicle */ "./src/entity/entityVehicle.ts");
+const entityBuilding_1 = __webpack_require__(/*! ../entity/building/entityBuilding */ "./src/entity/building/entityBuilding.ts");
+const entityVehicle_1 = __webpack_require__(/*! ../entity/vehicle/entityVehicle */ "./src/entity/vehicle/entityVehicle.ts");
 class World {
-    constructor(server) {
+    constructor(game) {
+        this.matter = {};
         this._entities = new Map();
-        this._server = server;
+        this._game = game;
     }
-    get server() { return this._server; }
-    ;
     get entities() { return Array.from(this._entities.values()); }
     ;
-    get engine() { return this._engine; }
-    ;
-    get matterWorld() { return this._matterWorld; }
+    get game() { return this._game; }
     ;
     init() {
         console.log(`[world] init`);
-        this.initMatter();
-        this.generateBuldings();
-    }
-    generateBaseWorld() {
-        for (let i = 0; i < 1; i++) {
-            this.spawnPlayer();
-        }
-        for (let i = 0; i < 4; i++) {
-            this.spawnObject();
-        }
-        for (let i = 0; i < 1; i++) {
-            this.spawnVehicle();
-        }
-    }
-    generateBuldings() {
-        for (let y = 0; y < 4; y++) {
-            for (let x = 0; x < 4; x++) {
-                const b = this.spawnBuilding();
-                b.position.set((x - 2) * 10 * 6, (y - 2) * 10 * 6);
-            }
-        }
-    }
-    initMatter() {
-        const engine = this._engine = matter_js_1.default.Engine.create();
-        const world = this._matterWorld = engine.world;
-        const runner = this._runner = matter_js_1.default.Runner.create();
-        engine.gravity.x = 0;
-        engine.gravity.y = 0;
-        matter_js_1.default.Runner.run(runner, engine);
-    }
-    spawnPlayer() {
-        const entity = new entityPlayer_1.EntityPlayer(this);
-        this.addEntity(entity);
-        return entity;
-    }
-    spawnObject() {
-        const entity = new entityObject_1.EntityObject(this);
-        this.addEntity(entity);
-        return entity;
-    }
-    spawnVehicle() {
-        const entity = new entityVehicle_1.EntityVehicle(this);
-        this.addEntity(entity);
-        return entity;
-    }
-    spawnBuilding() {
-        const entity = new entityBuilding_1.EntityBuilding(this);
-        this.addEntity(entity);
-        return entity;
+        this.initMatterWorld();
+        /*
+        var bb = new ByteBuffer();
+        bb.writeString("ayo");
+        bb.flip();
+
+        console.log(bb.toBuffer())
+
+        console.log(bb.readString(2)+" from ByteBuffer.js");
+        */
     }
     update(dt) {
         this.entities.map(entity => entity.update(dt));
     }
-    postupdate(dt) {
-        this.entities.map(entity => entity.postupdate(dt));
+    initMatterWorld() {
+        const engine = this.matter.engine = matter_js_1.default.Engine.create();
+        const world = this.matter.world = engine.world;
+        const runner = this.matter.runner = matter_js_1.default.Runner.create();
+        engine.gravity.x = 0;
+        engine.gravity.y = 0;
+        matter_js_1.default.Runner.run(runner, engine);
     }
-    getEntity(id) {
-        return this._entities.get(id);
+    generateWorld() {
+        console.log(`[world] generate world`);
+        const building1 = this.spawnEntity(entityBuilding_1.EntityBuilding);
+        building1.transform.setPosition(300, 0);
+        const building2 = this.spawnEntity(entityBuilding_1.EntityBuilding);
+        building2.transform.setPosition(-300, 0);
+        const vehicle1 = this.spawnEntity(entityVehicle_1.EntityVehicle);
+        const vehicle2 = this.spawnEntity(entityVehicle_1.EntityVehicle);
+    }
+    spawnEntity(c, options) {
+        const entity = new c(this);
+        if (options) {
+            if (options.id)
+                entity.setId(options.id);
+        }
+        return this.addEntity(entity);
     }
     hasEntity(id) {
         return this._entities.has(id);
     }
+    getEntity(id) {
+        return this._entities.get(id);
+    }
     addEntity(entity) {
+        console.log(`[world] add entity ${entity.constructor.name}`);
         this._entities.set(entity.id, entity);
         entity.init();
         return entity;
     }
 }
 exports.World = World;
-
-
-/***/ }),
-
-/***/ "./src/world/worldSync.ts":
-/*!********************************!*\
-  !*** ./src/world/worldSync.ts ***!
-  \********************************/
-/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.WorldSync = void 0;
-const render_1 = __webpack_require__(/*! ../render/render */ "./src/render/render.ts");
-class WorldSync {
-    static processEntityPacketData(data) {
-        const world = this.world;
-        if (!world.hasEntity(data.id)) {
-            const constr = world.server.entityFactory.getEntityByIndex(data.type);
-            const entity = new constr(world);
-            entity.setId(data.id);
-            world.addEntity(entity);
-        }
-        const entity = world.getEntity(data.id);
-        if (entity == render_1.Render.player)
-            return;
-        if (this.entityId == entity.id) {
-            render_1.Render.setPlayer(entity);
-        }
-        for (const component of entity.components) {
-            try {
-                const cindex = world.server.entityFactory.getIndexOfComponent(component);
-                if (data.cdata[cindex])
-                    component.unserialize(data.cdata[cindex]);
-            }
-            catch (error) { }
-        }
-        //console.log(data.cdata)
-    }
-}
-exports.WorldSync = WorldSync;
-WorldSync.entityId = "";
 
 
 /***/ }),
@@ -14559,10 +19344,10 @@ module.exports = yeast;
 
 /***/ }),
 
-/***/ "./src/playcanvas/glb-utils.js":
-/*!*************************************!*\
-  !*** ./src/playcanvas/glb-utils.js ***!
-  \*************************************/
+/***/ "./src/glbLoader/glb-utils.js":
+/*!************************************!*\
+  !*** ./src/glbLoader/glb-utils.js ***!
+  \************************************/
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 const pc = __webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs");
@@ -18520,6 +23305,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   "Plane": () => (/* binding */ Plane),
 /* harmony export */   "PostEffect": () => (/* binding */ PostEffect$1),
 /* harmony export */   "PostEffectQueue": () => (/* binding */ PostEffectQueue),
+/* harmony export */   "Prefilter": () => (/* binding */ Prefilter),
 /* harmony export */   "ProgramLibrary": () => (/* binding */ ProgramLibrary),
 /* harmony export */   "Quat": () => (/* binding */ Quat),
 /* harmony export */   "RENDERSTYLE_POINTS": () => (/* binding */ RENDERSTYLE_POINTS),
@@ -18540,6 +23326,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   "RIGIDBODY_WANTS_DEACTIVATION": () => (/* binding */ RIGIDBODY_WANTS_DEACTIVATION),
 /* harmony export */   "Ray": () => (/* binding */ Ray),
 /* harmony export */   "RaycastResult": () => (/* binding */ RaycastResult),
+/* harmony export */   "ReadStream": () => (/* binding */ ReadStream),
 /* harmony export */   "RenderComponent": () => (/* binding */ RenderComponent),
 /* harmony export */   "RenderComponentSystem": () => (/* binding */ RenderComponentSystem),
 /* harmony export */   "RenderHandler": () => (/* binding */ RenderHandler),
@@ -18824,7 +23611,6 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   "createTorus": () => (/* binding */ createTorus),
 /* harmony export */   "createURI": () => (/* binding */ createURI),
 /* harmony export */   "data": () => (/* binding */ data),
-/* harmony export */   "debug": () => (/* binding */ debug),
 /* harmony export */   "drawFullscreenQuad": () => (/* binding */ drawFullscreenQuad),
 /* harmony export */   "drawQuadWithShader": () => (/* binding */ drawQuadWithShader),
 /* harmony export */   "drawTexture": () => (/* binding */ drawTexture),
@@ -18868,7 +23654,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ });
 /**
  * @license
- * PlayCanvas Engine v1.49.0 revision eb609bf4e
+ * PlayCanvas Engine v1.50.2 revision db39f193d
  * Copyright 2011-2021 PlayCanvas Ltd. All rights reserved.
  */
 if (!Array.prototype.fill) {
@@ -19494,8 +24280,8 @@ const _typeLookup = function () {
 	return result;
 }();
 
-const version = "1.49.0";
-const revision = "eb609bf4e";
+const version = "1.50.2";
+const revision = "db39f193d";
 const config = {};
 const common = {};
 const apps = {};
@@ -19535,44 +24321,6 @@ function isDefined(o) {
 	let a;
 	return o !== a;
 }
-
-let table = null;
-let row = null;
-let title = null;
-let field = null;
-
-function init() {
-	table = document.createElement('table');
-	row = document.createElement('tr');
-	title = document.createElement('td');
-	field = document.createElement('td');
-	table.style.cssText = 'position:absolute;font-family:sans-serif;font-size:12px;color:#cccccc';
-	table.style.top = '0px';
-	table.style.left = '0px';
-	table.style.border = 'thin solid #cccccc';
-	document.body.appendChild(table);
-}
-
-const debug = {
-	display: function (data) {
-		if (!table) {
-			init();
-		}
-
-		table.innerHTML = '';
-
-		for (const key in data) {
-			const r = row.cloneNode();
-			const t = title.cloneNode();
-			const f = field.cloneNode();
-			t.textContent = key;
-			f.textContent = data[key];
-			r.appendChild(t);
-			r.appendChild(f);
-			table.appendChild(r);
-		}
-	}
-};
 
 class EventHandler {
 	constructor() {
@@ -20138,6 +24886,98 @@ class IndexedList {
 
 }
 
+class ReadStream {
+	constructor(arraybuffer) {
+		this.arraybuffer = arraybuffer;
+		this.dataView = new DataView(arraybuffer);
+		this.offset = 0;
+		this.stack = [];
+	}
+
+	get remainingBytes() {
+		return this.dataView.byteLength - this.offset;
+	}
+
+	reset(offset = 0) {
+		this.offset = offset;
+	}
+
+	skip(bytes) {
+		this.offset += bytes;
+	}
+
+	align(bytes) {
+		this.offset = this.offset + bytes - 1 & ~(bytes - 1);
+	}
+
+	_inc(amount) {
+		this.offset += amount;
+		return this.offset - amount;
+	}
+
+	readChar() {
+		return String.fromCharCode(this.dataView.getUint8(this.offset++));
+	}
+
+	readChars(numChars) {
+		let result = '';
+
+		for (let i = 0; i < numChars; ++i) {
+			result += this.readChar();
+		}
+
+		return result;
+	}
+
+	readU8() {
+		return this.dataView.getUint8(this.offset++);
+	}
+
+	readU16() {
+		return this.dataView.getUint16(this._inc(2), true);
+	}
+
+	readU32() {
+		return this.dataView.getUint32(this._inc(4), true);
+	}
+
+	readU64() {
+		return this.readU32() + 2 ** 32 * this.readU32();
+	}
+
+	readU32be() {
+		return this.dataView.getUint32(this._inc(4), false);
+	}
+
+	readArray(result) {
+		for (let i = 0; i < result.length; ++i) {
+			result[i] = this.readU8();
+		}
+	}
+
+	readLine() {
+		const view = this.dataView;
+		let result = "";
+
+		while (true) {
+			if (this.offset >= view.byteLength) {
+				break;
+			}
+
+			const c = String.fromCharCode(this.readU8());
+
+			if (c === '\n') {
+				break;
+			}
+
+			result += c;
+		}
+
+		return result;
+	}
+
+}
+
 class SortedLoopArray {
 	constructor(args) {
 		this._sortBy = args.sortBy;
@@ -20581,12 +25421,6 @@ const math = {
 };
 
 class Http {
-	constructor() {
-		this.ContentType = Http.ContentType;
-		this.ResponseType = Http.ResponseType;
-		this.binaryExtensions = Http.binaryExtensions;
-	}
-
 	get(url, options, callback) {
 		if (typeof options === "function") {
 			callback = options;
@@ -20821,7 +25655,7 @@ class Http {
 		}
 
 		try {
-			if (contentType === this.ContentType.JSON || url.split('?')[0].endsWith(".json")) {
+			if (contentType === Http.ContentType.JSON || url.split('?')[0].endsWith(".json")) {
 				response = JSON.parse(xhr.responseText);
 			} else if (this._isBinaryContentType(contentType)) {
 				response = xhr.response;
@@ -20831,7 +25665,7 @@ class Http {
 				} else if (xhr.responseType === Http.ResponseType.BLOB || xhr.responseType === Http.ResponseType.JSON) {
 					response = xhr.response;
 				} else {
-					if (xhr.responseType === Http.ResponseType.DOCUMENT || contentType === this.ContentType.XML) {
+					if (xhr.responseType === Http.ResponseType.DOCUMENT || contentType === Http.ContentType.XML) {
 						response = xhr.responseXML;
 					} else {
 						response = xhr.responseText;
@@ -24450,7 +29284,7 @@ var clusteredLightCookiesPS = "vec3 _getCookieClustered(sampler2D tex, vec2 uv, 
 
 var clusteredLightShadowsPS = "\n#ifdef GL2\nfloat getShadowOmniClusteredSingleSample(sampler2DShadow shadowMap, vec4 shadowParams, vec3 omniAtlasViewport, float shadowEdgePixels, vec3 dir) {\n\tfloat shadowTextureResolution = shadowParams.x;\n\tvec2 uv = getCubemapAtlasCoordinates(omniAtlasViewport, shadowEdgePixels, shadowTextureResolution, dir);\n\tfloat shadowZ = length(dir) * shadowParams.w + shadowParams.z;\n\treturn texture(shadowMap, vec3(uv, shadowZ));\n}\nfloat getShadowOmniClusteredPCF3x3(sampler2DShadow shadowMap, vec4 shadowParams, vec3 omniAtlasViewport, float shadowEdgePixels, vec3 dir) {\n\tfloat shadowTextureResolution = shadowParams.x;\n\tvec2 uv = getCubemapAtlasCoordinates(omniAtlasViewport, shadowEdgePixels, shadowTextureResolution, dir);\n\tfloat shadowZ = length(dir) * shadowParams.w + shadowParams.z;\n\tdShadowCoord = vec3(uv, shadowZ);\n\treturn getShadowPCF3x3(shadowMap, shadowParams.xyz);\n}\n#else\nfloat getShadowOmniClusteredSingleSample(sampler2D shadowMap, vec4 shadowParams, vec3 omniAtlasViewport, float shadowEdgePixels, vec3 dir) {\n\tfloat shadowTextureResolution = shadowParams.x;\n\tvec2 uv = getCubemapAtlasCoordinates(omniAtlasViewport, shadowEdgePixels, shadowTextureResolution, dir);\n\tfloat depth = unpackFloat(texture2D(shadowMap, uv));\n\tfloat shadowZ = length(dir) * shadowParams.w + shadowParams.z;\n\treturn depth > shadowZ ? 1.0 : 0.0;\n}\nfloat getShadowOmniClusteredPCF3x3(sampler2D shadowMap, vec4 shadowParams, vec3 omniAtlasViewport, float shadowEdgePixels, vec3 dir) {\n\tfloat shadowTextureResolution = shadowParams.x;\n\tvec2 uv = getCubemapAtlasCoordinates(omniAtlasViewport, shadowEdgePixels, shadowTextureResolution, dir);\n\tfloat shadowZ = length(dir) * shadowParams.w + shadowParams.z;\n\tdShadowCoord = vec3(uv, shadowZ);\n\treturn getShadowPCF3x3(shadowMap, shadowParams.xyz);\n}\n#endif\n";
 
-var clusteredLightPS = "uniform sampler2D clusterWorldTexture;\nuniform sampler2D lightsTexture8;\nuniform highp sampler2D lightsTextureFloat;\n#ifdef CLUSTER_SHADOWS\n\t#ifdef GL2\n\t\tuniform sampler2DShadow shadowAtlasTexture;\n\t#else\n\t\tuniform sampler2D shadowAtlasTexture;\n\t#endif\n#endif\n#ifdef CLUSTER_COOKIES\n\tuniform sampler2D cookieAtlasTexture;\n#endif\nuniform float clusterPixelsPerCell;\nuniform vec3 clusterCellsCountByBoundsSize;\nuniform vec4 lightsTextureInvSize;\nuniform vec3 clusterTextureSize;\nuniform vec3 clusterBoundsMin;\nuniform vec3 clusterBoundsDelta;\nuniform vec3 clusterCellsDot;\nuniform vec3 clusterCellsMax;\nuniform vec2 clusterCompressionLimit0;\nuniform vec2 shadowAtlasParams;\nstruct ClusterLightData {\n\tfloat lightV;\n\tbool isSpot;\n\tfloat shape;\n\tfloat falloffMode;\n\tbool castShadows;\n\tfloat shadowBias;\n\tfloat shadowNormalBias;\n\tmat4 lightProjectionMatrix;\n\tvec3 position;\n\tvec3 direction;\n\tfloat range;\n\tfloat innerConeAngleCos;\n\tfloat outerConeAngleCos;\n\tvec3 color;\n\tvec3 omniAtlasViewport;\n\tbool isCookie;\n\tbool isCookieRgb;\n\tfloat cookieIntensity;\n\tvec4 cookieChannelMask;\n};\nvec4 decodeClusterLowRange4Vec4(vec4 d0, vec4 d1, vec4 d2, vec4 d3) {\n\treturn vec4(\n\t\tbytes2floatRange4(d0, -2.0, 2.0),\n\t\tbytes2floatRange4(d1, -2.0, 2.0),\n\t\tbytes2floatRange4(d2, -2.0, 2.0),\n\t\tbytes2floatRange4(d3, -2.0, 2.0)\n\t);\n}\nvec4 sampleLightsTexture8(const ClusterLightData clusterLightData, float index) {\n\treturn texture2D(lightsTexture8, vec2(index * lightsTextureInvSize.z, clusterLightData.lightV));\n}\nvec4 sampleLightTextureF(const ClusterLightData clusterLightData, float index) {\n\treturn texture2D(lightsTextureFloat, vec2(index * lightsTextureInvSize.x, clusterLightData.lightV));\n}\nvoid decodeClusterLightCore(inout ClusterLightData clusterLightData, float lightIndex) {\n\tclusterLightData.lightV = (lightIndex + 0.5) * lightsTextureInvSize.w;\n\tvec4 lightInfo = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_FLAGS);\n\tclusterLightData.isSpot = lightInfo.x > 0.5;\n\tclusterLightData.shape = lightInfo.y;\n\tclusterLightData.falloffMode = lightInfo.z;\n\tclusterLightData.castShadows = lightInfo.w > 0.5;\n\tvec4 colorA = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_COLOR_A);\n\tvec4 colorB = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_COLOR_B);\n\tclusterLightData.color = vec3(bytes2float2(colorA.xy), bytes2float2(colorA.zw), bytes2float2(colorB.xy)) * clusterCompressionLimit0.y;\n\tclusterLightData.isCookie = colorB.z > 0.5;\n\t#ifdef CLUSTER_TEXTURE_FLOAT\n\t\tvec4 lightPosRange = sampleLightTextureF(clusterLightData, CLUSTER_TEXTURE_F_POSITION_RANGE);\n\t\tclusterLightData.position = lightPosRange.xyz;\n\t\tclusterLightData.range = lightPosRange.w;\n\t\tvec4 lightDir_Unused = sampleLightTextureF(clusterLightData, CLUSTER_TEXTURE_F_SPOT_DIRECTION);\n\t\tclusterLightData.direction = lightDir_Unused.xyz;\n\t#else\n\t\tvec4 encPosX = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_POSITION_X);\n\t\tvec4 encPosY = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_POSITION_Y);\n\t\tvec4 encPosZ = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_POSITION_Z);\n\t\tclusterLightData.position = vec3(bytes2float4(encPosX), bytes2float4(encPosY), bytes2float4(encPosZ)) * clusterBoundsDelta + clusterBoundsMin;\n\t\tvec4 encRange = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_RANGE);\n\t\tclusterLightData.range = bytes2float4(encRange) * clusterCompressionLimit0.x;\n\t\tvec4 encDirX = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_SPOT_DIRECTION_X);\n\t\tvec4 encDirY = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_SPOT_DIRECTION_Y);\n\t\tvec4 encDirZ = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_SPOT_DIRECTION_Z);\n\t\tclusterLightData.direction = vec3(bytes2float4(encDirX), bytes2float4(encDirY), bytes2float4(encDirZ)) * 2.0 - 1.0;\n\t#endif\n}\nvoid decodeClusterLightSpot(inout ClusterLightData clusterLightData) {\n\tvec4 coneAngle = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_SPOT_ANGLES);\n\tclusterLightData.innerConeAngleCos = bytes2float2(coneAngle.xy) * 2.0 - 1.0;\n\tclusterLightData.outerConeAngleCos = bytes2float2(coneAngle.zw) * 2.0 - 1.0;\n}\nvoid decodeClusterLightOmniAtlasViewport(inout ClusterLightData clusterLightData) {\n\t#ifdef CLUSTER_TEXTURE_FLOAT\n\t\tclusterLightData.omniAtlasViewport = sampleLightTextureF(clusterLightData, CLUSTER_TEXTURE_F_PROJ_MAT_0).xyz;\n\t#else\n\t\tvec4 viewportA = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_ATLAS_VIEWPORT_A);\n\t\tvec4 viewportB = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_ATLAS_VIEWPORT_B);\n\t\tclusterLightData.omniAtlasViewport = vec3(bytes2float2(viewportA.xy), bytes2float2(viewportA.zw), bytes2float2(viewportB.xy));\n\t#endif\n}\nvoid decodeClusterLightProjectionMatrixData(inout ClusterLightData clusterLightData) {\n\t#ifdef CLUSTER_TEXTURE_FLOAT\n\t\tvec4 m0 = sampleLightTextureF(clusterLightData, CLUSTER_TEXTURE_F_PROJ_MAT_0);\n\t\tvec4 m1 = sampleLightTextureF(clusterLightData, CLUSTER_TEXTURE_F_PROJ_MAT_1);\n\t\tvec4 m2 = sampleLightTextureF(clusterLightData, CLUSTER_TEXTURE_F_PROJ_MAT_2);\n\t\tvec4 m3 = sampleLightTextureF(clusterLightData, CLUSTER_TEXTURE_F_PROJ_MAT_3);\n\t#else\n\t\tvec4 m00 = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_PROJ_MAT_00);\n\t\tvec4 m01 = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_PROJ_MAT_01);\n\t\tvec4 m02 = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_PROJ_MAT_02);\n\t\tvec4 m03 = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_PROJ_MAT_03);\n\t\tvec4 m0 = decodeClusterLowRange4Vec4(m00, m01, m02, m03);\n\t\tvec4 m10 = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_PROJ_MAT_10);\n\t\tvec4 m11 = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_PROJ_MAT_11);\n\t\tvec4 m12 = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_PROJ_MAT_12);\n\t\tvec4 m13 = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_PROJ_MAT_13);\n\t\tvec4 m1 = decodeClusterLowRange4Vec4(m10, m11, m12, m13);\n\t\tvec4 m20 = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_PROJ_MAT_20);\n\t\tvec4 m21 = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_PROJ_MAT_21);\n\t\tvec4 m22 = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_PROJ_MAT_22);\n\t\tvec4 m23 = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_PROJ_MAT_23);\n\t\tvec4 m2 = decodeClusterLowRange4Vec4(m20, m21, m22, m23);\n\t\tvec4 m30 = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_PROJ_MAT_30);\n\t\tvec4 m31 = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_PROJ_MAT_31);\n\t\tvec4 m32 = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_PROJ_MAT_32);\n\t\tvec4 m33 = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_PROJ_MAT_33);\n\t\tvec4 m3 = vec4(mantisaExponent2Float(m30), mantisaExponent2Float(m31), mantisaExponent2Float(m32), mantisaExponent2Float(m33));\n\t#endif\n\tclusterLightData.lightProjectionMatrix = mat4(m0, m1, m2, m3);\n}\nvoid decodeClusterLightShadowData(inout ClusterLightData clusterLightData) {\n\tvec4 biases = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_SHADOW_BIAS);\n\tclusterLightData.shadowBias = bytes2floatRange2(biases.xy, -1.0, 20.0),\n\tclusterLightData.shadowNormalBias = bytes2float2(biases.zw);\n}\nvoid decodeClusterLightCookieData(inout ClusterLightData clusterLightData) {\n\tvec4 cookieA = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_COOKIE_A);\n\tclusterLightData.cookieIntensity = cookieA.x;\n\tclusterLightData.isCookieRgb = cookieA.y > 0.5;\n\tclusterLightData.cookieChannelMask = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_COOKIE_B);\n}\nvoid evaluateLight(ClusterLightData light) {\n\tdAtten3 = vec3(1.0);\n\tgetLightDirPoint(light.position);\n\tdAtten = getFalloffLinear(light.range);\n\tif (dAtten > 0.00001) {\n\t\tdAtten *= getLightDiffuse();\n\t\tif (light.isSpot == true) {\n\t\t\tdecodeClusterLightSpot(light);\n\t\t\tdAtten *= getSpotEffect(light.direction, light.innerConeAngleCos, light.outerConeAngleCos);\n\t\t}\n\t\t#if defined(CLUSTER_COOKIES) || defined(CLUSTER_SHADOWS)\n\t\tif (dAtten > 0.00001) {\n\t\t\tif (light.castShadows == true || light.isCookie == true) {\n\t\t\t\tif (light.isSpot == true) {\n\t\t\t\t\tdecodeClusterLightProjectionMatrixData(light);\n\t\t\t\t} else {\n\t\t\t\t\tdecodeClusterLightOmniAtlasViewport(light);\n\t\t\t\t}\n\t\t\t\tfloat shadowTextureResolution = shadowAtlasParams.x;\n\t\t\t\tfloat shadowEdgePixels = shadowAtlasParams.y;\n\t\t\t\t#ifdef CLUSTER_COOKIES\n\t\t\t\tif (light.isCookie == true) {\n\t\t\t\t\tdecodeClusterLightCookieData(light);\n\t\t\t\t\tif (light.isSpot == true) {\n\t\t\t\t\t\tdAtten3 = getCookie2DClustered(cookieAtlasTexture, light.lightProjectionMatrix, vPositionW, light.cookieIntensity, light.isCookieRgb, light.cookieChannelMask);\n\t\t\t\t\t} else {\n\t\t\t\t\t\tdAtten3 = getCookieCubeClustered(cookieAtlasTexture, dLightDirW, light.cookieIntensity, light.isCookieRgb, light.cookieChannelMask, shadowTextureResolution, shadowEdgePixels, light.omniAtlasViewport);\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t\t#endif\n\t\t\t\t#ifdef CLUSTER_SHADOWS\n\t\t\t\tif (light.castShadows== true) {\n\t\t\t\t\tdecodeClusterLightShadowData(light);\n\t\t\t\t\tvec4 shadowParams = vec4(shadowTextureResolution, light.shadowNormalBias, light.shadowBias, 1.0 / light.range);\n\t\t\t\t\tif (light.isSpot == true) {\n\t\t\t\t\t\tgetShadowCoordPerspZbufferNormalOffset(light.lightProjectionMatrix, shadowParams);\n\t\t\t\t\t\tdAtten *= getShadowSpotPCF3x3(shadowAtlasTexture, shadowParams);\n\t\t\t\t\t} else {\n\t\t\t\t\t\tnormalOffsetPointShadow(shadowParams);\n\t\t\t\t\t\tdAtten *= getShadowOmniClusteredPCF3x3(shadowAtlasTexture, shadowParams, light.omniAtlasViewport, shadowEdgePixels, dLightDirW);\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t\t#endif\n\t\t\t}\n\t\t}\n\t\t#endif\n\t\tdDiffuseLight += dAtten * light.color * dAtten3;\n\t}\n}\nvoid evaluateClusterLight(float lightIndex) {\n\tClusterLightData clusterLightData;\n\tdecodeClusterLightCore(clusterLightData, lightIndex);\n\tevaluateLight(clusterLightData);\n}\nconst vec4 channelSelector[4] = vec4[4] (\n\tvec4(1., 0., 0., 0.),\n\tvec4(0., 1., 0., 0.),\n\tvec4(0., 0., 1., 0.),\n\tvec4(0., 0., 0., 1.)\n);\nvoid addClusteredLights() {\n\tvec3 cellCoords = floor((vPositionW - clusterBoundsMin) * clusterCellsCountByBoundsSize);\n\tif (!(any(lessThan(cellCoords, vec3(0.0))) || any(greaterThanEqual(cellCoords, clusterCellsMax)))) {\n\t\tfloat cellIndex = dot(clusterCellsDot, cellCoords);\n\t\tfloat clusterV = floor(cellIndex * clusterTextureSize.y);\n\t\tfloat clusterU = cellIndex - (clusterV * clusterTextureSize.x);\n\t\tclusterV = (clusterV + 0.5) * clusterTextureSize.z;\n\t\tconst float maxLightCells = 256.0 / 4.0;\n\t\tfor (float lightCellIndex = 0.5; lightCellIndex < maxLightCells; lightCellIndex++) {\n\t\t\tvec4 lightIndices = texture2D(clusterWorldTexture, vec2(clusterTextureSize.y * (clusterU + lightCellIndex), clusterV));\n\t\t\tvec4 indices = lightIndices * 255.0;\n\t\t\tfor (int i = 0; i < 4; i++) {\n\t\t\t\tfloat index = dot(channelSelector[i], indices);\n\t\t\t\tif (index <= 0.0)\n\t\t\t\t\treturn;\n\t\t\t\tevaluateClusterLight(index);\n\t\t\t}\n\t\t\tif (lightCellIndex > clusterPixelsPerCell) {\n\t\t\t\tbreak;\n\t\t\t}\n\t\t}\n\t}\n}\n";
+var clusteredLightPS = "uniform sampler2D clusterWorldTexture;\nuniform sampler2D lightsTexture8;\nuniform highp sampler2D lightsTextureFloat;\n#ifdef CLUSTER_SHADOWS\n\t#ifdef GL2\n\t\tuniform sampler2DShadow shadowAtlasTexture;\n\t#else\n\t\tuniform sampler2D shadowAtlasTexture;\n\t#endif\n#endif\n#ifdef CLUSTER_COOKIES\n\tuniform sampler2D cookieAtlasTexture;\n#endif\nuniform float clusterPixelsPerCell;\nuniform vec3 clusterCellsCountByBoundsSize;\nuniform vec4 lightsTextureInvSize;\nuniform vec3 clusterTextureSize;\nuniform vec3 clusterBoundsMin;\nuniform vec3 clusterBoundsDelta;\nuniform vec3 clusterCellsDot;\nuniform vec3 clusterCellsMax;\nuniform vec2 clusterCompressionLimit0;\nuniform vec2 shadowAtlasParams;\nfloat LTCLightValuesEvaluated = 0.0;\nstruct ClusterLightData {\n\tfloat lightV;\n\tfloat type;\n\tfloat shape;\n\tvec3 halfWidth;\n\tvec3 halfHeight;\n\tfloat falloffMode;\n\tfloat castShadows;\n\tfloat shadowBias;\n\tfloat shadowNormalBias;\n\tvec3 position;\n\tvec3 direction;\n\tfloat range;\n\tfloat innerConeAngleCos;\n\tfloat outerConeAngleCos;\n\tvec3 color;\n\tvec3 omniAtlasViewport;\n\tfloat cookie;\n\tfloat cookieRgb;\n\tfloat cookieIntensity;\n\tvec4 cookieChannelMask;\n};\nmat4 lightProjectionMatrix;\n#define isClusteredLightCastShadow(light) ( light.castShadows > 0.5 )\n#define isClusteredLightCookie(light) (light.cookie > 0.5 )\n#define isClusteredLightCookieRgb(light) (light.cookieRgb > 0.5 )\n#define isClusteredLightSpot(light) ( light.type > 0.5 )\n#define isClusteredLightFalloffLinear(light) ( light.falloffMode < 0.5 )\n#define isClusteredLightArea(light) ( light.shape > 0.1 )\n#define isClusteredLightRect(light) ( light.shape < 0.3 )\n#define isClusteredLightDisk(light) ( light.shape < 0.6 )\nvec4 decodeClusterLowRange4Vec4(vec4 d0, vec4 d1, vec4 d2, vec4 d3) {\n\treturn vec4(\n\t\tbytes2floatRange4(d0, -2.0, 2.0),\n\t\tbytes2floatRange4(d1, -2.0, 2.0),\n\t\tbytes2floatRange4(d2, -2.0, 2.0),\n\t\tbytes2floatRange4(d3, -2.0, 2.0)\n\t);\n}\nvec4 sampleLightsTexture8(const ClusterLightData clusterLightData, float index) {\n\treturn texture2D(lightsTexture8, vec2(index * lightsTextureInvSize.z, clusterLightData.lightV));\n}\nvec4 sampleLightTextureF(const ClusterLightData clusterLightData, float index) {\n\treturn texture2D(lightsTextureFloat, vec2(index * lightsTextureInvSize.x, clusterLightData.lightV));\n}\nvoid decodeClusterLightCore(inout ClusterLightData clusterLightData, float lightIndex) {\n\tclusterLightData.lightV = (lightIndex + 0.5) * lightsTextureInvSize.w;\n\tvec4 lightInfo = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_FLAGS);\n\tclusterLightData.type = lightInfo.x;\n\tclusterLightData.shape = lightInfo.y;\n\tclusterLightData.falloffMode = lightInfo.z;\n\tclusterLightData.castShadows = lightInfo.w;\n\tvec4 colorA = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_COLOR_A);\n\tvec4 colorB = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_COLOR_B);\n\tclusterLightData.color = vec3(bytes2float2(colorA.xy), bytes2float2(colorA.zw), bytes2float2(colorB.xy)) * clusterCompressionLimit0.y;\n\tclusterLightData.cookie = colorB.z;\n\t#ifdef CLUSTER_TEXTURE_FLOAT\n\t\tvec4 lightPosRange = sampleLightTextureF(clusterLightData, CLUSTER_TEXTURE_F_POSITION_RANGE);\n\t\tclusterLightData.position = lightPosRange.xyz;\n\t\tclusterLightData.range = lightPosRange.w;\n\t\tvec4 lightDir_Unused = sampleLightTextureF(clusterLightData, CLUSTER_TEXTURE_F_SPOT_DIRECTION);\n\t\tclusterLightData.direction = lightDir_Unused.xyz;\n\t#else\n\t\tvec4 encPosX = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_POSITION_X);\n\t\tvec4 encPosY = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_POSITION_Y);\n\t\tvec4 encPosZ = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_POSITION_Z);\n\t\tclusterLightData.position = vec3(bytes2float4(encPosX), bytes2float4(encPosY), bytes2float4(encPosZ)) * clusterBoundsDelta + clusterBoundsMin;\n\t\tvec4 encRange = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_RANGE);\n\t\tclusterLightData.range = bytes2float4(encRange) * clusterCompressionLimit0.x;\n\t\tvec4 encDirX = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_SPOT_DIRECTION_X);\n\t\tvec4 encDirY = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_SPOT_DIRECTION_Y);\n\t\tvec4 encDirZ = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_SPOT_DIRECTION_Z);\n\t\tclusterLightData.direction = vec3(bytes2float4(encDirX), bytes2float4(encDirY), bytes2float4(encDirZ)) * 2.0 - 1.0;\n\t#endif\n}\nvoid decodeClusterLightSpot(inout ClusterLightData clusterLightData) {\n\tvec4 coneAngle = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_SPOT_ANGLES);\n\tclusterLightData.innerConeAngleCos = bytes2float2(coneAngle.xy) * 2.0 - 1.0;\n\tclusterLightData.outerConeAngleCos = bytes2float2(coneAngle.zw) * 2.0 - 1.0;\n}\nvoid decodeClusterLightOmniAtlasViewport(inout ClusterLightData clusterLightData) {\n\t#ifdef CLUSTER_TEXTURE_FLOAT\n\t\tclusterLightData.omniAtlasViewport = sampleLightTextureF(clusterLightData, CLUSTER_TEXTURE_F_PROJ_MAT_0).xyz;\n\t#else\n\t\tvec4 viewportA = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_ATLAS_VIEWPORT_A);\n\t\tvec4 viewportB = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_ATLAS_VIEWPORT_B);\n\t\tclusterLightData.omniAtlasViewport = vec3(bytes2float2(viewportA.xy), bytes2float2(viewportA.zw), bytes2float2(viewportB.xy));\n\t#endif\n}\nvoid decodeClusterLightAreaData(inout ClusterLightData clusterLightData) {\n\t#ifdef CLUSTER_TEXTURE_FLOAT\n\t\tclusterLightData.halfWidth = sampleLightTextureF(clusterLightData, CLUSTER_TEXTURE_F_AREA_DATA_WIDTH).xyz;\n\t\tclusterLightData.halfHeight = sampleLightTextureF(clusterLightData, CLUSTER_TEXTURE_F_AREA_DATA_HEIGHT).xyz;\n\t#else\n\t\tvec4 areaWidthX = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_AREA_DATA_WIDTH_X);\n\t\tvec4 areaWidthY = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_AREA_DATA_WIDTH_Y);\n\t\tvec4 areaWidthZ = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_AREA_DATA_WIDTH_Z);\n\t\tclusterLightData.halfWidth = vec3(mantisaExponent2Float(areaWidthX), mantisaExponent2Float(areaWidthY), mantisaExponent2Float(areaWidthZ));\n\t\tvec4 areaHeightX = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_AREA_DATA_HEIGHT_X);\n\t\tvec4 areaHeightY = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_AREA_DATA_HEIGHT_Y);\n\t\tvec4 areaHeightZ = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_AREA_DATA_HEIGHT_Z);\n\t\tclusterLightData.halfHeight = vec3(mantisaExponent2Float(areaHeightX), mantisaExponent2Float(areaHeightY), mantisaExponent2Float(areaHeightZ));\n\t#endif\n}\nvoid decodeClusterLightProjectionMatrixData(inout ClusterLightData clusterLightData) {\n\t#ifdef CLUSTER_TEXTURE_FLOAT\n\t\tvec4 m0 = sampleLightTextureF(clusterLightData, CLUSTER_TEXTURE_F_PROJ_MAT_0);\n\t\tvec4 m1 = sampleLightTextureF(clusterLightData, CLUSTER_TEXTURE_F_PROJ_MAT_1);\n\t\tvec4 m2 = sampleLightTextureF(clusterLightData, CLUSTER_TEXTURE_F_PROJ_MAT_2);\n\t\tvec4 m3 = sampleLightTextureF(clusterLightData, CLUSTER_TEXTURE_F_PROJ_MAT_3);\n\t#else\n\t\tvec4 m00 = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_PROJ_MAT_00);\n\t\tvec4 m01 = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_PROJ_MAT_01);\n\t\tvec4 m02 = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_PROJ_MAT_02);\n\t\tvec4 m03 = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_PROJ_MAT_03);\n\t\tvec4 m0 = decodeClusterLowRange4Vec4(m00, m01, m02, m03);\n\t\tvec4 m10 = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_PROJ_MAT_10);\n\t\tvec4 m11 = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_PROJ_MAT_11);\n\t\tvec4 m12 = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_PROJ_MAT_12);\n\t\tvec4 m13 = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_PROJ_MAT_13);\n\t\tvec4 m1 = decodeClusterLowRange4Vec4(m10, m11, m12, m13);\n\t\tvec4 m20 = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_PROJ_MAT_20);\n\t\tvec4 m21 = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_PROJ_MAT_21);\n\t\tvec4 m22 = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_PROJ_MAT_22);\n\t\tvec4 m23 = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_PROJ_MAT_23);\n\t\tvec4 m2 = decodeClusterLowRange4Vec4(m20, m21, m22, m23);\n\t\tvec4 m30 = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_PROJ_MAT_30);\n\t\tvec4 m31 = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_PROJ_MAT_31);\n\t\tvec4 m32 = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_PROJ_MAT_32);\n\t\tvec4 m33 = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_PROJ_MAT_33);\n\t\tvec4 m3 = vec4(mantisaExponent2Float(m30), mantisaExponent2Float(m31), mantisaExponent2Float(m32), mantisaExponent2Float(m33));\n\t#endif\n\tlightProjectionMatrix = mat4(m0, m1, m2, m3);\n}\nvoid decodeClusterLightShadowData(inout ClusterLightData clusterLightData) {\n\tvec4 biases = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_SHADOW_BIAS);\n\tclusterLightData.shadowBias = bytes2floatRange2(biases.xy, -1.0, 20.0),\n\tclusterLightData.shadowNormalBias = bytes2float2(biases.zw);\n}\nvoid decodeClusterLightCookieData(inout ClusterLightData clusterLightData) {\n\tvec4 cookieA = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_COOKIE_A);\n\tclusterLightData.cookieIntensity = cookieA.x;\n\tclusterLightData.cookieRgb = cookieA.y;\n\tclusterLightData.cookieChannelMask = sampleLightsTexture8(clusterLightData, CLUSTER_TEXTURE_8_COOKIE_B);\n}\nvoid evaluateLight(ClusterLightData light) {\n\tdAtten3 = vec3(1.0);\n\tgetLightDirPoint(light.position);\n\t#ifdef CLUSTER_AREALIGHTS\n\tif (isClusteredLightArea(light)) {\n\t\tdecodeClusterLightAreaData(light);\n\t\tif (LTCLightValuesEvaluated < 0.5) {\n\t\t\tLTCLightValuesEvaluated = 1.0;\n\t\t\tcalcLTCLightValues();\n\t\t}\n\t\tif (isClusteredLightRect(light)) {\n\t\t\tcalcRectLightValues(light.position, light.halfWidth, light.halfHeight);\n\t\t} else if (isClusteredLightDisk(light)) {\n\t\t\tcalcDiskLightValues(light.position, light.halfWidth, light.halfHeight);\n\t\t} else {\n\t\t\tcalcSphereLightValues(light.position, light.halfWidth, light.halfHeight);\n\t\t}\n\t\tdAtten = getFalloffWindow(light.range);\n\t} else\n\t#endif\n\t{\n\t\tif (isClusteredLightFalloffLinear(light))\n\t\t\tdAtten = getFalloffLinear(light.range);\n\t\telse\n\t\t\tdAtten = getFalloffInvSquared(light.range);\n\t}\n\tif (dAtten > 0.00001) {\n\t\t#ifdef CLUSTER_AREALIGHTS\n\t\tif (isClusteredLightArea(light)) {\n\t\t\tif (isClusteredLightRect(light)) {\n\t\t\t\tdAttenD = getRectLightDiffuse() * 16.0;\n\t\t\t} else if (isClusteredLightDisk(light)) {\n\t\t\t\tdAttenD = getDiskLightDiffuse() * 16.0;\n\t\t\t} else {\n\t\t\t\tdAttenD = getSphereLightDiffuse() * 16.0;\n\t\t\t}\n\t\t} else\n\t\t#endif\n\t\t{\n\t\t\tdAtten *= getLightDiffuse();\n\t\t}\n\t\tif (isClusteredLightSpot(light)) {\n\t\t\tdecodeClusterLightSpot(light);\n\t\t\tdAtten *= getSpotEffect(light.direction, light.innerConeAngleCos, light.outerConeAngleCos);\n\t\t}\n\t\t#if defined(CLUSTER_COOKIES) || defined(CLUSTER_SHADOWS)\n\t\tif (dAtten > 0.00001) {\n\t\t\tif (isClusteredLightCastShadow(light) || isClusteredLightCookie(light)) {\n\t\t\t\tif (isClusteredLightSpot(light)) {\n\t\t\t\t\tdecodeClusterLightProjectionMatrixData(light);\n\t\t\t\t} else {\n\t\t\t\t\tdecodeClusterLightOmniAtlasViewport(light);\n\t\t\t\t}\n\t\t\t\tfloat shadowTextureResolution = shadowAtlasParams.x;\n\t\t\t\tfloat shadowEdgePixels = shadowAtlasParams.y;\n\t\t\t\t#ifdef CLUSTER_COOKIES\n\t\t\t\tif (isClusteredLightCookie(light)) {\n\t\t\t\t\tdecodeClusterLightCookieData(light);\n\t\t\t\t\tif (isClusteredLightSpot(light)) {\n\t\t\t\t\t\tdAtten3 = getCookie2DClustered(cookieAtlasTexture, lightProjectionMatrix, vPositionW, light.cookieIntensity, isClusteredLightCookieRgb(light), light.cookieChannelMask);\n\t\t\t\t\t} else {\n\t\t\t\t\t\tdAtten3 = getCookieCubeClustered(cookieAtlasTexture, dLightDirW, light.cookieIntensity, isClusteredLightCookieRgb(light), light.cookieChannelMask, shadowTextureResolution, shadowEdgePixels, light.omniAtlasViewport);\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t\t#endif\n\t\t\t\t#ifdef CLUSTER_SHADOWS\n\t\t\t\tif (isClusteredLightCastShadow(light)) {\n\t\t\t\t\tdecodeClusterLightShadowData(light);\n\t\t\t\t\tvec4 shadowParams = vec4(shadowTextureResolution, light.shadowNormalBias, light.shadowBias, 1.0 / light.range);\n\t\t\t\t\tif (isClusteredLightSpot(light)) {\n\t\t\t\t\t\tgetShadowCoordPerspZbufferNormalOffset(lightProjectionMatrix, shadowParams);\n\t\t\t\t\t\tdAtten *= getShadowSpotPCF3x3(shadowAtlasTexture, shadowParams);\n\t\t\t\t\t} else {\n\t\t\t\t\t\tnormalOffsetPointShadow(shadowParams);\n\t\t\t\t\t\tdAtten *= getShadowOmniClusteredPCF3x3(shadowAtlasTexture, shadowParams, light.omniAtlasViewport, shadowEdgePixels, dLightDirW);\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t\t#endif\n\t\t\t}\n\t\t}\n\t\t#endif\n\t\t#ifdef CLUSTER_AREALIGHTS\n\t\tif (isClusteredLightArea(light)) {\n\t\t\t{\n\t\t\t\tvec3 areaDiffuse = (dAttenD * dAtten) * light.color * dAtten3;\n\t\t\t\t#if defined(CLUSTER_SPECULAR) && defined(CLUSTER_CONSERVE_ENERGY)\n\t\t\t\t\tareaDiffuse = mix(areaDiffuse, vec3(0), dLTCSpecFres);\n\t\t\t\t#endif\n\t\t\t\tdDiffuseLight += areaDiffuse;\n\t\t\t}\n\t\t\t#ifdef CLUSTER_SPECULAR\n\t\t\t\tfloat areaLightSpecular;\n\t\t\t\tif (isClusteredLightRect(light)) {\n\t\t\t\t\tareaLightSpecular = getRectLightSpecular();\n\t\t\t\t} else if (isClusteredLightDisk(light)) {\n\t\t\t\t\tareaLightSpecular = getDiskLightSpecular();\n\t\t\t\t} else {\n\t\t\t\t\tareaLightSpecular = getSphereLightSpecular();\n\t\t\t\t}\n\t\t\t\tdSpecularLight += dLTCSpecFres * areaLightSpecular * dAtten * light.color * dAtten3;\n\t\t\t\t#ifdef CLUSTER_CLEAR_COAT\n\t\t\t\t\tfloat areaLightSpecularCC;\n\t\t\t\t\tif (isClusteredLightRect(light)) {\n\t\t\t\t\t\tareaLightSpecularCC = getRectLightSpecularCC();\n\t\t\t\t\t} else if (isClusteredLightDisk(light)) {\n\t\t\t\t\t\tareaLightSpecularCC = getDiskLightSpecularCC();\n\t\t\t\t\t} else {\n\t\t\t\t\t\tareaLightSpecularCC = getSphereLightSpecularCC();\n\t\t\t\t\t}\n\t\t\t\t\tccSpecularLight += ccLTCSpecFres * areaLightSpecularCC * dAtten * light.color  * dAtten3;\n\t\t\t\t#endif\n\t\t\t#endif\n\t\t} else\n\t\t#endif\n\t\t{\n\t\t\t{\n\t\t\t\tvec3 punctualDiffuse = dAtten * light.color * dAtten3;\n\t\t\t\t#if defined(CLUSTER_AREALIGHTS) && defined(CLUSTER_SPECULAR) && defined(CLUSTER_CONSERVE_ENERGY)\n\t\t\t\t\tpunctualDiffuse = mix(punctualDiffuse, vec3(0), dSpecularity);\n\t\t\t\t#endif\n\t\t\t\tdDiffuseLight += punctualDiffuse;\n\t\t\t}\n\t\t\t#ifdef CLUSTER_SPECULAR\n\t\t\t\t{\n\t\t\t\t\tvec3 punctualSpecular = getLightSpecular() * dAtten * light.color * dAtten3;\n\t\t\t\t\t#if defined(CLUSTER_AREALIGHTS)\n\t\t\t\t\t\tpunctualSpecular *= dSpecularity;\n\t\t\t\t\t#endif\n\t\t\t\t\tdSpecularLight += punctualSpecular;\n\t\t\t\t}\n\t\t\t\t#ifdef CLUSTER_CLEAR_COAT\n\t\t\t\t\tvec3 punctualCC = getLightSpecularCC() * dAtten * light.color * dAtten3;\n\t\t\t\t\t#if defined(CLUSTER_AREALIGHTS)\n\t\t\t\t\t\tpunctualCC *= ccSpecularity;\n\t\t\t\t\t#endif\n\t\t\t\t\tccSpecularLight += punctualCC;\n\t\t\t\t#endif\n\t\t\t#endif\n\t\t}\n\t}\n}\nvoid evaluateClusterLight(float lightIndex) {\n\tClusterLightData clusterLightData;\n\tdecodeClusterLightCore(clusterLightData, lightIndex);\n\tevaluateLight(clusterLightData);\n}\nvoid addClusteredLights() {\n\tvec3 cellCoords = floor((vPositionW - clusterBoundsMin) * clusterCellsCountByBoundsSize);\n\tif (!(any(lessThan(cellCoords, vec3(0.0))) || any(greaterThanEqual(cellCoords, clusterCellsMax)))) {\n\t\tfloat cellIndex = dot(clusterCellsDot, cellCoords);\n\t\tfloat clusterV = floor(cellIndex * clusterTextureSize.y);\n\t\tfloat clusterU = cellIndex - (clusterV * clusterTextureSize.x);\n\t\tclusterV = (clusterV + 0.5) * clusterTextureSize.z;\n\t\tconst float maxLightCells = 256.0 / 4.0;\n\t\tfor (float lightCellIndex = 0.5; lightCellIndex < maxLightCells; lightCellIndex++) {\n\t\t\tvec4 lightIndices = texture2D(clusterWorldTexture, vec2(clusterTextureSize.y * (clusterU + lightCellIndex), clusterV));\n\t\t\tvec4 indices = lightIndices * 255.0;\n\t\t\tfor (int i = 0; i < 4; i++) {\n\t\t\t\tfloat index = indices.x;\n\t\t\t\tif (i == 1) index = indices.y;\n\t\t\t\telse if (i == 2) index = indices.z;\n\t\t\t\telse if (i == 3) index = indices.w;\n\t\t\t\tif (index <= 0.0)\n\t\t\t\t\treturn;\n\t\t\t\tevaluateClusterLight(index);\n\t\t\t}\n\t\t\tif (lightCellIndex > clusterPixelsPerCell) {\n\t\t\t\tbreak;\n\t\t\t}\n\t\t}\n\t}\n}\n";
 
 var combineClearCoatPS = "vec3 combineColorCC() {\n\treturn combineColor()+(ccSpecularLight*ccSpecularity+ccReflection.rgb*ccSpecularity*ccReflection.a);\n}\n";
 
@@ -24554,11 +29388,11 @@ var lightSpecularBlinnPS = "\nfloat calcLightSpecular(float tGlossiness, vec3 tN
 
 var lightSpecularPhongPS = "float calcLightSpecular(float tGlossiness, vec3 tReflDirW) {\n\tfloat specPow = tGlossiness;\n\tspecPow = antiAliasGlossiness(specPow);\n\treturn pow(max(dot(tReflDirW, -dLightDirNormW), 0.0), specPow + 0.0001);\n}\nfloat getLightSpecular() {\n\treturn calcLightSpecular(dGlossiness, dReflDirW);\n}\nfloat getLightSpecularCC() {\n\treturn calcLightSpecular(ccGlossiness, ccReflDirW);\n}\n";
 
-var ltc = "\nmat3 transposeMat3( const in mat3 m ) {\n\tmat3 tmp;\n\ttmp[ 0 ] = vec3( m[ 0 ].x, m[ 1 ].x, m[ 2 ].x );\n\ttmp[ 1 ] = vec3( m[ 0 ].y, m[ 1 ].y, m[ 2 ].y );\n\ttmp[ 2 ] = vec3( m[ 0 ].z, m[ 1 ].z, m[ 2 ].z );\n\treturn tmp;\n}\nvec2 LTC_Uv( const in vec3 N, const in vec3 V, const in float roughness ) {\n\tconst float LUT_SIZE = 64.0;\n\tconst float LUT_SCALE = ( LUT_SIZE - 1.0 ) / LUT_SIZE;\n\tconst float LUT_BIAS = 0.5 / LUT_SIZE;\n\tfloat dotNV = saturate( dot( N, V ) );\n\tvec2 uv = vec2( roughness, sqrt( 1.0 - dotNV ) );\n\tuv = uv * LUT_SCALE + LUT_BIAS;\n\treturn uv;\n}\nfloat LTC_ClippedSphereFormFactor( const in vec3 f ) {\n\tfloat l = length( f );\n\treturn max( ( l * l + f.z ) / ( l + 1.0 ), 0.0 );\n}\nvec3 LTC_EdgeVectorFormFactor( const in vec3 v1, const in vec3 v2 ) {\n\tfloat x = dot( v1, v2 );\n\tfloat y = abs( x );\n\tfloat a = 0.8543985 + ( 0.4965155 + 0.0145206 * y ) * y;\n\tfloat b = 3.4175940 + ( 4.1616724 + y ) * y;\n\tfloat v = a / b;\n\tfloat theta_sintheta = ( x > 0.0 ) ? v : 0.5 * inversesqrt( max( 1.0 - x * x, 1e-7 ) ) - v;\n\treturn cross( v1, v2 ) * theta_sintheta;\n}\nstruct Coords {\n\tvec3 coord0;\n\tvec3 coord1;\n\tvec3 coord2;\n\tvec3 coord3;\n};\nfloat LTC_EvaluateRect( const in vec3 N, const in vec3 V, const in vec3 P, const in mat3 mInv, const in Coords rectCoords) {\n\tvec3 v1 = rectCoords.coord1 - rectCoords.coord0;\n\tvec3 v2 = rectCoords.coord3 - rectCoords.coord0;\n\tvec3 lightNormal = cross( v1, v2 );\n\tfloat factor = sign(-dot( lightNormal, P - rectCoords.coord0 ));\n\tvec3 T1, T2;\n\tT1 = normalize( V - N * dot( V, N ) );\n\tT2 =  factor * cross( N, T1 );\n\tmat3 mat = mInv * transposeMat3( mat3( T1, T2, N ) );\n\tvec3 coords[ 4 ];\n\tcoords[ 0 ] = mat * ( rectCoords.coord0 - P );\n\tcoords[ 1 ] = mat * ( rectCoords.coord1 - P );\n\tcoords[ 2 ] = mat * ( rectCoords.coord2 - P );\n\tcoords[ 3 ] = mat * ( rectCoords.coord3 - P );\n\tcoords[ 0 ] = normalize( coords[ 0 ] );\n\tcoords[ 1 ] = normalize( coords[ 1 ] );\n\tcoords[ 2 ] = normalize( coords[ 2 ] );\n\tcoords[ 3 ] = normalize( coords[ 3 ] );\n\tvec3 vectorFormFactor = vec3( 0.0 );\n\tvectorFormFactor += LTC_EdgeVectorFormFactor( coords[ 0 ], coords[ 1 ] );\n\tvectorFormFactor += LTC_EdgeVectorFormFactor( coords[ 1 ], coords[ 2 ] );\n\tvectorFormFactor += LTC_EdgeVectorFormFactor( coords[ 2 ], coords[ 3 ] );\n\tvectorFormFactor += LTC_EdgeVectorFormFactor( coords[ 3 ], coords[ 0 ] );\n\tfloat result = LTC_ClippedSphereFormFactor( vectorFormFactor );\n\treturn result;\n}\nCoords dLTCCoords;\nCoords getLTCLightCoords(vec3 lightPos, vec3 halfWidth, vec3 halfHeight){\n\tCoords coords;\n\tcoords.coord0 = lightPos + halfWidth - halfHeight;\n\tcoords.coord1 = lightPos - halfWidth - halfHeight;\n\tcoords.coord2 = lightPos - halfWidth + halfHeight;\n\tcoords.coord3 = lightPos + halfWidth + halfHeight;\n\treturn coords;\n}\nfloat dSphereRadius;\nCoords getSphereLightCoords(vec3 lightPos, vec3 halfWidth, vec3 halfHeight){\n\tCoords coords;\n\tfloat radius = max(length(halfWidth), length(halfWidth));\n\tdSphereRadius = radius;\n\tvec3 f = normalize(lightPos-view_position);\n\tvec3 w = normalize(cross(f, halfHeight));\n\tvec3 h = normalize(cross(f, w));\n\tcoords.coord0 = lightPos + w * radius - h * radius;\n\tcoords.coord1 = lightPos - w * radius - h * radius;\n\tcoords.coord2 = lightPos - w * radius + h * radius;\n\tcoords.coord3 = lightPos + w * radius + h * radius;\n\treturn coords;\n}\nvec2 dLTCUV;\n#ifdef CLEARCOAT\nvec2 ccLTCUV;\n#endif\nvec2 getLTCLightUV(float tGlossiness, vec3 tNormalW)\n{\n\tfloat roughness = max((1.0 - tGlossiness) * (1.0 - tGlossiness), 0.001);\n\treturn LTC_Uv( tNormalW, dViewDirW, roughness );\n}\nvec3 dLTCSpecFres;\n#ifdef CLEARCOAT\nvec3 ccLTCSpecFres;\n#endif\nvec3 getLTCLightSpecFres(vec2 uv, vec3 tSpecularity)\n{\n\tvec4 t2 = texture2D( areaLightsLutTex2, uv );\n\t#ifdef AREA_R8_G8_B8_A8_LUTS\n\tt2 *= vec4(0.693103,1,1,1);\n\tt2 += vec4(0.306897,0,0,0);\n\t#endif\n\treturn tSpecularity * t2.x + ( vec3( 1.0 ) - tSpecularity) * t2.y;\n}\nvoid calcLTCLightValues()\n{\n\tdLTCUV = getLTCLightUV(dGlossiness, dNormalW);\n\tdLTCSpecFres = getLTCLightSpecFres(dLTCUV, dSpecularityNoFres);\n#ifdef CLEARCOAT\n\tccLTCUV = getLTCLightUV(ccGlossiness, ccNormalW);\n\tccLTCSpecFres = getLTCLightSpecFres(ccLTCUV, vec3(ccSpecularityNoFres));\n#endif\n}\nvoid calcRectLightValues(vec3 lightPos, vec3 halfWidth, vec3 halfHeight)\n{\n\tdLTCCoords = getLTCLightCoords(lightPos, halfWidth, halfHeight);\n\tcalcLTCLightValues();\n}\nvoid calcDiskLightValues(vec3 lightPos, vec3 halfWidth, vec3 halfHeight)\n{\n\tcalcRectLightValues(lightPos, halfWidth, halfHeight);\n}\nvoid calcSphereLightValues(vec3 lightPos, vec3 halfWidth, vec3 halfHeight)\n{\n\tdLTCCoords = getSphereLightCoords(lightPos, halfWidth, halfHeight);\n\tcalcLTCLightValues();\n}\nvec3 SolveCubic(vec4 Coefficient)\n{\n\tfloat pi = 3.14159;\n\tCoefficient.xyz /= Coefficient.w;\n\tCoefficient.yz /= 3.0;\n\tfloat A = Coefficient.w;\n\tfloat B = Coefficient.z;\n\tfloat C = Coefficient.y;\n\tfloat D = Coefficient.x;\n\tvec3 Delta = vec3(\n\t\t-Coefficient.z * Coefficient.z + Coefficient.y,\n\t\t-Coefficient.y * Coefficient.z + Coefficient.x,\n\t\tdot(vec2(Coefficient.z, -Coefficient.y), Coefficient.xy)\n\t);\n\tfloat Discriminant = dot(vec2(4.0 * Delta.x, -Delta.y), Delta.zy);\n\tvec3 RootsA, RootsD;\n\tvec2 xlc, xsc;\n\t{\n\t\tfloat A_a = 1.0;\n\t\tfloat C_a = Delta.x;\n\t\tfloat D_a = -2.0 * B * Delta.x + Delta.y;\n\t\tfloat Theta = atan(sqrt(Discriminant), -D_a) / 3.0;\n\t\tfloat x_1a = 2.0 * sqrt(-C_a) * cos(Theta);\n\t\tfloat x_3a = 2.0 * sqrt(-C_a) * cos(Theta + (2.0 / 3.0) * pi);\n\t\tfloat xl;\n\t\tif ((x_1a + x_3a) > 2.0 * B)\n\t\t\txl = x_1a;\n\t\telse\n\t\t\txl = x_3a;\n\t\txlc = vec2(xl - B, A);\n\t}\n\t{\n\t\tfloat A_d = D;\n\t\tfloat C_d = Delta.z;\n\t\tfloat D_d = -D * Delta.y + 2.0 * C * Delta.z;\n\t\tfloat Theta = atan(D * sqrt(Discriminant), -D_d) / 3.0;\n\t\tfloat x_1d = 2.0 * sqrt(-C_d) * cos(Theta);\n\t\tfloat x_3d = 2.0 * sqrt(-C_d) * cos(Theta + (2.0 / 3.0) * pi);\n\t\tfloat xs;\n\t\tif (x_1d + x_3d < 2.0 * C)\n\t\t\txs = x_1d;\n\t\telse\n\t\t\txs = x_3d;\n\t\txsc = vec2(-D, xs + C);\n\t}\n\tfloat E =  xlc.y * xsc.y;\n\tfloat F = -xlc.x * xsc.y - xlc.y * xsc.x;\n\tfloat G =  xlc.x * xsc.x;\n\tvec2 xmc = vec2(C * F - B * G, -B * F + C * E);\n\tvec3 Root = vec3(xsc.x / xsc.y, xmc.x / xmc.y, xlc.x / xlc.y);\n\tif (Root.x < Root.y && Root.x < Root.z)\n\t\tRoot.xyz = Root.yxz;\n\telse if (Root.z < Root.x && Root.z < Root.y)\n\t\tRoot.xyz = Root.xzy;\n\treturn Root;\n}\nfloat LTC_EvaluateDisk(vec3 N, vec3 V, vec3 P, mat3 Minv, Coords points)\n{\n\tvec3 T1, T2;\n\tT1 = normalize(V - N * dot(V, N));\n\tT2 = cross(N, T1);\n\tmat3 R = transposeMat3( mat3( T1, T2, N ) );\n\tvec3 L_[ 3 ];\n\tL_[ 0 ] = R * ( points.coord0 - P );\n\tL_[ 1 ] = R * ( points.coord1 - P );\n\tL_[ 2 ] = R * ( points.coord2 - P );\n\tvec3 Lo_i = vec3(0);\n\tvec3 C  = 0.5 * (L_[0] + L_[2]);\n\tvec3 V1 = 0.5 * (L_[1] - L_[2]);\n\tvec3 V2 = 0.5 * (L_[1] - L_[0]);\n\tC  = Minv * C;\n\tV1 = Minv * V1;\n\tV2 = Minv * V2;\n\tfloat a, b;\n\tfloat d11 = dot(V1, V1);\n\tfloat d22 = dot(V2, V2);\n\tfloat d12 = dot(V1, V2);\n\tif (abs(d12) / sqrt(d11 * d22) > 0.0001)\n\t{\n\t\tfloat tr = d11 + d22;\n\t\tfloat det = -d12 * d12 + d11 * d22;\n\t\tdet = sqrt(det);\n\t\tfloat u = 0.5 * sqrt(tr - 2.0 * det);\n\t\tfloat v = 0.5 * sqrt(tr + 2.0 * det);\n\t\tfloat e_max = (u + v) * (u + v);\n\t\tfloat e_min = (u - v) * (u - v);\n\t\tvec3 V1_, V2_;\n\t\tif (d11 > d22)\n\t\t{\n\t\t\tV1_ = d12 * V1 + (e_max - d11) * V2;\n\t\t\tV2_ = d12 * V1 + (e_min - d11) * V2;\n\t\t}\n\t\telse\n\t\t{\n\t\t\tV1_ = d12*V2 + (e_max - d22)*V1;\n\t\t\tV2_ = d12*V2 + (e_min - d22)*V1;\n\t\t}\n\t\ta = 1.0 / e_max;\n\t\tb = 1.0 / e_min;\n\t\tV1 = normalize(V1_);\n\t\tV2 = normalize(V2_);\n\t}\n\telse\n\t{\n\t\ta = 1.0 / dot(V1, V1);\n\t\tb = 1.0 / dot(V2, V2);\n\t\tV1 *= sqrt(a);\n\t\tV2 *= sqrt(b);\n\t}\n\tvec3 V3 = cross(V1, V2);\n\tif (dot(C, V3) < 0.0)\n\t\tV3 *= -1.0;\n\tfloat L  = dot(V3, C);\n\tfloat x0 = dot(V1, C) / L;\n\tfloat y0 = dot(V2, C) / L;\n\tfloat E1 = inversesqrt(a);\n\tfloat E2 = inversesqrt(b);\n\ta *= L * L;\n\tb *= L * L;\n\tfloat c0 = a * b;\n\tfloat c1 = a * b * (1.0 + x0 * x0 + y0 * y0) - a - b;\n\tfloat c2 = 1.0 - a * (1.0 + x0 * x0) - b * (1.0 + y0 * y0);\n\tfloat c3 = 1.0;\n\tvec3 roots = SolveCubic(vec4(c0, c1, c2, c3));\n\tfloat e1 = roots.x;\n\tfloat e2 = roots.y;\n\tfloat e3 = roots.z;\n\tvec3 avgDir = vec3(a * x0 / (a - e2), b * y0 / (b - e2), 1.0);\n\tmat3 rotate = mat3(V1, V2, V3);\n\tavgDir = rotate * avgDir;\n\tavgDir = normalize(avgDir);\n\tfloat L1 = sqrt(-e2 / e3);\n\tfloat L2 = sqrt(-e2 / e1);\n\tfloat formFactor = L1 * L2 * inversesqrt((1.0 + L1 * L1) * (1.0 + L2 * L2));\n\tconst float LUT_SIZE = 64.0;\n\tconst float LUT_SCALE = ( LUT_SIZE - 1.0 ) / LUT_SIZE;\n\tconst float LUT_BIAS = 0.5 / LUT_SIZE;\n\tvec2 uv = vec2(avgDir.z * 0.5 + 0.5, formFactor);\n\tuv = uv*LUT_SCALE + LUT_BIAS;\n\tfloat scale = texture2D( areaLightsLutTex2, uv ).w;\n\treturn formFactor*scale;\n}\nfloat getRectLightDiffuse() {\n\treturn LTC_EvaluateRect( dNormalW, dViewDirW, vPositionW, mat3( 1.0 ), dLTCCoords );\n}\nfloat getDiskLightDiffuse() {\n\treturn LTC_EvaluateDisk( dNormalW, dViewDirW, vPositionW, mat3( 1.0 ), dLTCCoords );\n}\nfloat getSphereLightDiffuse() {\n\tfloat falloff = dSphereRadius / (dot(dLightDirW, dLightDirW) + dSphereRadius);\n\treturn getLightDiffuse()*falloff;\n}\nmat3 getLTCLightInvMat(vec2 uv)\n{\n\tvec4 t1 = texture2D( areaLightsLutTex1, uv );\n\t#ifdef AREA_R8_G8_B8_A8_LUTS\n\tt1 *= vec4(1.001, 0.3239, 0.60437568, 1.0);\n\tt1 += vec4(0.0, -0.2976, -0.01381, 0.0);\n\t#endif\n\treturn mat3(\n\t\tvec3( t1.x, 0, t1.y ),\n\t\tvec3(\t0, 1,\t0 ),\n\t\tvec3( t1.z, 0, t1.w )\n\t);\n}\nfloat calcRectLightSpecular(vec3 tNormalW, vec2 uv) {\n\tmat3 mInv = getLTCLightInvMat(uv);\n\treturn LTC_EvaluateRect( tNormalW, dViewDirW, vPositionW, mInv, dLTCCoords );\n}\nfloat getRectLightSpecular() {\n\treturn calcRectLightSpecular(dNormalW, dLTCUV);\n}\n#ifdef CLEARCOAT\nfloat getRectLightSpecularCC() {\n\treturn calcRectLightSpecular(ccNormalW, ccLTCUV);\n}\n#endif\nfloat calcDiskLightSpecular(vec3 tNormalW, vec2 uv) {\n\tmat3 mInv = getLTCLightInvMat(uv);\n\treturn LTC_EvaluateDisk( tNormalW, dViewDirW, vPositionW, mInv, dLTCCoords );\n}\nfloat getDiskLightSpecular() {\n\treturn calcDiskLightSpecular(dNormalW, dLTCUV);\n}\n#ifdef CLEARCOAT\nfloat getDiskLightSpecularCC() {\n\treturn calcDiskLightSpecular(ccNormalW, ccLTCUV);\n}\n#endif\nfloat getSphereLightSpecular() {\n\treturn calcDiskLightSpecular(dNormalW, dLTCUV);\n}\n#ifdef CLEARCOAT\nfloat getSphereLightSpecularCC() {\n\treturn calcDiskLightSpecular(ccNormalW, ccLTCUV);\n}\n#endif\n";
+var ltc = "\nmat3 transposeMat3( const in mat3 m ) {\n\tmat3 tmp;\n\ttmp[ 0 ] = vec3( m[ 0 ].x, m[ 1 ].x, m[ 2 ].x );\n\ttmp[ 1 ] = vec3( m[ 0 ].y, m[ 1 ].y, m[ 2 ].y );\n\ttmp[ 2 ] = vec3( m[ 0 ].z, m[ 1 ].z, m[ 2 ].z );\n\treturn tmp;\n}\nvec2 LTC_Uv( const in vec3 N, const in vec3 V, const in float roughness ) {\n\tconst float LUT_SIZE = 64.0;\n\tconst float LUT_SCALE = ( LUT_SIZE - 1.0 ) / LUT_SIZE;\n\tconst float LUT_BIAS = 0.5 / LUT_SIZE;\n\tfloat dotNV = saturate( dot( N, V ) );\n\tvec2 uv = vec2( roughness, sqrt( 1.0 - dotNV ) );\n\tuv = uv * LUT_SCALE + LUT_BIAS;\n\treturn uv;\n}\nfloat LTC_ClippedSphereFormFactor( const in vec3 f ) {\n\tfloat l = length( f );\n\treturn max( ( l * l + f.z ) / ( l + 1.0 ), 0.0 );\n}\nvec3 LTC_EdgeVectorFormFactor( const in vec3 v1, const in vec3 v2 ) {\n\tfloat x = dot( v1, v2 );\n\tfloat y = abs( x );\n\tfloat a = 0.8543985 + ( 0.4965155 + 0.0145206 * y ) * y;\n\tfloat b = 3.4175940 + ( 4.1616724 + y ) * y;\n\tfloat v = a / b;\n\tfloat theta_sintheta = ( x > 0.0 ) ? v : 0.5 * inversesqrt( max( 1.0 - x * x, 1e-7 ) ) - v;\n\treturn cross( v1, v2 ) * theta_sintheta;\n}\nstruct Coords {\n\tvec3 coord0;\n\tvec3 coord1;\n\tvec3 coord2;\n\tvec3 coord3;\n};\nfloat LTC_EvaluateRect( const in vec3 N, const in vec3 V, const in vec3 P, const in mat3 mInv, const in Coords rectCoords) {\n\tvec3 v1 = rectCoords.coord1 - rectCoords.coord0;\n\tvec3 v2 = rectCoords.coord3 - rectCoords.coord0;\n\tvec3 lightNormal = cross( v1, v2 );\n\tfloat factor = sign(-dot( lightNormal, P - rectCoords.coord0 ));\n\tvec3 T1, T2;\n\tT1 = normalize( V - N * dot( V, N ) );\n\tT2 =  factor * cross( N, T1 );\n\tmat3 mat = mInv * transposeMat3( mat3( T1, T2, N ) );\n\tvec3 coords[ 4 ];\n\tcoords[ 0 ] = mat * ( rectCoords.coord0 - P );\n\tcoords[ 1 ] = mat * ( rectCoords.coord1 - P );\n\tcoords[ 2 ] = mat * ( rectCoords.coord2 - P );\n\tcoords[ 3 ] = mat * ( rectCoords.coord3 - P );\n\tcoords[ 0 ] = normalize( coords[ 0 ] );\n\tcoords[ 1 ] = normalize( coords[ 1 ] );\n\tcoords[ 2 ] = normalize( coords[ 2 ] );\n\tcoords[ 3 ] = normalize( coords[ 3 ] );\n\tvec3 vectorFormFactor = vec3( 0.0 );\n\tvectorFormFactor += LTC_EdgeVectorFormFactor( coords[ 0 ], coords[ 1 ] );\n\tvectorFormFactor += LTC_EdgeVectorFormFactor( coords[ 1 ], coords[ 2 ] );\n\tvectorFormFactor += LTC_EdgeVectorFormFactor( coords[ 2 ], coords[ 3 ] );\n\tvectorFormFactor += LTC_EdgeVectorFormFactor( coords[ 3 ], coords[ 0 ] );\n\tfloat result = LTC_ClippedSphereFormFactor( vectorFormFactor );\n\treturn result;\n}\nCoords dLTCCoords;\nCoords getLTCLightCoords(vec3 lightPos, vec3 halfWidth, vec3 halfHeight){\n\tCoords coords;\n\tcoords.coord0 = lightPos + halfWidth - halfHeight;\n\tcoords.coord1 = lightPos - halfWidth - halfHeight;\n\tcoords.coord2 = lightPos - halfWidth + halfHeight;\n\tcoords.coord3 = lightPos + halfWidth + halfHeight;\n\treturn coords;\n}\nfloat dSphereRadius;\nCoords getSphereLightCoords(vec3 lightPos, vec3 halfWidth, vec3 halfHeight){\n\tdSphereRadius = max(length(halfWidth), length(halfHeight));\n\tvec3 f = reflect(normalize(lightPos - view_position), vNormalW);\n\tvec3 w = normalize(cross(f, halfHeight));\n\tvec3 h = normalize(cross(f, w));\n\treturn getLTCLightCoords(lightPos, w * dSphereRadius, h * dSphereRadius);\n}\nvec2 dLTCUV;\n#ifdef CLEARCOAT\nvec2 ccLTCUV;\n#endif\nvec2 getLTCLightUV(float tGlossiness, vec3 tNormalW)\n{\n\tfloat roughness = max((1.0 - tGlossiness) * (1.0 - tGlossiness), 0.001);\n\treturn LTC_Uv( tNormalW, dViewDirW, roughness );\n}\nvec3 dLTCSpecFres;\n#ifdef CLEARCOAT\nvec3 ccLTCSpecFres;\n#endif\nvec3 getLTCLightSpecFres(vec2 uv, vec3 tSpecularity)\n{\n\tvec4 t2 = texture2D( areaLightsLutTex2, uv );\n\t#ifdef AREA_R8_G8_B8_A8_LUTS\n\tt2 *= vec4(0.693103,1,1,1);\n\tt2 += vec4(0.306897,0,0,0);\n\t#endif\n\treturn tSpecularity * t2.x + ( vec3( 1.0 ) - tSpecularity) * t2.y;\n}\nvoid calcLTCLightValues()\n{\n\tdLTCUV = getLTCLightUV(dGlossiness, dNormalW);\n\tdLTCSpecFres = getLTCLightSpecFres(dLTCUV, dSpecularityNoFres);\n#ifdef CLEARCOAT\n\tccLTCUV = getLTCLightUV(ccGlossiness, ccNormalW);\n\tccLTCSpecFres = getLTCLightSpecFres(ccLTCUV, vec3(ccSpecularityNoFres));\n#endif\n}\nvoid calcRectLightValues(vec3 lightPos, vec3 halfWidth, vec3 halfHeight)\n{\n\tdLTCCoords = getLTCLightCoords(lightPos, halfWidth, halfHeight);\n}\nvoid calcDiskLightValues(vec3 lightPos, vec3 halfWidth, vec3 halfHeight)\n{\n\tcalcRectLightValues(lightPos, halfWidth, halfHeight);\n}\nvoid calcSphereLightValues(vec3 lightPos, vec3 halfWidth, vec3 halfHeight)\n{\n\tdLTCCoords = getSphereLightCoords(lightPos, halfWidth, halfHeight);\n}\nvec3 SolveCubic(vec4 Coefficient)\n{\n\tfloat pi = 3.14159;\n\tCoefficient.xyz /= Coefficient.w;\n\tCoefficient.yz /= 3.0;\n\tfloat A = Coefficient.w;\n\tfloat B = Coefficient.z;\n\tfloat C = Coefficient.y;\n\tfloat D = Coefficient.x;\n\tvec3 Delta = vec3(\n\t\t-Coefficient.z * Coefficient.z + Coefficient.y,\n\t\t-Coefficient.y * Coefficient.z + Coefficient.x,\n\t\tdot(vec2(Coefficient.z, -Coefficient.y), Coefficient.xy)\n\t);\n\tfloat Discriminant = dot(vec2(4.0 * Delta.x, -Delta.y), Delta.zy);\n\tvec3 RootsA, RootsD;\n\tvec2 xlc, xsc;\n\t{\n\t\tfloat A_a = 1.0;\n\t\tfloat C_a = Delta.x;\n\t\tfloat D_a = -2.0 * B * Delta.x + Delta.y;\n\t\tfloat Theta = atan(sqrt(Discriminant), -D_a) / 3.0;\n\t\tfloat x_1a = 2.0 * sqrt(-C_a) * cos(Theta);\n\t\tfloat x_3a = 2.0 * sqrt(-C_a) * cos(Theta + (2.0 / 3.0) * pi);\n\t\tfloat xl;\n\t\tif ((x_1a + x_3a) > 2.0 * B)\n\t\t\txl = x_1a;\n\t\telse\n\t\t\txl = x_3a;\n\t\txlc = vec2(xl - B, A);\n\t}\n\t{\n\t\tfloat A_d = D;\n\t\tfloat C_d = Delta.z;\n\t\tfloat D_d = -D * Delta.y + 2.0 * C * Delta.z;\n\t\tfloat Theta = atan(D * sqrt(Discriminant), -D_d) / 3.0;\n\t\tfloat x_1d = 2.0 * sqrt(-C_d) * cos(Theta);\n\t\tfloat x_3d = 2.0 * sqrt(-C_d) * cos(Theta + (2.0 / 3.0) * pi);\n\t\tfloat xs;\n\t\tif (x_1d + x_3d < 2.0 * C)\n\t\t\txs = x_1d;\n\t\telse\n\t\t\txs = x_3d;\n\t\txsc = vec2(-D, xs + C);\n\t}\n\tfloat E =  xlc.y * xsc.y;\n\tfloat F = -xlc.x * xsc.y - xlc.y * xsc.x;\n\tfloat G =  xlc.x * xsc.x;\n\tvec2 xmc = vec2(C * F - B * G, -B * F + C * E);\n\tvec3 Root = vec3(xsc.x / xsc.y, xmc.x / xmc.y, xlc.x / xlc.y);\n\tif (Root.x < Root.y && Root.x < Root.z)\n\t\tRoot.xyz = Root.yxz;\n\telse if (Root.z < Root.x && Root.z < Root.y)\n\t\tRoot.xyz = Root.xzy;\n\treturn Root;\n}\nfloat LTC_EvaluateDisk(vec3 N, vec3 V, vec3 P, mat3 Minv, Coords points)\n{\n\tvec3 T1, T2;\n\tT1 = normalize(V - N * dot(V, N));\n\tT2 = cross(N, T1);\n\tmat3 R = transposeMat3( mat3( T1, T2, N ) );\n\tvec3 L_[ 3 ];\n\tL_[ 0 ] = R * ( points.coord0 - P );\n\tL_[ 1 ] = R * ( points.coord1 - P );\n\tL_[ 2 ] = R * ( points.coord2 - P );\n\tvec3 Lo_i = vec3(0);\n\tvec3 C  = 0.5 * (L_[0] + L_[2]);\n\tvec3 V1 = 0.5 * (L_[1] - L_[2]);\n\tvec3 V2 = 0.5 * (L_[1] - L_[0]);\n\tC  = Minv * C;\n\tV1 = Minv * V1;\n\tV2 = Minv * V2;\n\tfloat a, b;\n\tfloat d11 = dot(V1, V1);\n\tfloat d22 = dot(V2, V2);\n\tfloat d12 = dot(V1, V2);\n\tif (abs(d12) / sqrt(d11 * d22) > 0.0001)\n\t{\n\t\tfloat tr = d11 + d22;\n\t\tfloat det = -d12 * d12 + d11 * d22;\n\t\tdet = sqrt(det);\n\t\tfloat u = 0.5 * sqrt(tr - 2.0 * det);\n\t\tfloat v = 0.5 * sqrt(tr + 2.0 * det);\n\t\tfloat e_max = (u + v) * (u + v);\n\t\tfloat e_min = (u - v) * (u - v);\n\t\tvec3 V1_, V2_;\n\t\tif (d11 > d22)\n\t\t{\n\t\t\tV1_ = d12 * V1 + (e_max - d11) * V2;\n\t\t\tV2_ = d12 * V1 + (e_min - d11) * V2;\n\t\t}\n\t\telse\n\t\t{\n\t\t\tV1_ = d12*V2 + (e_max - d22)*V1;\n\t\t\tV2_ = d12*V2 + (e_min - d22)*V1;\n\t\t}\n\t\ta = 1.0 / e_max;\n\t\tb = 1.0 / e_min;\n\t\tV1 = normalize(V1_);\n\t\tV2 = normalize(V2_);\n\t}\n\telse\n\t{\n\t\ta = 1.0 / dot(V1, V1);\n\t\tb = 1.0 / dot(V2, V2);\n\t\tV1 *= sqrt(a);\n\t\tV2 *= sqrt(b);\n\t}\n\tvec3 V3 = cross(V1, V2);\n\tif (dot(C, V3) < 0.0)\n\t\tV3 *= -1.0;\n\tfloat L  = dot(V3, C);\n\tfloat x0 = dot(V1, C) / L;\n\tfloat y0 = dot(V2, C) / L;\n\tfloat E1 = inversesqrt(a);\n\tfloat E2 = inversesqrt(b);\n\ta *= L * L;\n\tb *= L * L;\n\tfloat c0 = a * b;\n\tfloat c1 = a * b * (1.0 + x0 * x0 + y0 * y0) - a - b;\n\tfloat c2 = 1.0 - a * (1.0 + x0 * x0) - b * (1.0 + y0 * y0);\n\tfloat c3 = 1.0;\n\tvec3 roots = SolveCubic(vec4(c0, c1, c2, c3));\n\tfloat e1 = roots.x;\n\tfloat e2 = roots.y;\n\tfloat e3 = roots.z;\n\tvec3 avgDir = vec3(a * x0 / (a - e2), b * y0 / (b - e2), 1.0);\n\tmat3 rotate = mat3(V1, V2, V3);\n\tavgDir = rotate * avgDir;\n\tavgDir = normalize(avgDir);\n\tfloat L1 = sqrt(-e2 / e3);\n\tfloat L2 = sqrt(-e2 / e1);\n\tfloat formFactor = L1 * L2 * inversesqrt((1.0 + L1 * L1) * (1.0 + L2 * L2));\n\tconst float LUT_SIZE = 64.0;\n\tconst float LUT_SCALE = ( LUT_SIZE - 1.0 ) / LUT_SIZE;\n\tconst float LUT_BIAS = 0.5 / LUT_SIZE;\n\tvec2 uv = vec2(avgDir.z * 0.5 + 0.5, formFactor);\n\tuv = uv*LUT_SCALE + LUT_BIAS;\n\tfloat scale = texture2D( areaLightsLutTex2, uv ).w;\n\treturn formFactor*scale;\n}\nfloat getRectLightDiffuse() {\n\treturn LTC_EvaluateRect( dNormalW, dViewDirW, vPositionW, mat3( 1.0 ), dLTCCoords );\n}\nfloat getDiskLightDiffuse() {\n\treturn LTC_EvaluateDisk( dNormalW, dViewDirW, vPositionW, mat3( 1.0 ), dLTCCoords );\n}\nfloat getSphereLightDiffuse() {\n\tfloat falloff = dSphereRadius / (dot(dLightDirW, dLightDirW) + dSphereRadius);\n\treturn getLightDiffuse()*falloff;\n}\nmat3 getLTCLightInvMat(vec2 uv)\n{\n\tvec4 t1 = texture2D( areaLightsLutTex1, uv );\n\t#ifdef AREA_R8_G8_B8_A8_LUTS\n\tt1 *= vec4(1.001, 0.3239, 0.60437568, 1.0);\n\tt1 += vec4(0.0, -0.2976, -0.01381, 0.0);\n\t#endif\n\treturn mat3(\n\t\tvec3( t1.x, 0, t1.y ),\n\t\tvec3(\t0, 1,\t0 ),\n\t\tvec3( t1.z, 0, t1.w )\n\t);\n}\nfloat calcRectLightSpecular(vec3 tNormalW, vec2 uv) {\n\tmat3 mInv = getLTCLightInvMat(uv);\n\treturn LTC_EvaluateRect( tNormalW, dViewDirW, vPositionW, mInv, dLTCCoords );\n}\nfloat getRectLightSpecular() {\n\treturn calcRectLightSpecular(dNormalW, dLTCUV);\n}\n#ifdef CLEARCOAT\nfloat getRectLightSpecularCC() {\n\treturn calcRectLightSpecular(ccNormalW, ccLTCUV);\n}\n#endif\nfloat calcDiskLightSpecular(vec3 tNormalW, vec2 uv) {\n\tmat3 mInv = getLTCLightInvMat(uv);\n\treturn LTC_EvaluateDisk( tNormalW, dViewDirW, vPositionW, mInv, dLTCCoords );\n}\nfloat getDiskLightSpecular() {\n\treturn calcDiskLightSpecular(dNormalW, dLTCUV);\n}\n#ifdef CLEARCOAT\nfloat getDiskLightSpecularCC() {\n\treturn calcDiskLightSpecular(ccNormalW, ccLTCUV);\n}\n#endif\nfloat getSphereLightSpecular() {\n\treturn calcDiskLightSpecular(dNormalW, dLTCUV);\n}\n#ifdef CLEARCOAT\nfloat getSphereLightSpecularCC() {\n\treturn calcDiskLightSpecular(ccNormalW, ccLTCUV);\n}\n#endif\n";
 
 var metalnessPS = "void processMetalness(float metalness) {\n\tconst float dielectricF0 = 0.04;\n\tdSpecularity = mix(vec3(dielectricF0), dAlbedo, metalness);\n\tdAlbedo *= 1.0 - metalness;\n}\n#ifdef MAPFLOAT\nuniform float material_metalness;\n#endif\n#ifdef MAPTEXTURE\nuniform sampler2D texture_metalnessMap;\n#endif\nvoid getSpecularity() {\n\tfloat metalness = 1.0;\n\t#ifdef MAPFLOAT\n\tmetalness *= material_metalness;\n\t#endif\n\t#ifdef MAPTEXTURE\n\tmetalness *= texture2D(texture_metalnessMap, $UV).$CH;\n\t#endif\n\t#ifdef MAPVERTEX\n\tmetalness *= saturate(vVertexColor.$VC);\n\t#endif\n\tprocessMetalness(metalness);\n}\n";
 
-var msdfPS = "uniform sampler2D texture_msdfMap;\n#ifdef GL_OES_standard_derivatives\n#define USE_FWIDTH\n#endif\n#ifdef GL2\n#define USE_FWIDTH\n#endif\nfloat median(float r, float g, float b) {\n\treturn max(min(r, g), min(max(r, g), b));\n}\nfloat map (float min, float max, float v) {\n\treturn (v - min) / (max - min);\n}\nuniform float font_sdfIntensity;\nuniform float font_pxrange;\nuniform float font_textureWidth;\nuniform vec4 outline_color;\nuniform float outline_thickness;\nuniform vec4 shadow_color;\nuniform vec2 shadow_offset;\nvec4 applyMsdf(vec4 color) {\n\tvec3 tsample = texture2D(texture_msdfMap, vUv0).rgb;\n\tvec2 uvShdw = vUv0 - shadow_offset;\n\tvec3 ssample = texture2D(texture_msdfMap, uvShdw).rgb;\n\tfloat sigDist = median(tsample.r, tsample.g, tsample.b);\n\tfloat sigDistShdw = median(ssample.r, ssample.g, ssample.b);\n\t#ifdef USE_FWIDTH\n\tvec2 w = fwidth(vUv0);\n\tfloat smoothing = clamp(w.x * font_textureWidth / font_pxrange, 0.0, 0.5);\n\t#else\n\tfloat font_size = 16.0;\n\tfloat smoothing = clamp(font_pxrange / font_size, 0.0, 0.5);\n\t#endif\n\tfloat mapMin = 0.05;\n\tfloat mapMax = clamp(1.0 - font_sdfIntensity, mapMin, 1.0);\n\tfloat sigDistInner = map(mapMin, mapMax, sigDist);\n\tfloat sigDistOutline = map(mapMin, mapMax, sigDist + outline_thickness);\n\tsigDistShdw = map(mapMin, mapMax, sigDistShdw + outline_thickness);\n\tfloat center = 0.5;\n\tfloat inside = smoothstep(center-smoothing, center+smoothing, sigDistInner);\n\tfloat outline = smoothstep(center-smoothing, center+smoothing, sigDistOutline);\n\tfloat shadow = smoothstep(center-smoothing, center+smoothing, sigDistShdw);\n\tvec4 tcolor = (outline > inside) ? outline * vec4(outline_color.a * outline_color.rgb, outline_color.a) : vec4(0.0);\n\ttcolor = mix(tcolor, color, inside);\n\tvec4 scolor = (shadow > outline) ? shadow * vec4(shadow_color.a * shadow_color.rgb, shadow_color.a) : tcolor;\n\ttcolor = mix(scolor, tcolor, outline);\n\treturn tcolor;\n}\n";
+var msdfPS = "uniform sampler2D texture_msdfMap;\n#ifdef GL_OES_standard_derivatives\n#define USE_FWIDTH\n#endif\n#ifdef GL2\n#define USE_FWIDTH\n#endif\nfloat median(float r, float g, float b) {\n\treturn max(min(r, g), min(max(r, g), b));\n}\nfloat map (float min, float max, float v) {\n\treturn (v - min) / (max - min);\n}\nuniform float font_sdfIntensity;\nuniform float font_pxrange;\nuniform float font_textureWidth;\nuniform vec4 outline_color;\nuniform float outline_thickness;\nuniform vec4 shadow_color;\nuniform vec2 shadow_offset;\nvec4 applyMsdf(vec4 color) {\n\tvec3 tsample = texture2D(texture_msdfMap, vUv0).rgb;\n\tvec2 uvShdw = vUv0 - shadow_offset;\n\tvec3 ssample = texture2D(texture_msdfMap, uvShdw).rgb;\n\tfloat sigDist = median(tsample.r, tsample.g, tsample.b);\n\tfloat sigDistShdw = median(ssample.r, ssample.g, ssample.b);\n\tfloat smoothingMax = 0.2;\n\t#ifdef USE_FWIDTH\n\tvec2 w = fwidth(vUv0);\n\tfloat smoothing = clamp(w.x * font_textureWidth / font_pxrange, 0.0, smoothingMax);\n\t#else\n\tfloat font_size = 16.0;\n\tfloat smoothing = clamp(font_pxrange / font_size, 0.0, smoothingMax);\n\t#endif\n\tfloat mapMin = 0.05;\n\tfloat mapMax = clamp(1.0 - font_sdfIntensity, mapMin, 1.0);\n\tfloat sigDistInner = map(mapMin, mapMax, sigDist);\n\tfloat sigDistOutline = map(mapMin, mapMax, sigDist + outline_thickness);\n\tsigDistShdw = map(mapMin, mapMax, sigDistShdw + outline_thickness);\n\tfloat center = 0.5;\n\tfloat inside = smoothstep(center-smoothing, center+smoothing, sigDistInner);\n\tfloat outline = smoothstep(center-smoothing, center+smoothing, sigDistOutline);\n\tfloat shadow = smoothstep(center-smoothing, center+smoothing, sigDistShdw);\n\tvec4 tcolor = (outline > inside) ? outline * vec4(outline_color.a * outline_color.rgb, outline_color.a) : vec4(0.0);\n\ttcolor = mix(tcolor, color, inside);\n\tvec4 scolor = (shadow > outline) ? shadow * vec4(shadow_color.a * shadow_color.rgb, shadow_color.a) : tcolor;\n\ttcolor = mix(scolor, tcolor, outline);\n\treturn tcolor;\n}\n";
 
 var normalVS = "#ifdef MORPHING_TEXTURE_BASED_NORMAL\nuniform highp sampler2D morphNormalTex;\n#endif\nvec3 getNormal() {\n\t#ifdef SKIN\n\tdNormalMatrix = mat3(dModelMatrix[0].xyz, dModelMatrix[1].xyz, dModelMatrix[2].xyz);\n\t#elif defined(INSTANCING)\n\tdNormalMatrix = mat3(instance_line1.xyz, instance_line2.xyz, instance_line3.xyz);\n\t#else\n\tdNormalMatrix = matrix_normal;\n\t#endif\n\tvec3 tempNormal = vertex_normal;\n\t#ifdef MORPHING\n\t#ifdef MORPHING_NRM03\n\ttempNormal += morph_weights_a[0] * morph_nrm0;\n\ttempNormal += morph_weights_a[1] * morph_nrm1;\n\ttempNormal += morph_weights_a[2] * morph_nrm2;\n\ttempNormal += morph_weights_a[3] * morph_nrm3;\n\t#endif\n\t#ifdef MORPHING_NRM47\n\ttempNormal += morph_weights_b[0] * morph_nrm4;\n\ttempNormal += morph_weights_b[1] * morph_nrm5;\n\ttempNormal += morph_weights_b[2] * morph_nrm6;\n\ttempNormal += morph_weights_b[3] * morph_nrm7;\n\t#endif\n\t#endif\n\t#ifdef MORPHING_TEXTURE_BASED_NORMAL\n\tvec2 morphUV = getTextureMorphCoords();\n\tvec3 morphNormal = texture2D(morphNormalTex, morphUV).xyz;\n\ttempNormal += morphNormal;\n\t#endif\n\treturn normalize(dNormalMatrix * tempNormal);\n}\n";
 
@@ -24736,13 +29570,9 @@ var skinConstVS = "attribute vec4 vertex_boneWeights;\nattribute vec4 vertex_bon
 
 var skinTexVS = "attribute vec4 vertex_boneWeights;\nattribute vec4 vertex_boneIndices;\nuniform highp sampler2D texture_poseMap;\nuniform vec4 texture_poseMapSize;\nvoid getBoneMatrix(const in float i, out vec4 v1, out vec4 v2, out vec4 v3) {\n\tfloat j = i * 3.0;\n\tfloat dx = texture_poseMapSize.z;\n\tfloat dy = texture_poseMapSize.w;\n\tfloat y = floor(j * dx);\n\tfloat x = j - (y * texture_poseMapSize.x);\n\ty = dy * (y + 0.5);\n\tv1 = texture2D(texture_poseMap, vec2(dx * (x + 0.5), y));\n\tv2 = texture2D(texture_poseMap, vec2(dx * (x + 1.5), y));\n\tv3 = texture2D(texture_poseMap, vec2(dx * (x + 2.5), y));\n}\nmat4 getSkinMatrix(const in vec4 indices, const in vec4 weights) {\n\tvec4 a1, a2, a3;\n\tgetBoneMatrix(indices.x, a1, a2, a3);\n\tvec4 b1, b2, b3;\n\tgetBoneMatrix(indices.y, b1, b2, b3);\n\tvec4 c1, c2, c3;\n\tgetBoneMatrix(indices.z, c1, c2, c3);\n\tvec4 d1, d2, d3;\n\tgetBoneMatrix(indices.w, d1, d2, d3);\n\tvec4 v1 = a1 * weights.x + b1 * weights.y + c1 * weights.z + d1 * weights.w;\n\tvec4 v2 = a2 * weights.x + b2 * weights.y + c2 * weights.z + d2 * weights.w;\n\tvec4 v3 = a3 * weights.x + b3 * weights.y + c3 * weights.z + d3 * weights.w;\n\tfloat one = dot(weights, vec4(1.0));\n\treturn mat4(\n\t\tv1.x, v2.x, v3.x, 0,\n\t\tv1.y, v2.y, v3.y, 0,\n\t\tv1.z, v2.z, v3.z, 0,\n\t\tv1.w, v2.w, v3.w, one\n\t);\n}\n";
 
-var skyboxPS = "varying vec3 vViewDir;\nuniform samplerCube texture_cubeMap;\nvoid main(void) {\n\tgl_FragColor = textureCube(texture_cubeMap, fixSeams(vViewDir));\n}\n";
+var skyboxHDRPS = "varying vec3 vViewDir;\nuniform samplerCube texture_cubeMap;\nvoid main(void) {\n\tvec3 dir=vViewDir;\n#ifndef RIGHT_HANDED_CUBEMAP\n\tdir.x *= -1.0;\n#endif\n\tvec3 color = processEnvironment($textureCubeSAMPLE(texture_cubeMap, fixSeamsStatic(dir, $FIXCONST)).rgb);\n\tcolor = toneMap(color);\n\tcolor = gammaCorrectOutput(color);\n\tgl_FragColor = vec4(color, 1.0);\n}\n";
 
-var skyboxVS = "attribute vec3 aPosition;\n#ifndef VIEWMATRIX\n#define VIEWMATRIX\nuniform mat4 matrix_view;\n#endif\nuniform mat4 matrix_projectionSkybox;\nvarying vec3 vViewDir;\nvoid main(void) {\n\tmat4 view = matrix_view;\n\tview[3][0] = view[3][1] = view[3][2] = 0.0;\n\tgl_Position = matrix_projectionSkybox * view * vec4(aPosition, 1.0);\n\tgl_Position.z = gl_Position.w - 0.00001;\n\tvViewDir = aPosition;\n}\n";
-
-var skyboxHDRPS = "varying vec3 vViewDir;\nuniform samplerCube texture_cubeMap;\n#ifdef CUBEMAP_ROTATION\nuniform mat3 cubeMapRotationMatrix;\n#endif\nvoid main(void) {\n#ifdef CUBEMAP_ROTATION\n\tvec3 dir=vViewDir * cubeMapRotationMatrix;\n#else\n\tvec3 dir=vViewDir;\n#endif\n#ifndef RIGHT_HANDED_CUBEMAP\n\tdir.x *= -1.0;\n#endif\n\tvec3 color = processEnvironment($textureCubeSAMPLE(texture_cubeMap, fixSeamsStatic(dir, $FIXCONST)).rgb);\n\tcolor = toneMap(color);\n\tcolor = gammaCorrectOutput(color);\n\tgl_FragColor = vec4(color, 1.0);\n}\n";
-
-var skyboxPrefilteredCubePS = "varying vec3 vViewDir;\nuniform samplerCube texture_cubeMap;\nvec3 fixSeamsStretch(vec3 vec, float mipmapIndex, float cubemapSize) {\n\tfloat scale = 1.0 - exp2(mipmapIndex) / cubemapSize;\n\tfloat M = max(max(abs(vec.x), abs(vec.y)), abs(vec.z));\n\tif (abs(vec.x) != M) vec.x *= scale;\n\tif (abs(vec.y) != M) vec.y *= scale;\n\tif (abs(vec.z) != M) vec.z *= scale;\n\treturn vec;\n}\nvoid main(void) {\n\tvec3 color = textureCubeRGBM(texture_cubeMap, fixSeamsStretch(vViewDir, 0.0, 128.0));\n\tcolor = toneMap(color);\n\tcolor = gammaCorrectOutput(color);\n\tgl_FragColor = vec4(color, 1.0);\n}\n";
+var skyboxVS = "attribute vec3 aPosition;\n#ifndef VIEWMATRIX\n#define VIEWMATRIX\nuniform mat4 matrix_view;\n#endif\nuniform mat4 matrix_projectionSkybox;\nuniform mat3 cubeMapRotationMatrix;\nvarying vec3 vViewDir;\nvoid main(void) {\n\tmat4 view = matrix_view;\n\tview[3][0] = view[3][1] = view[3][2] = 0.0;\n\tgl_Position = matrix_projectionSkybox * view * vec4(aPosition, 1.0);\n\tgl_Position.z = gl_Position.w - 0.00001;\n\tvViewDir = aPosition * cubeMapRotationMatrix;\n}\n";
 
 var specularPS = "#ifdef MAPCOLOR\nuniform vec3 material_specular;\n#endif\n#ifdef MAPTEXTURE\nuniform sampler2D texture_specularMap;\n#endif\nvoid getSpecularity() {\n\tdSpecularity = vec3(1.0);\n\t#ifdef MAPCOLOR\n\tdSpecularity *= material_specular;\n\t#endif\n\t#ifdef MAPTEXTURE\n\tdSpecularity *= texture2D(texture_specularMap, $UV).$CH;\n\t#endif\n\t#ifdef MAPVERTEX\n\tdSpecularity *= saturate(vVertexColor.$VC);\n\t#endif\n}\n";
 
@@ -24967,10 +29797,8 @@ const shaderChunks = {
 	skinBatchTexVS: skinBatchTexVS,
 	skinConstVS: skinConstVS,
 	skinTexVS: skinTexVS,
-	skyboxPS: skyboxPS,
-	skyboxVS: skyboxVS,
 	skyboxHDRPS: skyboxHDRPS,
-	skyboxPrefilteredCubePS: skyboxPrefilteredCubePS,
+	skyboxVS: skyboxVS,
 	specularPS: specularPS,
 	specularAaNonePS: specularAaNonePS,
 	specularAaToksvigPS: specularAaToksvigPS,
@@ -25435,13 +30263,12 @@ const particle = {
 
 const skybox = {
 	generateKey: function (options) {
-		const key = "skybox" + options.rgbm + " " + options.hdr + " " + options.fixSeams + "" + options.toneMapping + "" + options.gamma + "" + options.useIntensity + "" + options.useCubeMapRotation + "" + options.useRightHandedCubeMap + "" + options.mip;
+		const key = "skybox" + options.rgbm + " " + options.hdr + " " + options.fixSeams + "" + options.toneMapping + "" + options.gamma + "" + options.useIntensity + "" + options.useRightHandedCubeMap + "" + options.mip;
 		return key;
 	},
 	createShaderDefinition: function (device, options) {
 		const mip2size = [128, 64, 32, 16, 8, 4, 2];
 		let fshader = precisionCode(device);
-		fshader += options.useCubeMapRotation ? '#define CUBEMAP_ROTATION\n' : '';
 		fshader += options.useRightHandedCubeMap ? '#define RIGHT_HANDED_CUBEMAP\n' : '';
 		fshader += options.mip ? shaderChunks.fixCubemapSeamsStretchPS : shaderChunks.fixCubemapSeamsNonePS;
 		fshader += options.useIntensity ? shaderChunks.envMultiplyPS : shaderChunks.envConstPS;
@@ -26836,31 +31663,15 @@ class GraphNode extends EventHandler {
 	}
 
 	findByPath(path) {
-		let parts;
+		const parts = Array.isArray(path) ? path : path.split('/');
+		let result = this;
 
-		if (Array.isArray(path)) {
-			if (path.length === 0) return null;
-			parts = path;
-		} else {
-			parts = path.split('/');
-		}
+		for (let i = 0, imax = parts.length; i < imax; ++i) {
+			result = result.children.find(c => c.name === parts[i]);
 
-		let currentParent = this;
-		let result = null;
-
-		for (let i = 0, imax = parts.length; i < imax && currentParent; i++) {
-			const part = parts[i];
-			result = null;
-			const children = currentParent._children;
-
-			for (let j = 0, jmax = children.length; j < jmax; j++) {
-				if (children[j].name === part) {
-					result = children[j];
-					break;
-				}
+			if (!result) {
+				return null;
 			}
-
-			currentParent = result;
 		}
 
 		return result;
@@ -27392,6 +32203,9 @@ LightCamera._spotCookieCamera = null;
 
 const epsilon$1 = 0.000001;
 const tempVec3$1 = new Vec3();
+const tempAreaLightSizes = new Float32Array(6);
+const areaHalfAxisWidth = new Vec3(-0.5, 0, 0);
+const areaHalfAxisHeight = new Vec3(0, 0, 0.5);
 const TextureIndex8 = {
 	FLAGS: 0,
 	COLOR_A: 1,
@@ -27426,7 +32240,13 @@ const TextureIndex8 = {
 	PROJ_MAT_31: 27,
 	PROJ_MAT_32: 28,
 	PROJ_MAT_33: 29,
-	COUNT: 30
+	AREA_DATA_WIDTH_X: 30,
+	AREA_DATA_WIDTH_Y: 31,
+	AREA_DATA_WIDTH_Z: 32,
+	AREA_DATA_HEIGHT_X: 33,
+	AREA_DATA_HEIGHT_Y: 34,
+	AREA_DATA_HEIGHT_Z: 35,
+	COUNT: 36
 };
 const TextureIndexFloat = {
 	POSITION_RANGE: 0,
@@ -27436,7 +32256,9 @@ const TextureIndexFloat = {
 	PROJ_MAT_1: 3,
 	PROJ_MAT_2: 4,
 	PROJ_MAT_3: 5,
-	COUNT: 6
+	AREA_DATA_WIDTH: 6,
+	AREA_DATA_HEIGHT: 7,
+	COUNT: 8
 };
 
 class LightsBuffer {
@@ -27478,10 +32300,11 @@ class LightsBuffer {
 		return tex;
 	}
 
-	constructor(device, cookiesEnabled, shadowsEnabled) {
+	constructor(device, cookiesEnabled, shadowsEnabled, areaLightsEnabled) {
 		this.device = device;
 		this.cookiesEnabled = cookiesEnabled;
 		this.shadowsEnabled = shadowsEnabled;
+		this.areaLightsEnabled = areaLightsEnabled;
 		this.maxLights = 255;
 		let pixelsPerLight8 = TextureIndex8.COUNT_ALWAYS;
 		let pixelsPerLightFloat = 0;
@@ -27567,9 +32390,23 @@ class LightsBuffer {
 		direction.normalize();
 	}
 
+	getLightAreaSizes(light) {
+		const mat = light._node.getWorldTransform();
+
+		mat.transformVector(areaHalfAxisWidth, tempVec3$1);
+		tempAreaLightSizes[0] = tempVec3$1.x;
+		tempAreaLightSizes[1] = tempVec3$1.y;
+		tempAreaLightSizes[2] = tempVec3$1.z;
+		mat.transformVector(areaHalfAxisHeight, tempVec3$1);
+		tempAreaLightSizes[3] = tempVec3$1.x;
+		tempAreaLightSizes[4] = tempVec3$1.y;
+		tempAreaLightSizes[5] = tempVec3$1.z;
+		return tempAreaLightSizes;
+	}
+
 	addLightDataFlags(data8, index, light, isSpot) {
 		data8[index + 0] = isSpot ? 255 : 0;
-		data8[index + 1] = light._shape * 255;
+		data8[index + 1] = light._shape * 64;
 		data8[index + 2] = light._falloffMode * 255;
 		data8[index + 3] = light.castShadows ? 255 : 0;
 	}
@@ -27642,9 +32479,18 @@ class LightsBuffer {
 		FloatPacking.float2Bytes(atlasViewport.z / 3, data8, index + 4, 2);
 	}
 
+	addLightAreaSizes(data8, index, light) {
+		const areaSizes = this.getLightAreaSizes(light);
+
+		for (let i = 0; i < 6; i++) {
+			FloatPacking.float2MantisaExponent(areaSizes[i], data8, index + 4 * i, 4);
+		}
+	}
+
 	addLightData(light, lightIndex, gammaCorrection) {
 		const isSpot = light._type === LIGHTTYPE_SPOT;
 		const isCookie = this.cookiesEnabled && !!light._cookie;
+		const isArea = this.areaLightsEnabled && light.shape !== LIGHTSHAPE_PUNCTUAL;
 		const castShadows = this.shadowsEnabled && light.castShadows;
 
 		const pos = light._node.getPosition();
@@ -27708,6 +32554,16 @@ class LightsBuffer {
 				dataFloat[dataFloatStart + 4 * TextureIndexFloat.ATLAS_VIEWPORT + 1] = atlasViewport.y;
 				dataFloat[dataFloatStart + 4 * TextureIndexFloat.ATLAS_VIEWPORT + 2] = atlasViewport.z / 3;
 			}
+
+			if (isArea) {
+				const areaSizes = this.getLightAreaSizes(light);
+				dataFloat[dataFloatStart + 4 * TextureIndexFloat.AREA_DATA_WIDTH + 0] = areaSizes[0];
+				dataFloat[dataFloatStart + 4 * TextureIndexFloat.AREA_DATA_WIDTH + 1] = areaSizes[1];
+				dataFloat[dataFloatStart + 4 * TextureIndexFloat.AREA_DATA_WIDTH + 2] = areaSizes[2];
+				dataFloat[dataFloatStart + 4 * TextureIndexFloat.AREA_DATA_HEIGHT + 0] = areaSizes[3];
+				dataFloat[dataFloatStart + 4 * TextureIndexFloat.AREA_DATA_HEIGHT + 1] = areaSizes[4];
+				dataFloat[dataFloatStart + 4 * TextureIndexFloat.AREA_DATA_HEIGHT + 2] = areaSizes[5];
+			}
 		} else {
 			this.addLightDataPositionRange(data8, data8Start + 4 * TextureIndex8.POSITION_X, light, pos);
 
@@ -27721,6 +32577,10 @@ class LightsBuffer {
 
 			if (atlasViewport) {
 				this.addLightAtlasViewport(data8, data8Start + 4 * TextureIndex8.ATLAS_VIEWPORT_A, atlasViewport);
+			}
+
+			if (isArea) {
+				this.addLightAreaSizes(data8, data8Start + 4 * TextureIndex8.AREA_DATA_WIDTH_X, light);
 			}
 		}
 	}
@@ -27813,7 +32673,7 @@ class ClusterLight {
 }
 
 class WorldClusters {
-	constructor(device, cells, maxCellLightCount, cookiesEnabled = false, shadowsEnabled = false) {
+	constructor(device, cells, maxCellLightCount, cookiesEnabled = false, shadowsEnabled = false, areaLightsEnabled = false) {
 		this.device = device;
 		this.name = "Untitled";
 		this.reportCount = 0;
@@ -27833,7 +32693,7 @@ class WorldClusters {
 
 		this._usedLights.push(new ClusterLight());
 
-		this.lightsBuffer = new LightsBuffer(device, cookiesEnabled, shadowsEnabled);
+		this.lightsBuffer = new LightsBuffer(device, cookiesEnabled, shadowsEnabled, areaLightsEnabled);
 		this.registerUniforms(device);
 	}
 
@@ -27896,6 +32756,30 @@ class WorldClusters {
 
 			this._cellsDirty = true;
 		}
+	}
+
+	get cookiesEnabled() {
+		return this.lightsBuffer.cookiesEnabled;
+	}
+
+	set cookiesEnabled(value) {
+		this.lightsBuffer.cookiesEnabled = value;
+	}
+
+	get shadowsEnabled() {
+		return this.lightsBuffer.shadowsEnabled;
+	}
+
+	set shadowsEnabled(value) {
+		this.lightsBuffer.shadowsEnabled = value;
+	}
+
+	get areaLightsEnabled() {
+		return this.lightsBuffer.areaLightsEnabled;
+	}
+
+	set areaLightsEnabled(value) {
+		this.lightsBuffer.areaLightsEnabled = value;
 	}
 
 	updateCells() {
@@ -28184,8 +33068,9 @@ class LayerComposition extends EventHandler {
 		this._emptyWorldClusters = null;
 		this._clusteredLightingCells = new Vec3(10, 3, 10);
 		this._clusteredLightingMaxLights = 64;
-		this._clusteredLightingCookiesEnabled = true;
+		this._clusteredLightingCookiesEnabled = false;
 		this._clusteredLightingShadowsEnabled = true;
+		this._clusteredLightingAreaLightsEnabled = false;
 	}
 
 	destroy() {
@@ -28195,7 +33080,9 @@ class LayerComposition extends EventHandler {
 			this._emptyWorldClusters = null;
 		}
 
-		this._worldClusters.forEach(cluster => cluster.destroy());
+		this._worldClusters.forEach(cluster => {
+			cluster.destroy();
+		});
 
 		this._worldClusters = null;
 	}
@@ -28235,6 +33122,22 @@ class LayerComposition extends EventHandler {
 		}
 	}
 
+	get clusteredLightingAreaLightsEnabled() {
+		return this._clusteredLightingAreaLightsEnabled;
+	}
+
+	set clusteredLightingAreaLightsEnabled(value) {
+		if (!this.device.supportsAreaLights) {
+			value = false;
+		}
+
+		if (this._clusteredLightingAreaLightsEnabled !== value) {
+			this._clusteredLightingAreaLightsEnabled = value;
+			this._dirtyLights = true;
+			this.updateWorldClusters();
+		}
+	}
+
 	get clusteredLightingShadowsEnabled() {
 		return this._clusteredLightingShadowsEnabled;
 	}
@@ -28253,6 +33156,7 @@ class LayerComposition extends EventHandler {
 			cluster.maxCellLightCount = this._clusteredLightingMaxLights;
 			cluster.cookiesEnabled = this._clusteredLightingCookiesEnabled;
 			cluster.shadowsEnabled = this._clusteredLightingShadowsEnabled;
+			cluster.areaLightsEnabled = this._clusteredLightingAreaLightsEnabled;
 		});
 	}
 
@@ -28595,7 +33499,7 @@ class LayerComposition extends EventHandler {
 						}
 
 						if (!clusters) {
-							clusters = new WorldClusters(this.device, this._clusteredLightingCells, this._clusteredLightingMaxLights, this._clusteredLightingCookiesEnabled, this._clusteredLightingShadowsEnabled);
+							clusters = new WorldClusters(this.device, this._clusteredLightingCells, this._clusteredLightingMaxLights, this._clusteredLightingCookiesEnabled, this._clusteredLightingShadowsEnabled, this._clusteredLightingAreaLightsEnabled);
 						}
 
 						clusters.name = "Cluster-" + this._worldClusters.length;
@@ -28612,7 +33516,9 @@ class LayerComposition extends EventHandler {
 			}
 		}
 
-		tempClusterArray.forEach(item => item.destroy());
+		tempClusterArray.forEach(item => {
+			item.destroy();
+		});
 		tempClusterArray.length = 0;
 	}
 
@@ -29542,7 +34448,7 @@ const standard = {
 			lighting = true;
 		}
 
-		if (LayerComposition.clusteredLightingEnabled) {
+		if (LayerComposition.clusteredLightingEnabled && options.useLighting) {
 			lighting = true;
 		}
 
@@ -29562,8 +34468,8 @@ const standard = {
 		if (options.cubeMap) options.sphereMap = null;
 		if (options.dpAtlas) options.prefilteredCubemap = null;
 		if (!options.useSpecular) options.specularMap = options.glossMap = null;
-		const needsNormal = lighting || reflections || options.ambientSH || options.prefilteredCubemap || options.heightMap || options.enableGGXSpecular;
 		const shadowPass = options.pass >= SHADER_SHADOW && options.pass <= 17;
+		const needsNormal = lighting || reflections || options.ambientSH || options.prefilteredCubemap || options.heightMap || options.enableGGXSpecular || LayerComposition.clusteredLightingEnabled && !shadowPass || options.clearCoatNormalMap;
 		this.options = options;
 		let code = '';
 		let codeBody = '';
@@ -29965,6 +34871,7 @@ const standard = {
 
 		if (options.clearCoat > 0) {
 			code += '#define CLEARCOAT\n';
+			code += "#define CLUSTER_CLEAR_COAT\n";
 		}
 
 		if (options.opacityFadesSpecular === false) {
@@ -29977,9 +34884,13 @@ const standard = {
 		let useVsm = false;
 		let usePerspZbufferShadow = false;
 		const isClustered = LayerComposition.clusteredLightingEnabled;
-		const hasAreaLights = options.lights.some(function (light) {
+		let hasAreaLights = options.lights.some(function (light) {
 			return light._shape && light._shape !== LIGHTSHAPE_PUNCTUAL;
 		});
+
+		if (isClustered && options.clusteredLightingAreaLightsEnabled) {
+			hasAreaLights = true;
+		}
 
 		if (device.areaLightLutFormat === PIXELFORMAT_R8_G8_B8_A8) {
 			code += "#define AREA_R8_G8_B8_A8_LUTS\n";
@@ -29988,7 +34899,7 @@ const standard = {
 			code += "#define AREA_LUTS_PRECISION highp\n";
 		}
 
-		if (hasAreaLights) {
+		if (hasAreaLights || isClustered) {
 			code += "#define AREA_LIGHTS\n";
 			code += "uniform AREA_LUTS_PRECISION sampler2D areaLightsLutTex1;\n";
 			code += "uniform AREA_LUTS_PRECISION sampler2D areaLightsLutTex2;\n";
@@ -30301,12 +35212,18 @@ const standard = {
 
 		if (lighting) {
 			code += chunks.lightDiffuseLambertPS;
-			if (hasAreaLights) code += chunks.ltc;
+			if (hasAreaLights || isClustered) code += chunks.ltc;
 		}
 
 		let useOldAmbient = false;
 
 		if (options.useSpecular) {
+			code += "#define CLUSTER_SPECULAR\n";
+
+			if (options.conserveEnergy) {
+				code += "#define CLUSTER_CONSERVE_ENERGY\n";
+			}
+
 			if (lighting) code += options.shadingModel === SPECULAR_PHONG ? chunks.lightSpecularPhongPS : options.enableGGXSpecular ? chunks.lightSpecularAnisoGGXPS : chunks.lightSpecularBlinnPS;
 
 			if (options.sphereMap || cubemapReflection || options.dpAtlas || options.fresnelModel > 0) {
@@ -30386,14 +35303,15 @@ const standard = {
 		let usesCookie = false;
 		let usesCookieNow;
 
-		if (LayerComposition.clusteredLightingEnabled) {
+		if (LayerComposition.clusteredLightingEnabled && lighting) {
 			usesSpot = true;
 			hasPointLights = true;
 			usesLinearFalloff = true;
 			usesCookie = true;
 			code += chunks.floatUnpackingPS;
 			if (options.clusteredLightingCookiesEnabled) code += "\n#define CLUSTER_COOKIES";
-			if (options.clusteredLightingShadowsEnabled) code += "\n#define CLUSTER_SHADOWS";
+			if (options.clusteredLightingShadowsEnabled && !options.noShadow) code += "\n#define CLUSTER_SHADOWS";
+			if (options.clusteredLightingAreaLightsEnabled) code += "\n#define CLUSTER_AREALIGHTS";
 			code += LightsBuffer.shaderDefines;
 			code += chunks.clusteredLightPS;
 		}
@@ -30537,15 +35455,10 @@ const standard = {
 				code += "	 dReflection.rgb *= dSpecularity;\n";
 				code += "	 dSpecularLight *= dSpecularity;\n";
 				code += "	 float roughness = max((1.0 - dGlossiness) * (1.0 - dGlossiness), 0.001);\n";
+				code += "	 calcLTCLightValues();\n";
 			}
 
 			let shapeString = '';
-
-			if (LayerComposition.clusteredLightingEnabled) {
-				usesLinearFalloff = true;
-				hasPointLights = true;
-				code += '	 addClusteredLights();';
-			}
 
 			for (let i = 0; i < options.lights.length; i++) {
 				const light = options.lights[i];
@@ -30702,6 +35615,13 @@ const standard = {
 				}
 
 				code += "\n";
+			}
+
+			if (LayerComposition.clusteredLightingEnabled && lighting) {
+				usesLinearFalloff = true;
+				usesInvSquaredFalloff = true;
+				hasPointLights = true;
+				code += '	 addClusteredLights();\n';
 			}
 
 			if (hasAreaLights) {
@@ -30924,6 +35844,28 @@ function generateDpAtlas(device, sixCubemaps, dontFlipX) {
 
 	return tex;
 }
+
+class DefaultMaterial {
+	static get(device) {
+		let material = this.cache.get(device);
+
+		if (!material) {
+			material = new StandardMaterial();
+			material.name = "Default Material";
+			material.shadingModel = SPECULAR_BLINN;
+			this.cache.set(device, material);
+		}
+
+		return material;
+	}
+
+	static remove(device) {
+		this.cache.delete(device);
+	}
+
+}
+
+DefaultMaterial.cache = new Map();
 
 let id$1 = 0;
 
@@ -31228,6 +36170,11 @@ class Material {
 			}
 
 			meshInstance._material = null;
+			const defaultMaterial = DefaultMaterial.get(meshInstance.mesh.device);
+
+			if (this !== defaultMaterial) {
+				meshInstance.material = defaultMaterial;
+			}
 		}
 	}
 
@@ -31278,7 +36225,7 @@ class StandardMaterialOptionsBuilder {
 
 		options.useTexCubeLod = device.useTexCubeLod;
 
-		this._updateEnvOptions(options, stdMat, scene, prefilteredCubeMap128);
+		this._updateEnvOptions(options, device, stdMat, scene, prefilteredCubeMap128);
 
 		this._updateMaterialOptions(options, stdMat);
 
@@ -31406,7 +36353,7 @@ class StandardMaterialOptionsBuilder {
 		options.clearCoatGlossTint = stdMat.clearCoatGlossiness !== 1.0 ? 1 : 0;
 	}
 
-	_updateEnvOptions(options, stdMat, scene, prefilteredCubeMap128) {
+	_updateEnvOptions(options, device, stdMat, scene, prefilteredCubeMap128) {
 		const rgbmAmbient = prefilteredCubeMap128 && prefilteredCubeMap128.type === TEXTURETYPE_RGBM || stdMat.cubeMap && stdMat.cubeMap.type === TEXTURETYPE_RGBM || stdMat.dpAtlas && stdMat.dpAtlas.type === TEXTURETYPE_RGBM;
 		const hdrAmbient = prefilteredCubeMap128 && (prefilteredCubeMap128.type === TEXTURETYPE_RGBM || prefilteredCubeMap128.format === PIXELFORMAT_RGBA32F) || stdMat.cubeMap && (stdMat.cubeMap.type === TEXTURETYPE_RGBM || stdMat.cubeMap.format === PIXELFORMAT_RGBA32F) || stdMat.dpAtlas && (stdMat.dpAtlas.type === TEXTURETYPE_RGBM || stdMat.dpAtlas.format === PIXELFORMAT_RGBA32F);
 		const rgbmReflection = prefilteredCubeMap128 && !stdMat.cubeMap && !stdMat.sphereMap && !stdMat.dpAtlas && prefilteredCubeMap128.type === TEXTURETYPE_RGBM || stdMat.cubeMap && stdMat.cubeMap.type === TEXTURETYPE_RGBM || stdMat.sphereMap && stdMat.sphereMap.type === TEXTURETYPE_RGBM || stdMat.dpAtlas && stdMat.dpAtlas.type === TEXTURETYPE_RGBM;
@@ -31427,9 +36374,10 @@ class StandardMaterialOptionsBuilder {
 		options.useCubeMapRotation = !stdMat.cubeMap && !stdMat.prefilteredCubeMap128 && stdMat.useSkybox && scene && scene.skyboxRotation && !scene.skyboxRotation.equals(Quat.IDENTITY);
 		options.useRightHandedCubeMap = stdMat.cubeMap ? stdMat.cubeMap._isRenderTarget : !stdMat.prefilteredCubeMap128 && stdMat.useSkybox && scene && scene._skyboxIsRenderTarget;
 
-		if (scene.layers) {
+		if (LayerComposition.clusteredLightingEnabled && scene.layers) {
 			options.clusteredLightingCookiesEnabled = scene.layers.clusteredLightingCookiesEnabled;
 			options.clusteredLightingShadowsEnabled = scene.layers.clusteredLightingShadowsEnabled;
+			options.clusteredLightingAreaLightsEnabled = scene.layers.clusteredLightingAreaLightsEnabled;
 		}
 	}
 
@@ -31820,13 +36768,11 @@ class StandardMaterial extends Material {
 
 	_processParameters(paramsName) {
 		const prevParams = this[paramsName];
-
-		for (const param of prevParams) {
+		prevParams.forEach(param => {
 			if (!_params.has(param)) {
 				delete this.parameters[param];
 			}
-		}
-
+		});
 		this[paramsName] = _params;
 		_params = prevParams;
 
@@ -32790,6 +37736,115 @@ class ShaderInput {
 
 }
 
+class GrabPass {
+	constructor(device, useAlpha) {
+		this.device = device;
+		this.useAlpha = useAlpha;
+		this.useMipmaps = device.webgl2;
+		this.texture = null;
+		this.renderTarget = null;
+		this.textureId = null;
+	}
+
+	destroy() {
+		this.textureId = null;
+
+		if (this.renderTarget) {
+			this.renderTarget.destroy();
+			this.renderTarget = null;
+		}
+
+		if (this.texture) {
+			this.texture.destroy();
+			this.texture = null;
+		}
+	}
+
+	create() {
+		if (!this.texture) {
+			const texture = new Texture(this.device, {
+				format: this.useAlpha ? PIXELFORMAT_R8_G8_B8_A8 : PIXELFORMAT_R8_G8_B8,
+				minFilter: this.useMipmaps ? FILTER_LINEAR_MIPMAP_LINEAR : FILTER_LINEAR,
+				magFilter: FILTER_LINEAR,
+				addressU: ADDRESS_CLAMP_TO_EDGE,
+				addressV: ADDRESS_CLAMP_TO_EDGE,
+				mipmaps: this.useMipmaps
+			});
+			texture.name = 'texture_grabPass';
+			this.texture = texture;
+			this.renderTarget = new RenderTarget({
+				colorBuffer: texture,
+				depth: false
+			});
+			this.textureId = this.device.scope.resolve(texture.name);
+			this.textureId.setValue(texture);
+		}
+	}
+
+	update() {
+		const device = this.device;
+		const gl = device.gl;
+
+		if (!device.grabPassAvailable) {
+			return false;
+		}
+
+		const renderTarget = device.renderTarget;
+		const resolveRenderTarget = renderTarget && renderTarget._glResolveFrameBuffer;
+		const texture = this.texture;
+		const width = device.width;
+		const height = device.height;
+
+		if (device.webgl2 && !device._tempMacChromeBlitFramebufferWorkaround && width === texture._width && height === texture._height) {
+			if (resolveRenderTarget) {
+				renderTarget.resolve(true);
+			}
+
+			const currentFrameBuffer = renderTarget ? renderTarget._glFrameBuffer : null;
+			const resolvedFrameBuffer = renderTarget ? renderTarget._glResolveFrameBuffer || renderTarget._glFrameBuffer : null;
+			device.initRenderTarget(this.renderTarget);
+			const grabPassFrameBuffer = this.renderTarget._glFrameBuffer;
+			gl.bindFramebuffer(gl.READ_FRAMEBUFFER, resolvedFrameBuffer);
+			gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, grabPassFrameBuffer);
+			gl.blitFramebuffer(0, 0, width, height, 0, 0, width, height, gl.COLOR_BUFFER_BIT, gl.NEAREST);
+			gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, currentFrameBuffer);
+		} else {
+			if (resolveRenderTarget) {
+				renderTarget.resolve(true);
+				gl.bindFramebuffer(gl.FRAMEBUFFER, renderTarget._glResolveFrameBuffer);
+			}
+
+			const format = texture._glFormat;
+			gl.copyTexImage2D(gl.TEXTURE_2D, 0, format, 0, 0, width, height, 0);
+			texture._width = width;
+			texture._height = height;
+
+			if (resolveRenderTarget) {
+				gl.bindFramebuffer(gl.FRAMEBUFFER, renderTarget._glFrameBuffer);
+			}
+		}
+
+		return true;
+	}
+
+	generateMipmaps() {
+		if (this.useMipmaps) {
+			this.device.gl.generateMipmap(this.texture._glTarget);
+		}
+	}
+
+	prepareTexture() {
+		const updated = this.update();
+
+		if (updated) {
+			this.generateMipmaps();
+		}
+
+		return updated;
+	}
+
+}
+
 const EVENT_RESIZE = 'resizecanvas';
 
 function downsampleImage(image, size) {
@@ -33216,8 +38271,8 @@ class GraphicsDevice extends EventHandler {
 		this._textureFloatHighPrecision = undefined;
 		this._textureHalfFloatUpdatable = undefined;
 		this.grabPassAvailable = true;
-		this.grabPassAlpha = options.alpha;
-		this.createGrabPass();
+		this.grabPass = new GrabPass(this, options.alpha);
+		this.grabPass.create();
 		VertexFormat.init(this);
 		this.areaLightLutFormat = PIXELFORMAT_R8_G8_B8_A8;
 
@@ -33230,7 +38285,7 @@ class GraphicsDevice extends EventHandler {
 
 	destroy() {
 		const gl = this.gl;
-		this.destroyGrabPass();
+		this.grabPass.destroy();
 
 		if (this.webgl2 && this.feedback) {
 			gl.deleteTransformFeedback(this.feedback);
@@ -33300,7 +38355,6 @@ class GraphicsDevice extends EventHandler {
 			this.extStandardDerivatives = true;
 			this.extTextureFloat = true;
 			this.extTextureHalfFloat = true;
-			this.extTextureHalfFloatLinear = true;
 			this.extTextureLod = true;
 			this.extUintElement = true;
 			this.extVertexArrayObject = true;
@@ -33321,7 +38375,6 @@ class GraphicsDevice extends EventHandler {
 			this.extStandardDerivatives = getExtension("OES_standard_derivatives");
 			this.extTextureFloat = getExtension("OES_texture_float");
 			this.extTextureHalfFloat = getExtension("OES_texture_half_float");
-			this.extTextureHalfFloatLinear = getExtension("OES_texture_half_float_linear");
 			this.extTextureLod = getExtension('EXT_shader_texture_lod');
 			this.extUintElement = getExtension("OES_element_index_uint");
 			this.extVertexArrayObject = getExtension("OES_vertex_array_object");
@@ -33340,6 +38393,7 @@ class GraphicsDevice extends EventHandler {
 
 		this.extDebugRendererInfo = getExtension('WEBGL_debug_renderer_info');
 		this.extTextureFloatLinear = getExtension("OES_texture_float_linear");
+		this.extTextureHalfFloatLinear = getExtension("OES_texture_half_float_linear");
 		this.extFloatBlend = getExtension("EXT_float_blend");
 		this.extTextureFilterAnisotropic = getExtension('EXT_texture_filter_anisotropic', 'WEBKIT_EXT_texture_filter_anisotropic');
 		this.extCompressedTextureETC1 = getExtension('WEBGL_compressed_texture_etc1');
@@ -33387,6 +38441,11 @@ class GraphicsDevice extends EventHandler {
 		this.maxAnisotropy = ext ? gl.getParameter(ext.MAX_TEXTURE_MAX_ANISOTROPY_EXT) : 1;
 		this.samples = gl.getParameter(gl.SAMPLES);
 		this.maxSamples = this.webgl2 ? gl.getParameter(gl.MAX_SAMPLES) : 1;
+		this.supportsAreaLights = this.webgl2 || !platform.android;
+
+		if (this.maxTextures <= 8) {
+			this.supportsAreaLights = false;
+		}
 	}
 
 	initializeRenderState() {
@@ -33494,7 +38553,7 @@ class GraphicsDevice extends EventHandler {
 			shader.loseContext();
 		}
 
-		this.destroyGrabPass();
+		this.grabPass.destroy();
 
 		while (this.textures.length > 0) {
 			const texture = this.textures[0];
@@ -33525,82 +38584,7 @@ class GraphicsDevice extends EventHandler {
 			buffer.unlock();
 		}
 
-		this.createGrabPass();
-	}
-
-	createGrabPass() {
-		if (this.grabPassTexture) return;
-		const grabPassTexture = new Texture(this, {
-			format: this.grabPassAlpha === false ? PIXELFORMAT_R8_G8_B8 : PIXELFORMAT_R8_G8_B8_A8,
-			minFilter: FILTER_LINEAR,
-			magFilter: FILTER_LINEAR,
-			addressU: ADDRESS_CLAMP_TO_EDGE,
-			addressV: ADDRESS_CLAMP_TO_EDGE,
-			mipmaps: false
-		});
-		grabPassTexture.name = 'texture_grabPass';
-		const grabPassTextureId = this.scope.resolve(grabPassTexture.name);
-		grabPassTextureId.setValue(grabPassTexture);
-		const grabPassRenderTarget = new RenderTarget({
-			colorBuffer: grabPassTexture,
-			depth: false
-		});
-		this.grabPassRenderTarget = grabPassRenderTarget;
-		this.grabPassTextureId = grabPassTextureId;
-		this.grabPassTexture = grabPassTexture;
-	}
-
-	updateGrabPass() {
-		const gl = this.gl;
-
-		if (!this.grabPassAvailable) {
-			return false;
-		}
-
-		const renderTarget = this.renderTarget;
-		const resolveRenderTarget = renderTarget && renderTarget._glResolveFrameBuffer;
-		const grabPassTexture = this.grabPassTexture;
-		const width = this.width;
-		const height = this.height;
-
-		if (this.webgl2 && !this._tempMacChromeBlitFramebufferWorkaround && width === grabPassTexture._width && height === grabPassTexture._height) {
-			if (resolveRenderTarget) {
-				renderTarget.resolve(true);
-			}
-
-			const currentFrameBuffer = renderTarget ? renderTarget._glFrameBuffer : null;
-			const resolvedFrameBuffer = renderTarget ? renderTarget._glResolveFrameBuffer || renderTarget._glFrameBuffer : null;
-			this.initRenderTarget(this.grabPassRenderTarget);
-			const grabPassFrameBuffer = this.grabPassRenderTarget._glFrameBuffer;
-			gl.bindFramebuffer(gl.READ_FRAMEBUFFER, resolvedFrameBuffer);
-			gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, grabPassFrameBuffer);
-			gl.blitFramebuffer(0, 0, width, height, 0, 0, width, height, gl.COLOR_BUFFER_BIT, gl.NEAREST);
-			gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, currentFrameBuffer);
-		} else {
-			if (resolveRenderTarget) {
-				renderTarget.resolve(true);
-				gl.bindFramebuffer(gl.FRAMEBUFFER, renderTarget._glResolveFrameBuffer);
-			}
-
-			const format = grabPassTexture._glFormat;
-			gl.copyTexImage2D(gl.TEXTURE_2D, 0, format, 0, 0, width, height, 0);
-			grabPassTexture._width = width;
-			grabPassTexture._height = height;
-
-			if (resolveRenderTarget) {
-				gl.bindFramebuffer(gl.FRAMEBUFFER, renderTarget._glFrameBuffer);
-			}
-		}
-
-		return true;
-	}
-
-	destroyGrabPass() {
-		this.grabPassRenderTarget.destroy();
-		this.grabPassRenderTarget = null;
-		this.grabPassTextureId = null;
-		this.grabPassTexture.destroy();
-		this.grabPassTexture = null;
+		this.grabPass.create();
 	}
 
 	updateClientRect() {
@@ -34242,7 +39226,7 @@ class GraphicsDevice extends EventHandler {
 					resMult = 1 / Math.pow(2, mipLevel);
 
 					if (texture._compressed) {
-						gl.compressedTexImage2D(gl.TEXTURE_2D, mipLevel, texture._glInternalFormat, Math.max(texture._width * resMult, 1), Math.max(texture._height * resMult, 1), 0, mipObject);
+						gl.compressedTexImage2D(gl.TEXTURE_2D, mipLevel, texture._glInternalFormat, Math.max(Math.floor(texture._width * resMult), 1), Math.max(Math.floor(texture._height * resMult), 1), 0, mipObject);
 					} else {
 						this.setUnpackFlipY(false);
 						this.setUnpackPremultiplyAlpha(texture._premultiplyAlpha);
@@ -34381,7 +39365,7 @@ class GraphicsDevice extends EventHandler {
 	setTexture(texture, textureUnit) {
 		if (!texture._glTexture) this.initializeTexture(texture);
 
-		if (texture._parameterFlags > 0 || texture._needsUpload || texture._needsMipmapsUpload || texture === this.grabPassTexture) {
+		if (texture._parameterFlags > 0 || texture._needsUpload || texture._needsMipmapsUpload || texture === this.grabPass.texture) {
 			this.activeTexture(textureUnit);
 			this.bindTexture(texture);
 
@@ -34390,7 +39374,7 @@ class GraphicsDevice extends EventHandler {
 				texture._parameterFlags = 0;
 			}
 
-			const processed = texture === this.grabPassTexture && this.updateGrabPass();
+			const processed = texture === this.grabPass.texture && this.grabPass.prepareTexture();
 
 			if (!processed && (texture._needsUpload || texture._needsMipmapsUpload)) {
 				this.uploadTexture(texture);
@@ -35017,7 +40001,8 @@ class GraphicsDevice extends EventHandler {
 
 			const [code, error] = this._processError(source, infoLog);
 
-			console.error(`Failed to compile ${shaderType} shader:\n\n${infoLog}\n${code}`);
+			const message = `Failed to compile ${shaderType} shader:\n\n${infoLog}\n${code}`;
+			console.error(message);
 			return false;
 		}
 
@@ -35059,7 +40044,8 @@ class GraphicsDevice extends EventHandler {
 		if (!this._isShaderCompiled(shader, shader._glFragmentShader, definition.fshader, "fragment")) return false;
 
 		if (!gl.getProgramParameter(glProgram, gl.LINK_STATUS)) {
-			console.error("Failed to link shader program. Error: " + gl.getProgramInfoLog(glProgram));
+			const message = "Failed to link shader program. Error: " + gl.getProgramInfoLog(glProgram);
+			console.error(message);
 			return false;
 		}
 
@@ -35929,6 +40915,115 @@ function reprojectTexture(source, target, options = {}) {
 			renderTarget.destroy();
 		}
 	}
+}
+
+class Prefilter {
+	static isValidSkyboxCubemap(texture) {
+		return texture && texture.cubemap && (texture.type === TEXTURETYPE_DEFAULT || texture.type === TEXTURETYPE_RGBM);
+	}
+
+	static generateSkyboxCubemap(source, size = 0) {
+		if (size === 0) {
+			size = source.cubemap ? source.width : source.width / 4;
+		}
+
+		const device = source.device;
+		const faces = new Texture(device, {
+			name: 'skyboxFaces',
+			cubemap: true,
+			width: size,
+			height: size,
+			type: TEXTURETYPE_RGBM,
+			addressU: ADDRESS_CLAMP_TO_EDGE,
+			addressV: ADDRESS_CLAMP_TO_EDGE,
+			fixCubemapSeams: false,
+			mipmaps: false
+		});
+		reprojectTexture(source, faces);
+		return faces;
+	}
+
+	static generatePrefilteredCubemaps(source, mipmaps = true) {
+		const device = source.device;
+		const cubemaps = [];
+
+		const createCubemap = size => {
+			return new Texture(device, {
+				name: 'skyboxPrefilter' + size,
+				cubemap: true,
+				width: size,
+				height: size,
+				type: TEXTURETYPE_RGBM,
+				addressU: ADDRESS_CLAMP_TO_EDGE,
+				addressV: ADDRESS_CLAMP_TO_EDGE,
+				fixCubemapSeams: true,
+				mipmaps: false
+			});
+		};
+
+		cubemaps[0] = createCubemap(128);
+		reprojectTexture(source, cubemaps[0], {
+			numSamples: source.mipmaps ? 1 : 1024
+		});
+		const sizes = [64, 32, 16, 8, 4, 2, 1];
+		const specPower = [512, 128, 32, 8, 2, 1, 1];
+
+		for (let i = 0; i < sizes.length; ++i) {
+			cubemaps[i + 1] = createCubemap(sizes[i]);
+			reprojectTexture(cubemaps[0], cubemaps[i + 1], {
+				specularPower: specPower[i],
+				numSamples: 2048
+			});
+		}
+
+		if (mipmaps) {
+			device.activeTexture(0);
+			cubemaps.forEach(cubemap => {
+				device.bindTexture(cubemap);
+				device.gl.generateMipmap(cubemap._glTarget);
+				device.gl.texParameteri(cubemap._glTarget, device.gl.TEXTURE_MIN_FILTER, device.gl.LINEAR_MIPMAP_LINEAR);
+			});
+		}
+
+		return cubemaps;
+	}
+
+	static generatePrefilteredCubemap(source) {
+		const device = source.device;
+		const gl = device.gl;
+		const cubemaps = Prefilter.generatePrefilteredCubemaps(source, false);
+		const cubemap = new Texture(device, {
+			name: 'skyboxPrefilterSet',
+			cubemap: true,
+			width: 128,
+			height: 128,
+			type: TEXTURETYPE_RGBM,
+			addressU: ADDRESS_CLAMP_TO_EDGE,
+			addressV: ADDRESS_CLAMP_TO_EDGE,
+			fixCubemapSeams: false,
+			mipmaps: false
+		});
+		cubemap._isRenderTarget = true;
+		device.setTexture(cubemap, 0);
+		cubemaps.forEach((c, level) => {
+			for (let face = 0; face < 6; ++face) {
+				const renderTarget = new RenderTarget({
+					colorBuffer: c,
+					face: face,
+					depth: false
+				});
+				device.initRenderTarget(renderTarget);
+				const size = 128 >> level;
+				gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X + face, level, cubemap._glInternalFormat, size, size, 0, cubemap._glFormat, cubemap._glPixelType, null);
+				gl.copyTexImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X + face, level, gl.RGBA, 0, 0, size, size, 0);
+				renderTarget.destroy();
+			}
+		});
+		gl.texParameteri(cubemap._glTarget, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+		cubemaps.forEach(c => c.destroy());
+		return cubemap;
+	}
+
 }
 
 class IndexBuffer {
@@ -37201,7 +42296,7 @@ function createMesh$1(device, positions, opts) {
 		}
 
 		if (opts.blendIndices) {
-			mesh.setVertexStream(SEMANTIC_BLENDINDICES, opts.blendIndices, 4, TYPE_UINT8);
+			mesh.setVertexStream(SEMANTIC_BLENDINDICES, opts.blendIndices, 4, opts.blendIndices.length / 4, TYPE_UINT8);
 		}
 
 		if (opts.blendWeights) {
@@ -38230,6 +43325,34 @@ class MeshInstance {
 		this.flipFaces = false;
 	}
 
+	destroy() {
+		const mesh = this.mesh;
+
+		if (mesh) {
+			this.mesh = null;
+
+			if (mesh.getRefCount() < 1) {
+				mesh.destroy();
+			}
+		}
+
+		this.setRealtimeLightmap(MeshInstance.lightmapParamNames[0], null);
+		this.setRealtimeLightmap(MeshInstance.lightmapParamNames[1], null);
+
+		if (this._skinInstance) {
+			this._skinInstance.destroy();
+
+			this._skinInstance = null;
+		}
+
+		if (this.morphInstance) {
+			this.morphInstance.destroy();
+			this.morphInstance = null;
+		}
+
+		this.material = null;
+	}
+
 	get renderStyle() {
 		return this._renderStyle;
 	}
@@ -38478,34 +43601,6 @@ class MeshInstance {
 
 	set instancingCount(value) {
 		if (this.instancingData) this.instancingData.count = value;
-	}
-
-	destroy() {
-		const mesh = this.mesh;
-
-		if (mesh) {
-			this.mesh = null;
-
-			if (mesh.getRefCount() < 1) {
-				mesh.destroy();
-			}
-		}
-
-		this.setRealtimeLightmap(MeshInstance.lightmapParamNames[0], null);
-		this.setRealtimeLightmap(MeshInstance.lightmapParamNames[1], null);
-
-		if (this._skinInstance) {
-			this._skinInstance.destroy();
-
-			this._skinInstance = null;
-		}
-
-		if (this.morphInstance) {
-			this.morphInstance.destroy();
-			this.morphInstance = null;
-		}
-
-		this.material = null;
 	}
 
 	syncAabb() {}
@@ -39728,7 +44823,7 @@ class LightTextureAtlas {
 		if (!this.shadowMap || this.shadowMap.texture.width !== resolution) {
 			this.destroyShadowMap();
 			this.shadowMap = ShadowMap.createAtlas(this.device, resolution, SHADOW_PCF3);
-			this.shadowMap.cached = false;
+			this.shadowMap.cached = true;
 		}
 	}
 
@@ -41710,7 +46805,7 @@ class ForwardRenderer {
 			if (drawCall.command) {
 				addCall(drawCall, false, false);
 			} else {
-				if (!drawCall.material) drawCall.material = this.scene.defaultMaterial;
+				if (!drawCall.material) drawCall.material = DefaultMaterial.get(device);
 				const material = drawCall.material;
 				const objDefs = drawCall._shaderDefs;
 				const lightMask = drawCall.mask;
@@ -42861,7 +47956,7 @@ class Light {
 		this.bakeArea = 0;
 		this.attenuationStart = 10;
 		this.attenuationEnd = 10;
-		this._falloffMode = 0;
+		this._falloffMode = LIGHTFALLOFF_LINEAR;
 		this._shadowType = SHADOW_PCF3;
 		this._vsmBlurSize = 11;
 		this.vsmBlurMode = BLUR_GAUSSIAN;
@@ -43485,16 +48580,17 @@ class BakeLight {
 
 	startBake() {
 		this.light.enabled = true;
-		this.light._cacheShadowMap = true;
+
+		this.light._destroyShadowMap();
 	}
 
-	endBake() {
+	endBake(shadowMapCache) {
 		const light = this.light;
 		light.enabled = false;
-		light._cacheShadowMap = false;
 
-		if (light._isCachedShadowMap) {
-			light._destroyShadowMap();
+		if (light.shadowMap && light.shadowMap.cached) {
+			shadowMapCache.add(light, light.shadowMap);
+			light.shadowMap = null;
 		}
 	}
 
@@ -46385,17 +51481,12 @@ class Scene extends EventHandler {
 		this._shaderVersion = 0;
 		this._statsUpdated = false;
 		this._models = [];
-		this.defaultMaterial = new StandardMaterial();
-		this.defaultMaterial.name = "Default Material";
-		this.defaultMaterial.shadingModel = SPECULAR_BLINN;
 	}
 
 	destroy() {
 		this._resetSkyboxModel();
 
 		this.root = null;
-		this.defaultMaterial.destroy();
-		this.defaultMaterial = null;
 		this.off();
 	}
 
@@ -46663,7 +51754,6 @@ class Scene extends EventHandler {
 					rgbm: usedTex.type === TEXTURETYPE_RGBM,
 					hdr: usedTex.type === TEXTURETYPE_RGBM || usedTex.format === PIXELFORMAT_RGBA32F,
 					useIntensity: scene.skyboxIntensity !== 1,
-					useCubeMapRotation: !scene.skyboxRotation.equals(Quat.IDENTITY),
 					useRightHandedCubeMap: scene._skyboxIsRenderTarget,
 					mip: usedTex.fixCubemapSeams ? scene.skyboxMip : 0,
 					fixSeams: usedTex.fixCubemapSeams,
@@ -46685,6 +51775,8 @@ class Scene extends EventHandler {
 				this._skyboxRotationMat4.invertTo3x3(this._skyboxRotationMat3);
 
 				material.setParameter("cubeMapRotationMatrix", this._skyboxRotationMat3.data);
+			} else {
+				material.setParameter("cubeMapRotationMatrix", Mat3.IDENTITY.data);
 			}
 
 			material.cull = CULLFACE_FRONT;
@@ -47673,63 +52765,6 @@ class AnimTrack {
 
 }
 
-class AnimBinder {
-	static joinPath(pathSegments, character) {
-		character = character || '.';
-
-		const escape = function escape(string) {
-			return string.replace(/\\/g, '\\\\').replace(new RegExp('\\' + character, 'g'), '\\' + character);
-		};
-
-		return pathSegments.map(escape).join(character);
-	}
-
-	static splitPath(path, character) {
-		character = character || '.';
-		const result = [];
-		let curr = "";
-		let i = 0;
-
-		while (i < path.length) {
-			let c = path[i++];
-
-			if (c === '\\' && i < path.length) {
-				c = path[i++];
-
-				if (c === '\\' || c === character) {
-					curr += c;
-				} else {
-					curr += '\\' + c;
-				}
-			} else if (c === character) {
-				result.push(curr);
-				curr = '';
-			} else {
-				curr += c;
-			}
-		}
-
-		if (curr.length > 0) {
-			result.push(curr);
-		}
-
-		return result;
-	}
-
-	static encode(entityPath, component, propertyPath) {
-		return `${Array.isArray(entityPath) ? entityPath.join('/') : entityPath}/${component}/${Array.isArray(propertyPath) ? propertyPath.join('/') : propertyPath}`;
-	}
-
-	resolve(path) {
-		return null;
-	}
-
-	unresolve(path) {}
-
-	update(deltaTime) {}
-
-}
-
 const INTERPOLATION_STEP = 0;
 const INTERPOLATION_LINEAR = 1;
 const INTERPOLATION_CUBIC = 2;
@@ -48163,6 +53198,389 @@ class Asset extends EventHandler {
 				maxRetries: maxRetries
 			}, callback);
 		}
+	}
+
+}
+
+class SkinInstanceCachedObject extends RefCountedObject {
+	constructor(skin, skinInstance) {
+		super();
+		this.skin = skin;
+		this.skinInstance = skinInstance;
+	}
+
+}
+
+class SkinInstanceCache {
+	static createCachedSkinedInstance(skin, rootBone, entity) {
+		let skinInst = SkinInstanceCache.getCachedSkinInstance(skin, rootBone);
+
+		if (!skinInst) {
+			skinInst = new SkinInstance(skin);
+			skinInst.resolve(rootBone, entity);
+			SkinInstanceCache.addCachedSkinInstance(skin, rootBone, skinInst);
+		}
+
+		return skinInst;
+	}
+
+	static getCachedSkinInstance(skin, rootBone) {
+		let skinInstance = null;
+
+		const cachedObjArray = SkinInstanceCache._skinInstanceCache.get(rootBone);
+
+		if (cachedObjArray) {
+			const cachedObj = cachedObjArray.find(element => element.skin === skin);
+
+			if (cachedObj) {
+				cachedObj.incRefCount();
+				skinInstance = cachedObj.skinInstance;
+			}
+		}
+
+		return skinInstance;
+	}
+
+	static addCachedSkinInstance(skin, rootBone, skinInstance) {
+		let cachedObjArray = SkinInstanceCache._skinInstanceCache.get(rootBone);
+
+		if (!cachedObjArray) {
+			cachedObjArray = [];
+
+			SkinInstanceCache._skinInstanceCache.set(rootBone, cachedObjArray);
+		}
+
+		let cachedObj = cachedObjArray.find(element => element.skin === skin);
+
+		if (!cachedObj) {
+			cachedObj = new SkinInstanceCachedObject(skin, skinInstance);
+			cachedObjArray.push(cachedObj);
+		}
+
+		cachedObj.incRefCount();
+	}
+
+	static removeCachedSkinInstance(skinInstance) {
+		if (skinInstance) {
+			const rootBone = skinInstance.rootBone;
+
+			if (rootBone) {
+				const cachedObjArray = SkinInstanceCache._skinInstanceCache.get(rootBone);
+
+				if (cachedObjArray) {
+					const cachedObjIndex = cachedObjArray.findIndex(element => element.skinInstance === skinInstance);
+
+					if (cachedObjIndex >= 0) {
+						const cachedObj = cachedObjArray[cachedObjIndex];
+						cachedObj.decRefCount();
+
+						if (cachedObj.getRefCount() === 0) {
+							cachedObjArray.splice(cachedObjIndex, 1);
+
+							if (!cachedObjArray.length) {
+								SkinInstanceCache._skinInstanceCache.delete(rootBone);
+							}
+
+							if (skinInstance) {
+								skinInstance.destroy();
+								cachedObj.skinInstance = null;
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+}
+
+SkinInstanceCache._skinInstanceCache = new Map();
+
+class GlbContainerResource {
+	constructor(data, asset, assets, defaultMaterial) {
+		const createAsset = function createAsset(type, resource, index) {
+			const subAsset = GlbContainerResource.createAsset(asset.name, type, resource, index);
+			assets.add(subAsset);
+			return subAsset;
+		};
+
+		const renders = [];
+
+		for (let i = 0; i < data.renders.length; ++i) {
+			renders.push(createAsset('render', data.renders[i], i));
+		}
+
+		const materials = [];
+
+		for (let i = 0; i < data.materials.length; ++i) {
+			materials.push(createAsset('material', data.materials[i], i));
+		}
+
+		const animations = [];
+
+		for (let i = 0; i < data.animations.length; ++i) {
+			animations.push(createAsset('animation', data.animations[i], i));
+		}
+
+		this.data = data;
+		this._model = null;
+		this._assetName = asset.name;
+		this._assets = assets;
+		this._defaultMaterial = defaultMaterial;
+		this.renders = renders;
+		this.materials = materials;
+		this.textures = data.textures;
+		this.animations = animations;
+	}
+
+	get model() {
+		if (!this._model) {
+			const model = GlbContainerResource.createModel(this.data, this._defaultMaterial);
+			const modelAsset = GlbContainerResource.createAsset(this._assetName, 'model', model, 0);
+
+			this._assets.add(modelAsset);
+
+			this._model = modelAsset;
+		}
+
+		return this._model;
+	}
+
+	static createAsset(assetName, type, resource, index) {
+		const subAsset = new Asset(assetName + '/' + type + '/' + index, type, {
+			url: ''
+		});
+		subAsset.resource = resource;
+		subAsset.loaded = true;
+		return subAsset;
+	}
+
+	instantiateModelEntity(options) {
+		const entity = new Entity();
+		entity.addComponent("model", Object.assign({
+			type: "asset",
+			asset: this.model
+		}, options));
+		return entity;
+	}
+
+	instantiateRenderEntity(options) {
+		const defaultMaterial = this._defaultMaterial;
+		const skinedMeshInstances = [];
+
+		const createMeshInstance = function createMeshInstance(root, entity, mesh, materials, skins, gltfNode) {
+			const material = mesh.materialIndex === undefined ? defaultMaterial : materials[mesh.materialIndex];
+			const meshInstance = new MeshInstance(mesh, material);
+
+			if (mesh.morph) {
+				meshInstance.morphInstance = new MorphInstance(mesh.morph);
+			}
+
+			if (gltfNode.hasOwnProperty('skin')) {
+				skinedMeshInstances.push({
+					meshInstance: meshInstance,
+					rootBone: root,
+					entity: entity
+				});
+			}
+
+			return meshInstance;
+		};
+
+		const cloneHierarchy = function cloneHierarchy(root, node, glb) {
+			const entity = new Entity();
+
+			node._cloneInternal(entity);
+
+			if (!root) root = entity;
+			let attachedMi = null;
+
+			for (let i = 0; i < glb.nodes.length; i++) {
+				const glbNode = glb.nodes[i];
+
+				if (glbNode === node) {
+					const gltfNode = glb.gltf.nodes[i];
+
+					if (gltfNode.hasOwnProperty('mesh')) {
+						const meshGroup = glb.renders[gltfNode.mesh].meshes;
+
+						for (var mi = 0; mi < meshGroup.length; mi++) {
+							const mesh = meshGroup[mi];
+
+							if (mesh) {
+								const cloneMi = createMeshInstance(root, entity, mesh, glb.materials, glb.skins, gltfNode);
+
+								if (!attachedMi) {
+									attachedMi = [];
+								}
+
+								attachedMi.push(cloneMi);
+							}
+						}
+					}
+
+					if (glb.lights) {
+						const lightEntity = glb.lights.get(gltfNode);
+
+						if (lightEntity) {
+							entity.addChild(lightEntity.clone());
+						}
+					}
+
+					if (glb.cameras) {
+						const cameraEntity = glb.cameras.get(gltfNode);
+
+						if (cameraEntity) {
+							cameraEntity.camera.system.cloneComponent(cameraEntity, entity);
+						}
+					}
+				}
+			}
+
+			if (attachedMi) {
+				entity.addComponent("render", Object.assign({
+					type: "asset",
+					meshInstances: attachedMi,
+					rootBone: root
+				}, options));
+			}
+
+			const children = node.children;
+
+			for (let i = 0; i < children.length; i++) {
+				const childClone = cloneHierarchy(root, children[i], glb);
+				entity.addChild(childClone);
+			}
+
+			return entity;
+		};
+
+		const sceneClones = [];
+
+		for (const scene of this.data.scenes) {
+			sceneClones.push(cloneHierarchy(null, scene, this.data));
+		}
+
+		skinedMeshInstances.forEach(data => {
+			data.meshInstance.skinInstance = SkinInstanceCache.createCachedSkinedInstance(data.meshInstance.mesh.skin, data.rootBone, data.entity);
+		});
+		return GlbContainerResource.createSceneHierarchy(sceneClones, "Entity");
+	}
+
+	static createSceneHierarchy(sceneNodes, nodeType) {
+		let root = null;
+
+		if (sceneNodes.length === 1) {
+			root = sceneNodes[0];
+		} else {
+			root = new nodeType('SceneGroup');
+
+			for (const scene of sceneNodes) {
+				root.addChild(scene);
+			}
+		}
+
+		return root;
+	}
+
+	static createModel(glb, defaultMaterial) {
+		const createMeshInstance = function createMeshInstance(model, mesh, skins, skinInstances, materials, node, gltfNode) {
+			const material = mesh.materialIndex === undefined ? defaultMaterial : materials[mesh.materialIndex];
+			const meshInstance = new MeshInstance(mesh, material, node);
+
+			if (mesh.morph) {
+				const morphInstance = new MorphInstance(mesh.morph);
+				meshInstance.morphInstance = morphInstance;
+				model.morphInstances.push(morphInstance);
+			}
+
+			if (gltfNode.hasOwnProperty('skin')) {
+				const skinIndex = gltfNode.skin;
+				const skin = skins[skinIndex];
+				mesh.skin = skin;
+				const skinInstance = skinInstances[skinIndex];
+				meshInstance.skinInstance = skinInstance;
+				model.skinInstances.push(skinInstance);
+			}
+
+			model.meshInstances.push(meshInstance);
+		};
+
+		const model = new Model();
+		const skinInstances = [];
+
+		for (const skin of glb.skins) {
+			const skinInstance = new SkinInstance(skin);
+			skinInstance.bones = skin.bones;
+			skinInstances.push(skinInstance);
+		}
+
+		model.graph = GlbContainerResource.createSceneHierarchy(glb.scenes, "GraphNode");
+
+		for (let i = 0; i < glb.nodes.length; i++) {
+			const node = glb.nodes[i];
+
+			if (node.root === model.graph) {
+				const gltfNode = glb.gltf.nodes[i];
+
+				if (gltfNode.hasOwnProperty('mesh')) {
+					const meshGroup = glb.renders[gltfNode.mesh].meshes;
+
+					for (var mi = 0; mi < meshGroup.length; mi++) {
+						const mesh = meshGroup[mi];
+
+						if (mesh) {
+							createMeshInstance(model, mesh, glb.skins, skinInstances, glb.materials, node, gltfNode);
+						}
+					}
+				}
+			}
+		}
+
+		return model;
+	}
+
+	destroy() {
+		const registry = this._assets;
+
+		const destroyAsset = function destroyAsset(asset) {
+			registry.remove(asset);
+			asset.unload();
+		};
+
+		const destroyAssets = function destroyAssets(assets) {
+			assets.forEach(function (asset) {
+				destroyAsset(asset);
+			});
+		};
+
+		if (this.animations) {
+			destroyAssets(this.animations);
+			this.animations = null;
+		}
+
+		if (this.textures) {
+			destroyAssets(this.textures);
+			this.textures = null;
+		}
+
+		if (this.materials) {
+			destroyAssets(this.materials);
+			this.materials = null;
+		}
+
+		if (this.renders) {
+			destroyAssets(this.renders);
+			this.renders = null;
+		}
+
+		if (this._model) {
+			destroyAsset(this._model);
+			this._model = null;
+		}
+
+		this.data = null;
+		this.assets = null;
 	}
 
 }
@@ -49358,12 +54776,23 @@ const createAnimation = function createAnimation(gltfAnimation, animationIndex, 
 		'weights': 'weights'
 	};
 
+	const constructNodePath = node => {
+		const path = [];
+
+		while (node) {
+			path.unshift(node.name);
+			node = node.parent;
+		}
+
+		return path;
+	};
+
 	for (i = 0; i < gltfAnimation.channels.length; ++i) {
 		const channel = gltfAnimation.channels[i];
 		const target = channel.target;
 		const curve = curves[channel.sampler];
 		const node = nodes[target.node];
-		const entityPath = [nodes[0].name, ...AnimBinder.splitPath(node.path, '/')];
+		const entityPath = constructNodePath(node);
 
 		curve._paths.push({
 			entityPath: entityPath,
@@ -49495,7 +54924,7 @@ const createLight = function createLight(gltfLight, node) {
 		enabled: false,
 		type: gltfLight.type === "point" ? "omni" : gltfLight.type,
 		color: gltfLight.hasOwnProperty('color') ? new Color(gltfLight.color) : Color.WHITE,
-		range: gltfLight.hasOwnProperty('range') ? gltfLight.range : Number.MAX_VALUE,
+		range: gltfLight.hasOwnProperty('range') ? gltfLight.range : 9999,
 		falloffMode: LIGHTFALLOFF_INVERSESQUARED,
 		intensity: gltfLight.hasOwnProperty('intensity') ? math.clamp(gltfLight.intensity, 0, 2) : 1
 	};
@@ -49604,11 +55033,19 @@ const createNodes = function createNodes(gltf, options) {
 		const gltfNode = gltf.nodes[i];
 
 		if (gltfNode.hasOwnProperty('children')) {
+			const parent = nodes[i];
+			const uniqueNames = {};
+
 			for (let j = 0; j < gltfNode.children.length; ++j) {
-				const parent = nodes[i];
 				const child = nodes[gltfNode.children[j]];
 
 				if (!child.parent) {
+					if (uniqueNames.hasOwnProperty(child.name)) {
+						child.name += uniqueNames[child.name]++;
+					} else {
+						uniqueNames[child.name] = 1;
+					}
+
 					parent.addChild(child);
 				}
 			}
@@ -49619,23 +55056,28 @@ const createNodes = function createNodes(gltf, options) {
 };
 
 const createScenes = function createScenes(gltf, nodes) {
+	var _gltf$scenes$0$nodes;
+
 	const scenes = [];
 	const count = gltf.scenes.length;
 
-	if (count === 1 && gltf.scenes[0].nodes.length === 1) {
+	if (count === 1 && ((_gltf$scenes$0$nodes = gltf.scenes[0].nodes) == null ? void 0 : _gltf$scenes$0$nodes.length) === 1) {
 		const nodeIndex = gltf.scenes[0].nodes[0];
 		scenes.push(nodes[nodeIndex]);
 	} else {
 		for (let i = 0; i < count; i++) {
 			const scene = gltf.scenes[i];
-			const sceneRoot = new GraphNode(scene.name);
 
-			for (let n = 0; n < scene.nodes.length; n++) {
-				const childNode = nodes[scene.nodes[n]];
-				sceneRoot.addChild(childNode);
+			if (scene.nodes) {
+				const sceneRoot = new GraphNode(scene.name);
+
+				for (let n = 0; n < scene.nodes.length; n++) {
+					const childNode = nodes[scene.nodes[n]];
+					sceneRoot.addChild(childNode);
+				}
+
+				scenes.push(sceneRoot);
 			}
-
-			scenes.push(sceneRoot);
 		}
 	}
 
@@ -50277,6 +55719,39 @@ class GlbParser {
 		});
 		return result;
 	}
+
+	constructor(device, assets, maxRetries) {
+		this._device = device;
+		this._assets = assets;
+		this._defaultMaterial = DefaultMaterial.get(device);
+		this._maxRetries = maxRetries;
+	}
+
+	_getUrlWithoutParams(url) {
+		return url.indexOf('?') >= 0 ? url.split('?')[0] : url;
+	}
+
+	load(url, callback, asset) {
+		Asset.fetchArrayBuffer(url.load, (err, result) => {
+			if (err) {
+				callback(err);
+			} else {
+				GlbParser.parseAsync(this._getUrlWithoutParams(url.original), path.extractPath(url.load), result, this._device, asset.registry, asset.options, (err, result) => {
+					if (err) {
+						callback(err);
+					} else {
+						callback(null, new GlbContainerResource(result, asset, this._assets, this._defaultMaterial));
+					}
+				});
+			}
+		}, asset, this._maxRetries);
+	}
+
+	open(url, data, asset) {
+		return data;
+	}
+
+	patch(asset, assets) {}
 
 }
 
@@ -51063,11 +56538,7 @@ class UntarWorker {
 	}
 
 	hasPendingRequests() {
-		for (const key in this._pendingRequests) {
-			return true;
-		}
-
-		return false;
+		return Object.keys(this._pendingRequests).length > 0;
 	}
 
 	destroy() {
@@ -51148,375 +56619,30 @@ class BundleHandler {
 
 }
 
-class SkinInstanceCachedObject extends RefCountedObject {
-	constructor(skin, skinInstance) {
-		super();
-		this.skin = skin;
-		this.skinInstance = skinInstance;
-	}
-
-}
-
-class SkinInstanceCache {
-	static createCachedSkinedInstance(skin, rootBone, entity) {
-		let skinInst = SkinInstanceCache.getCachedSkinInstance(skin, rootBone);
-
-		if (!skinInst) {
-			skinInst = new SkinInstance(skin);
-			skinInst.resolve(rootBone, entity);
-			SkinInstanceCache.addCachedSkinInstance(skin, rootBone, skinInst);
-		}
-
-		return skinInst;
-	}
-
-	static getCachedSkinInstance(skin, rootBone) {
-		let skinInstance = null;
-
-		const cachedObjArray = SkinInstanceCache._skinInstanceCache.get(rootBone);
-
-		if (cachedObjArray) {
-			const cachedObj = cachedObjArray.find(element => element.skin === skin);
-
-			if (cachedObj) {
-				cachedObj.incRefCount();
-				skinInstance = cachedObj.skinInstance;
-			}
-		}
-
-		return skinInstance;
-	}
-
-	static addCachedSkinInstance(skin, rootBone, skinInstance) {
-		let cachedObjArray = SkinInstanceCache._skinInstanceCache.get(rootBone);
-
-		if (!cachedObjArray) {
-			cachedObjArray = [];
-
-			SkinInstanceCache._skinInstanceCache.set(rootBone, cachedObjArray);
-		}
-
-		let cachedObj = cachedObjArray.find(element => element.skin === skin);
-
-		if (!cachedObj) {
-			cachedObj = new SkinInstanceCachedObject(skin, skinInstance);
-			cachedObjArray.push(cachedObj);
-		}
-
-		cachedObj.incRefCount();
-	}
-
-	static removeCachedSkinInstance(skinInstance) {
-		if (skinInstance) {
-			const rootBone = skinInstance.rootBone;
-
-			if (rootBone) {
-				const cachedObjArray = SkinInstanceCache._skinInstanceCache.get(rootBone);
-
-				if (cachedObjArray) {
-					const cachedObjIndex = cachedObjArray.findIndex(element => element.skinInstance === skinInstance);
-
-					if (cachedObjIndex >= 0) {
-						const cachedObj = cachedObjArray[cachedObjIndex];
-						cachedObj.decRefCount();
-
-						if (cachedObj.getRefCount() === 0) {
-							cachedObjArray.splice(cachedObjIndex, 1);
-
-							if (!cachedObjArray.length) {
-								SkinInstanceCache._skinInstanceCache.delete(rootBone);
-							}
-
-							if (skinInstance) {
-								skinInstance.destroy();
-								cachedObj.skinInstance = null;
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-
-}
-
-SkinInstanceCache._skinInstanceCache = new Map();
-
 class ContainerResource {
-	constructor(data) {
-		this.data = data;
-		this._model = null;
-		this.renders = [];
-		this.materials = [];
-		this.textures = [];
-		this.animations = [];
-		this.registry = null;
-		this._defaultMaterial = null;
-		this._assetName = null;
-		this._assets = null;
-	}
-
-	get model() {
-		if (!this._model) {
-			const model = ContainerResource.createModel(this.data, this._defaultMaterial);
-			const modelAsset = ContainerResource.createAsset(this._assetName, 'model', model, 0);
-
-			this._assets.add(modelAsset);
-
-			this._model = modelAsset;
-		}
-
-		return this._model;
-	}
-
-	static createAsset(assetName, type, resource, index) {
-		const subAsset = new Asset(assetName + '/' + type + '/' + index, type, {
-			url: ''
-		});
-		subAsset.resource = resource;
-		subAsset.loaded = true;
-		return subAsset;
-	}
-
 	instantiateModelEntity(options) {
-		const entity = new Entity();
-		entity.addComponent("model", Object.assign({
-			type: "asset",
-			asset: this.model
-		}, options));
-		return entity;
+		return null;
 	}
 
 	instantiateRenderEntity(options) {
-		const defaultMaterial = this._defaultMaterial;
-		const skinedMeshInstances = [];
-
-		const createMeshInstance = function createMeshInstance(root, entity, mesh, materials, skins, gltfNode) {
-			const material = mesh.materialIndex === undefined ? defaultMaterial : materials[mesh.materialIndex];
-			const meshInstance = new MeshInstance(mesh, material);
-
-			if (mesh.morph) {
-				meshInstance.morphInstance = new MorphInstance(mesh.morph);
-			}
-
-			if (gltfNode.hasOwnProperty('skin')) {
-				skinedMeshInstances.push({
-					meshInstance: meshInstance,
-					rootBone: root,
-					entity: entity
-				});
-			}
-
-			return meshInstance;
-		};
-
-		const cloneHierarchy = function cloneHierarchy(root, node, glb) {
-			const entity = new Entity();
-
-			node._cloneInternal(entity);
-
-			if (!root) root = entity;
-			let attachedMi = null;
-
-			for (let i = 0; i < glb.nodes.length; i++) {
-				const glbNode = glb.nodes[i];
-
-				if (glbNode === node) {
-					const gltfNode = glb.gltf.nodes[i];
-
-					if (gltfNode.hasOwnProperty('mesh')) {
-						const meshGroup = glb.renders[gltfNode.mesh].meshes;
-
-						for (let mi = 0; mi < meshGroup.length; mi++) {
-							const mesh = meshGroup[mi];
-
-							if (mesh) {
-								const cloneMi = createMeshInstance(root, entity, mesh, glb.materials, glb.skins, gltfNode);
-
-								if (!attachedMi) {
-									attachedMi = [];
-								}
-
-								attachedMi.push(cloneMi);
-							}
-						}
-					}
-
-					if (glb.lights) {
-						const lightEntity = glb.lights.get(gltfNode);
-
-						if (lightEntity) {
-							entity.addChild(lightEntity.clone());
-						}
-					}
-
-					if (glb.cameras) {
-						const cameraEntity = glb.cameras.get(gltfNode);
-
-						if (cameraEntity) {
-							cameraEntity.camera.system.cloneComponent(cameraEntity, entity);
-						}
-					}
-				}
-			}
-
-			if (attachedMi) {
-				entity.addComponent("render", Object.assign({
-					type: "asset",
-					meshInstances: attachedMi,
-					rootBone: root
-				}, options));
-			}
-
-			const children = node.children;
-
-			for (let i = 0; i < children.length; i++) {
-				const childClone = cloneHierarchy(root, children[i], glb);
-				entity.addChild(childClone);
-			}
-
-			return entity;
-		};
-
-		const sceneClones = [];
-
-		for (const scene of this.data.scenes) {
-			sceneClones.push(cloneHierarchy(null, scene, this.data));
-		}
-
-		skinedMeshInstances.forEach(data => {
-			data.meshInstance.skinInstance = SkinInstanceCache.createCachedSkinedInstance(data.meshInstance.mesh.skin, data.rootBone, data.entity);
-		});
-		return ContainerResource.createSceneHierarchy(sceneClones, "Entity");
-	}
-
-	static createSceneHierarchy(sceneNodes, nodeType) {
-		let root = null;
-
-		if (sceneNodes.length === 1) {
-			root = sceneNodes[0];
-		} else {
-			root = new nodeType('SceneGroup');
-
-			for (const scene of sceneNodes) {
-				root.addChild(scene);
-			}
-		}
-
-		return root;
-	}
-
-	static createModel(glb, defaultMaterial) {
-		const createMeshInstance = function createMeshInstance(model, mesh, skins, skinInstances, materials, node, gltfNode) {
-			const material = mesh.materialIndex === undefined ? defaultMaterial : materials[mesh.materialIndex];
-			const meshInstance = new MeshInstance(mesh, material, node);
-
-			if (mesh.morph) {
-				const morphInstance = new MorphInstance(mesh.morph);
-				meshInstance.morphInstance = morphInstance;
-				model.morphInstances.push(morphInstance);
-			}
-
-			if (gltfNode.hasOwnProperty('skin')) {
-				const skinIndex = gltfNode.skin;
-				const skin = skins[skinIndex];
-				mesh.skin = skin;
-				const skinInstance = skinInstances[skinIndex];
-				meshInstance.skinInstance = skinInstance;
-				model.skinInstances.push(skinInstance);
-			}
-
-			model.meshInstances.push(meshInstance);
-		};
-
-		const model = new Model();
-		const skinInstances = [];
-
-		for (const skin of glb.skins) {
-			const skinInstance = new SkinInstance(skin);
-			skinInstance.bones = skin.bones;
-			skinInstances.push(skinInstance);
-		}
-
-		model.graph = ContainerResource.createSceneHierarchy(glb.scenes, "GraphNode");
-
-		for (let i = 0; i < glb.nodes.length; i++) {
-			const node = glb.nodes[i];
-
-			if (node.root === model.graph) {
-				const gltfNode = glb.gltf.nodes[i];
-
-				if (gltfNode.hasOwnProperty('mesh')) {
-					const meshGroup = glb.renders[gltfNode.mesh].meshes;
-
-					for (let mi = 0; mi < meshGroup.length; mi++) {
-						const mesh = meshGroup[mi];
-
-						if (mesh) {
-							createMeshInstance(model, mesh, glb.skins, skinInstances, glb.materials, node, gltfNode);
-						}
-					}
-				}
-			}
-		}
-
-		return model;
-	}
-
-	destroy() {
-		const registry = this.registry;
-
-		const destroyAsset = function destroyAsset(asset) {
-			registry.remove(asset);
-			asset.unload();
-		};
-
-		const destroyAssets = function destroyAssets(assets) {
-			assets.forEach(function (asset) {
-				destroyAsset(asset);
-			});
-		};
-
-		if (this.animations) {
-			destroyAssets(this.animations);
-			this.animations = null;
-		}
-
-		if (this.textures) {
-			destroyAssets(this.textures);
-			this.textures = null;
-		}
-
-		if (this.materials) {
-			destroyAssets(this.materials);
-			this.materials = null;
-		}
-
-		if (this.renders) {
-			destroyAssets(this.renders);
-			this.renders = null;
-		}
-
-		if (this._model) {
-			destroyAsset(this._model);
-			this._model = null;
-		}
-
-		this.data = null;
-		this.assets = null;
+		return null;
 	}
 
 }
 
 class ContainerHandler {
-	constructor(device, defaultMaterial) {
-		this._device = device;
-		this._defaultMaterial = defaultMaterial;
-		this.maxRetries = 0;
+	constructor(device, assets) {
+		this.glbParser = new GlbParser(device, assets, 0);
+		this.parsers = {};
 	}
 
 	_getUrlWithoutParams(url) {
 		return url.indexOf('?') >= 0 ? url.split('?')[0] : url;
+	}
+
+	_getParser(url) {
+		const ext = path.getExtension(this._getUrlWithoutParams(url)).toLowerCase().replace('.', '');
+		return this.parsers[ext] || this.glbParser;
 	}
 
 	load(url, callback, asset) {
@@ -51527,65 +56653,14 @@ class ContainerHandler {
 			};
 		}
 
-		Asset.fetchArrayBuffer(url.load, (err, result) => {
-			if (err) {
-				callback(err);
-			} else {
-				GlbParser.parseAsync(this._getUrlWithoutParams(url.original), path.extractPath(url.load), result, this._device, asset.registry, asset.options, (err, result) => {
-					if (err) {
-						callback(err);
-					} else {
-						callback(null, new ContainerResource(result));
-					}
-				});
-			}
-		}, asset, this.maxRetries);
+		this._getParser(url.original).load(url, callback, asset);
 	}
 
 	open(url, data, asset) {
-		return data;
+		return this._getParser(url).open(url, data, asset);
 	}
 
-	patch(asset, assets) {
-		const container = asset.resource;
-		const data = container && container.data;
-
-		if (data) {
-			const createAsset = function createAsset(type, resource, index) {
-				const subAsset = ContainerResource.createAsset(asset.name, type, resource, index);
-				assets.add(subAsset);
-				return subAsset;
-			};
-
-			let i;
-			const renders = [];
-
-			for (i = 0; i < data.renders.length; ++i) {
-				renders.push(createAsset('render', data.renders[i], i));
-			}
-
-			const materials = [];
-
-			for (i = 0; i < data.materials.length; ++i) {
-				materials.push(createAsset('material', data.materials[i], i));
-			}
-
-			const animations = [];
-
-			for (i = 0; i < data.animations.length; ++i) {
-				animations.push(createAsset('animation', data.animations[i], i));
-			}
-
-			container._assetName = asset.name;
-			container._assets = assets;
-			container.renders = renders;
-			container.materials = materials;
-			container.textures = data.textures;
-			container.animations = animations;
-			container.registry = assets;
-			container._defaultMaterial = this._defaultMaterial;
-		}
-	}
+	patch(asset, assets) {}
 
 }
 
@@ -53048,7 +58123,7 @@ class GlbModelParser {
 		const glbResources = GlbParser.parse("filename.glb", data, this._device);
 
 		if (glbResources) {
-			const model = ContainerResource.createModel(glbResources, this._defaultMaterial);
+			const model = GlbContainerResource.createModel(glbResources, this._defaultMaterial);
 			glbResources.destroy();
 			return model;
 		}
@@ -53800,10 +58875,10 @@ class JsonModelParser {
 }
 
 class ModelHandler {
-	constructor(device, defaultMaterial) {
+	constructor(device) {
 		this._device = device;
 		this._parsers = [];
-		this._defaultMaterial = defaultMaterial;
+		this._defaultMaterial = DefaultMaterial.get(device);
 		this.maxRetries = 0;
 		this.addParser(new JsonModelParser(this._device, this._defaultMaterial), function (url, data) {
 			return path.getExtension(url) === '.json';
@@ -55160,10 +60235,6 @@ function BasisWorker() {
 		return data;
 	};
 
-	const isCompressedFormat = basisFormat => {
-		return basisFormat !== BASIS_FORMAT.cTFRGBA32 && basisFormat !== BASIS_FORMAT.cTFRGB565 && basisFormat !== BASIS_FORMAT.cTFRGBA4444;
-	};
-
 	const pack565 = data => {
 		const result = new Uint16Array(data.length / 4);
 
@@ -55175,6 +60246,10 @@ function BasisWorker() {
 		}
 
 		return result;
+	};
+
+	const isPOT = (width, height) => {
+		return (width & width - 1) === 0 && (height & height - 1) === 0;
 	};
 
 	const performanceNow = () => {
@@ -55217,6 +60292,29 @@ function BasisWorker() {
 		return testInOrder(hasAlpha ? rgbaPriority : rgbPriority);
 	};
 
+	const dimensionsValid = (width, height, format, webgl2) => {
+		switch (format) {
+			case BASIS_FORMAT.cTFETC1:
+			case BASIS_FORMAT.cTFETC2:
+				return true;
+
+			case BASIS_FORMAT.cTFBC1:
+			case BASIS_FORMAT.cTFBC3:
+				return (width & 0x3) === 0 && (height & 0x3) === 0;
+
+			case BASIS_FORMAT.cTFPVRTC1_4_RGB:
+			case BASIS_FORMAT.cTFPVRTC1_4_RGBA:
+				return isPOT(width, height) && (width === height || webgl2);
+
+			case BASIS_FORMAT.cTFASTC_4x4:
+				return true;
+
+			case BASIS_FORMAT.cTFATC_RGB:
+			case BASIS_FORMAT.cTFATC_RGBA_INTERPOLATED_ALPHA:
+				return true;
+		}
+	};
+
 	const transcodeKTX2 = (url, data, options) => {
 		if (!basis.KTX2File) {
 			throw new Error('Basis transcoder module does not include support for KTX2.');
@@ -55244,11 +60342,8 @@ function BasisWorker() {
 			basisFormat = BASIS_FORMAT.cTFRGBA32;
 		} else {
 			basisFormat = hasAlpha ? alphaMapping[format] : opaqueMapping[format];
-			const isPVRTC = basisFormat === BASIS_FORMAT.cTFPVRTC1_4_RGB || basisFormat === BASIS_FORMAT.cTFPVRTC1_4_RGBA;
-			const notPOT = (width & width - 1) !== 0 || (height & height - 1) !== 0;
-			const notSquare = width !== height;
 
-			if (isPVRTC && (notPOT || notSquare) || !options.deviceDetails.webgl2 && notPOT) {
+			if (!dimensionsValid(width, height, basisFormat, options.deviceDetails.webgl2)) {
 				basisFormat = hasAlpha ? BASIS_FORMAT.cTFRGBA32 : BASIS_FORMAT.cTFRGB565;
 			}
 		}
@@ -55287,11 +60382,10 @@ function BasisWorker() {
 			}
 		}
 
-		const compressedFormat = isCompressedFormat(basisFormat);
 		return {
 			format: basisToEngineMapping(basisFormat, options.deviceDetails),
-			width: compressedFormat ? width + 3 & ~3 : width,
-			height: compressedFormat ? height + 3 & ~3 : height,
+			width: width,
+			height: height,
 			levels: levelData,
 			cubemap: false,
 			transcodeTime: performanceNow() - funcStart,
@@ -55324,11 +60418,8 @@ function BasisWorker() {
 			basisFormat = BASIS_FORMAT.cTFRGBA32;
 		} else {
 			basisFormat = hasAlpha ? alphaMapping[format] : opaqueMapping[format];
-			const isPVRTC = basisFormat === BASIS_FORMAT.cTFPVRTC1_4_RGB || basisFormat === BASIS_FORMAT.cTFPVRTC1_4_RGBA;
-			const notPOT = (width & width - 1) !== 0 || (height & height - 1) !== 0;
-			const notSquare = width !== height;
 
-			if (isPVRTC && (notPOT || notSquare) || !options.deviceDetails.webgl2 && notPOT) {
+			if (!dimensionsValid(width, height, basisFormat, options.deviceDetails.webgl2)) {
 				basisFormat = hasAlpha ? BASIS_FORMAT.cTFRGBA32 : BASIS_FORMAT.cTFRGB565;
 			}
 		}
@@ -55367,11 +60458,10 @@ function BasisWorker() {
 			}
 		}
 
-		const compressedFormat = isCompressedFormat(basisFormat);
 		return {
 			format: basisToEngineMapping(basisFormat, options.deviceDetails),
-			width: compressedFormat ? width + 3 & ~3 : width,
-			height: compressedFormat ? height + 3 & ~3 : height,
+			width: width,
+			height: height,
 			levels: levelData,
 			cubemap: false,
 			transcodeTime: performanceNow() - funcStart,
@@ -55465,7 +60555,7 @@ const getCompressionFormats = device => {
 const prepareWorkerModules = (config, callback) => {
 	const getWorkerBlob = () => {
 		const code = '(' + BasisWorker.toString() + ')()\n\n';
-		return new File([code], 'basis_worker.js', {
+		return new Blob([code], {
 			type: 'application/javascript'
 		});
 	};
@@ -56009,84 +61099,6 @@ class KtxParser {
 			levels: levels,
 			cubemap: isCubemap
 		};
-	}
-
-}
-
-class ReadStream {
-	constructor(arraybuffer) {
-		this.arraybuffer = arraybuffer;
-		this.dataView = new DataView(arraybuffer);
-		this.offset = 0;
-		this.stack = [];
-	}
-
-	get remainingBytes() {
-		return this.dataView.byteLength - this.offset;
-	}
-
-	reset(offset = 0) {
-		this.offset = offset;
-	}
-
-	skip(bytes) {
-		this.offset += bytes;
-	}
-
-	align(bytes) {
-		this.offset = this.offset + bytes - 1 & ~(bytes - 1);
-	}
-
-	_inc(amount) {
-		this.offset += amount;
-		return this.offset - amount;
-	}
-
-	readU8() {
-		return this.dataView.getUint8(this.offset++);
-	}
-
-	readU16() {
-		return this.dataView.getUint16(this._inc(2), true);
-	}
-
-	readU32() {
-		return this.dataView.getUint32(this._inc(4), true);
-	}
-
-	readU64() {
-		return this.readU32() + 2 ** 32 * this.readU32();
-	}
-
-	readU32be() {
-		return this.dataView.getUint32(this._inc(4), false);
-	}
-
-	readArray(result) {
-		for (let i = 0; i < result.length; ++i) {
-			result[i] = this.readU8();
-		}
-	}
-
-	readLine() {
-		const view = this.dataView;
-		let result = "";
-
-		while (true) {
-			if (this.offset >= view.byteLength) {
-				break;
-			}
-
-			const c = String.fromCharCode(this.readU8());
-
-			if (c === '\n') {
-				break;
-			}
-
-			result += c;
-		}
-
-		return result;
 	}
 
 }
@@ -57761,14 +62773,7 @@ class I18n extends EventHandler {
 				delete translations[key];
 			}
 
-			let hasAny = false;
-
-			for (const key in translations) {
-				hasAny = true;
-				break;
-			}
-
-			if (!hasAny) {
+			if (Object.keys(translations).length === 0) {
 				delete this._translations[locale];
 				delete this._availableLangs[getLang(locale)];
 			}
@@ -60752,14 +65757,7 @@ class AnimTargetValue {
 		this.layerCounter = 0;
 		this.valueType = type;
 		this.dirty = true;
-
-		if (this.valueType === AnimTargetValue.TYPE_QUAT) {
-			this.value = new Quat();
-			this._currentValue = new Quat();
-		} else {
-			this.value = new Vec3();
-			this._currentValue = new Vec3();
-		}
+		this.value = [0, 0, 0, 1];
 	}
 
 	getWeight(index) {
@@ -60795,40 +65793,25 @@ class AnimTargetValue {
 
 	updateValue(index, value) {
 		if (this.counter === 0) {
-			this.value.set(0, 0, 0, 1);
+			this.value[0] = 0;
+			this.value[1] = 0;
+			this.value[2] = 0;
+			this.value[3] = 1;
 		}
 
 		if (!this.mask[index]) return;
 
-		this._currentValue.set(...value);
-
-		switch (this.valueType) {
-			case AnimTargetValue.TYPE_QUAT:
-				{
-					const t = this.getWeight(index);
-
-					AnimTargetValue._weightedQuaternion.set(this._currentValue.x * t, this._currentValue.y * t, this._currentValue.z * t, 1.0 - t + this._currentValue.w * t);
-
-					const squaredMagnitude = AnimTargetValue._weightedQuaternion.dot(AnimTargetValue._weightedQuaternion);
-
-					if (squaredMagnitude > 0) AnimTargetValue._weightedQuaternion.mulScalar(1.0 / Math.sqrt(squaredMagnitude));
-					this.value.mul(AnimTargetValue._weightedQuaternion);
-					break;
-				}
-
-			case AnimTargetValue.TYPE_VEC3:
-				{
-					this.value.add(this._currentValue.mulScalar(this.getWeight(index)));
-					break;
-				}
+		if (this.counter === 0) {
+			AnimEvaluator._set(this.value, value, this.valueType);
+		} else {
+			AnimEvaluator._blend(this.value, value, this.getWeight(index), this.valueType);
 		}
 	}
 
 }
 
-AnimTargetValue.TYPE_QUAT = 'QUATERNION';
-AnimTargetValue.TYPE_VEC3 = 'VECTOR3';
-AnimTargetValue._weightedQuaternion = new Vec4();
+AnimTargetValue.TYPE_QUAT = 'quaternion';
+AnimTargetValue.TYPE_VEC3 = 'vector3';
 
 class AnimEvaluator {
 	constructor(binder) {
@@ -61123,7 +66106,6 @@ class AnimEvaluator {
 		}
 
 		const targets = this._targets;
-		const targetValue = new Array(4);
 		const binder = this._binder;
 
 		for (const path in targets) {
@@ -61138,11 +66120,7 @@ class AnimEvaluator {
 					}
 
 					animTarget.updateValue(binder.layerIndex, target.value);
-					targetValue[0] = animTarget.value.x;
-					targetValue[1] = animTarget.value.y;
-					targetValue[2] = animTarget.value.z;
-					targetValue[3] = animTarget.value.w;
-					target.target.func(targetValue);
+					target.target.func(animTarget.value);
 					animTarget.counter++;
 				} else {
 					target.target.func(target.value);
@@ -61154,6 +66132,63 @@ class AnimEvaluator {
 
 		binder.update(deltaTime);
 	}
+
+}
+
+class AnimBinder {
+	static joinPath(pathSegments, character) {
+		character = character || '.';
+
+		const escape = function escape(string) {
+			return string.replace(/\\/g, '\\\\').replace(new RegExp('\\' + character, 'g'), '\\' + character);
+		};
+
+		return pathSegments.map(escape).join(character);
+	}
+
+	static splitPath(path, character) {
+		character = character || '.';
+		const result = [];
+		let curr = "";
+		let i = 0;
+
+		while (i < path.length) {
+			let c = path[i++];
+
+			if (c === '\\' && i < path.length) {
+				c = path[i++];
+
+				if (c === '\\' || c === character) {
+					curr += c;
+				} else {
+					curr += '\\' + c;
+				}
+			} else if (c === character) {
+				result.push(curr);
+				curr = '';
+			} else {
+				curr += c;
+			}
+		}
+
+		if (curr.length > 0) {
+			result.push(curr);
+		}
+
+		return result;
+	}
+
+	static encode(entityPath, component, propertyPath) {
+		return `${Array.isArray(entityPath) ? entityPath.join('/') : entityPath}/${component}/${Array.isArray(propertyPath) ? propertyPath.join('/') : propertyPath}`;
+	}
+
+	resolve(path) {
+		return null;
+	}
+
+	unresolve(path) {}
+
+	update(deltaTime) {}
 
 }
 
@@ -61669,7 +66704,7 @@ class AnimationComponent extends Component {
 		this.on('set_loop', this.onSetLoop, this);
 	}
 
-	play(name, blendTime) {
+	play(name, blendTime = 0) {
 		if (!this.enabled || !this.entity.enabled) {
 			return;
 		}
@@ -61680,7 +66715,6 @@ class AnimationComponent extends Component {
 			return;
 		}
 
-		blendTime = blendTime || 0;
 		data.prevAnim = data.currAnim;
 		data.currAnim = name;
 
@@ -61790,39 +66824,37 @@ class AnimationComponent extends Component {
 
 	loadAnimationAssets(ids) {
 		if (!ids || !ids.length) return;
-		const self = this;
 		const assets = this.system.app.assets;
-		const l = ids.length;
 
-		const onAssetReady = function onAssetReady(asset) {
+		const onAssetReady = asset => {
 			if (asset.resources.length > 1) {
 				for (let i = 0; i < asset.resources.length; i++) {
-					self.animations[asset.resources[i].name] = asset.resources[i];
-					self.animationsIndex[asset.id] = asset.resources[i].name;
+					this.animations[asset.resources[i].name] = asset.resources[i];
+					this.animationsIndex[asset.id] = asset.resources[i].name;
 				}
 			} else {
-				self.animations[asset.name] = asset.resource;
-				self.animationsIndex[asset.id] = asset.name;
+				this.animations[asset.name] = asset.resource;
+				this.animationsIndex[asset.id] = asset.name;
 			}
 
-			self.animations = self.animations;
+			this.animations = this.animations;
 		};
 
-		const onAssetAdd = function onAssetAdd(asset) {
-			asset.off('change', self.onAssetChanged, self);
-			asset.on('change', self.onAssetChanged, self);
-			asset.off('remove', self.onAssetRemoved, self);
-			asset.on('remove', self.onAssetRemoved, self);
+		const onAssetAdd = asset => {
+			asset.off('change', this.onAssetChanged, this);
+			asset.on('change', this.onAssetChanged, this);
+			asset.off('remove', this.onAssetRemoved, this);
+			asset.on('remove', this.onAssetRemoved, this);
 
 			if (asset.resource) {
 				onAssetReady(asset);
 			} else {
-				asset.once('load', onAssetReady, self);
-				if (self.enabled && self.entity.enabled) assets.load(asset);
+				asset.once('load', onAssetReady, this);
+				if (this.enabled && this.entity.enabled) assets.load(asset);
 			}
 		};
 
-		for (let i = 0; i < l; i++) {
+		for (let i = 0, l = ids.length; i < l; i++) {
 			const asset = assets.get(ids[i]);
 
 			if (asset) {
@@ -61859,7 +66891,7 @@ class AnimationComponent extends Component {
 						if (!restarted && this.data.currAnim === newValue[i].name) {
 							if (this.data.playing && this.data.enabled && this.entity.enabled) {
 								restarted = true;
-								this.play(newValue[i].name, 0);
+								this.play(newValue[i].name);
 							}
 						}
 					}
@@ -61882,7 +66914,7 @@ class AnimationComponent extends Component {
 					if (this.data.currAnim === asset.name) {
 						if (this.data.playing && this.data.enabled && this.entity.enabled) {
 							restarted = true;
-							this.play(asset.name, 0);
+							this.play(asset.name);
 						}
 					}
 
@@ -61967,9 +66999,10 @@ class AnimationComponent extends Component {
 		}
 
 		if (!data.currAnim && data.activate && data.enabled && this.entity.enabled) {
-			for (const animName in data.animations) {
-				this.play(animName, 0);
-				break;
+			const animationNames = Object.keys(data.animations);
+
+			if (animationNames.length > 0) {
+				this.play(animationNames[0]);
 			}
 		}
 	}
@@ -61992,7 +67025,7 @@ class AnimationComponent extends Component {
 			}
 		}
 
-		const ids = newValue.map(function (value) {
+		const ids = newValue.map(value => {
 			return value instanceof Asset ? value.id : value;
 		});
 		this.loadAnimationAssets(ids);
@@ -62046,9 +67079,10 @@ class AnimationComponent extends Component {
 		}
 
 		if (data.activate && !data.currAnim) {
-			for (const animName in data.animations) {
-				this.play(animName, 0);
-				break;
+			const animationNames = Object.keys(data.animations);
+
+			if (animationNames.length > 0) {
+				this.play(animationNames[0]);
 			}
 		}
 	}
@@ -63332,7 +68366,7 @@ class AnimController {
 			this._currTransitionTime += dt;
 
 			if (this._currTransitionTime <= this._totalTransitionTime) {
-				const interpolatedTime = this._currTransitionTime / this._totalTransitionTime;
+				const interpolatedTime = this._totalTransitionTime !== 0 ? this._currTransitionTime / this._totalTransitionTime : 1;
 
 				for (let i = 0; i < this._transitionPreviousStates.length; i++) {
 					state = this._findState(this._transitionPreviousStates[i].name);
@@ -63671,6 +68705,7 @@ class AnimComponentLayer {
 		this._component = component;
 		this._weight = weight;
 		this._blendType = blendType;
+		this._mask = null;
 	}
 
 	play(name) {
@@ -63697,6 +68732,12 @@ class AnimComponentLayer {
 		if (this._controller.assignMask(mask)) {
 			this._component.rebind();
 		}
+
+		this._mask = mask;
+	}
+
+	get mask() {
+		return this._mask;
 	}
 
 	assignAnimation(nodeName, animTrack, speed, loop) {
@@ -63816,12 +68857,6 @@ class AnimComponentLayer {
 class AnimComponent extends Component {
 	constructor(system, entity) {
 		super(system, entity);
-
-		this._onStateGraphAssetChangeEvent = asset => {
-			this._stateGraph = new AnimStateGraph(asset._data);
-			this.loadStateGraph(this._stateGraph);
-		};
-
 		this._stateGraphAsset = null;
 		this._animationAssets = {};
 		this._speed = 1.0;
@@ -63846,7 +68881,10 @@ class AnimComponent extends Component {
 			return;
 		}
 
-		if (this._stateGraphAsset) this.system.app.assets.get(this._stateGraphAsset).off('change', this._onStateGraphAssetChangeEvent);
+		if (this._stateGraphAsset) {
+			const stateGraphAsset = this.system.app.assets.get(this._stateGraphAsset);
+			stateGraphAsset.off('change', this._onStateGraphAssetChangeEvent, this);
+		}
 
 		let _id;
 
@@ -63873,19 +68911,31 @@ class AnimComponent extends Component {
 			this._stateGraph = _asset.resource;
 			this.loadStateGraph(this._stateGraph);
 
-			_asset.on('change', this._onStateGraphAssetChangeEvent);
+			_asset.on('change', this._onStateGraphAssetChangeEvent, this);
 		} else {
 			_asset.once('load', asset => {
 				this._stateGraph = asset.resource;
 				this.loadStateGraph(this._stateGraph);
 			});
 
-			_asset.on('change', this._onStateGraphAssetChangeEvent);
+			_asset.on('change', this._onStateGraphAssetChangeEvent, this);
 
 			this.system.app.assets.load(_asset);
 		}
 
 		this._stateGraphAsset = _id;
+	}
+
+	_onStateGraphAssetChangeEvent(asset) {
+		const prevAnimationAssets = this.animationAssets;
+		const prevMasks = this.layers.map(layer => layer.mask);
+		this.removeStateGraph();
+		this._stateGraph = new AnimStateGraph(asset._data);
+		this.loadStateGraph(this._stateGraph);
+		this.animationAssets = prevAnimationAssets;
+		this.loadAnimationAssets();
+		this.layers.forEach((layer, i) => layer.assignMask(prevMasks[i]));
+		this.rebind();
 	}
 
 	get animationAssets() {
@@ -64115,17 +69165,11 @@ class AnimComponent extends Component {
 
 				if (asset) {
 					if (asset.resource) {
-						const animTrack = asset.resource;
-
-						if (asset.data.events) {
-							animTrack.events = new AnimEvents(Object.values(asset.data.events));
-						}
-
-						this.findAnimationLayer(layer.name).assignAnimation(stateName, animTrack);
+						this.onAnimationAssetLoaded(layer.name, stateName, asset);
 					} else {
 						asset.once('load', function (layerName, stateName) {
 							return function (asset) {
-								this.findAnimationLayer(layerName).assignAnimation(stateName, asset.resource);
+								this.onAnimationAssetLoaded(layerName, stateName, asset);
 							}.bind(this);
 						}.bind(this)(layer.name, stateName));
 						this.system.app.assets.load(asset);
@@ -64133,6 +69177,16 @@ class AnimComponent extends Component {
 				}
 			}
 		}
+	}
+
+	onAnimationAssetLoaded(layerName, stateName, asset) {
+		const animTrack = asset.resource;
+
+		if (asset.data.events) {
+			animTrack.events = new AnimEvents(Object.values(asset.data.events));
+		}
+
+		this.findAnimationLayer(layerName).assignAnimation(stateName, asset.resource);
 	}
 
 	removeStateGraph() {
@@ -64318,7 +69372,8 @@ class AnimComponent extends Component {
 
 	onBeforeRemove() {
 		if (Number.isFinite(this._stateGraphAsset)) {
-			this.system.app.assets.get(this._stateGraphAsset).off('change', this._onStateGraphAssetChangeEvent);
+			const stateGraphAsset = this.system.app.assets.get(this._stateGraphAsset);
+			stateGraphAsset.off('change', this._onStateGraphAssetChangeEvent, this);
 		}
 	}
 
@@ -64392,7 +69447,12 @@ class AnimComponentSystem extends ComponentSystem {
 		if (data.masks) {
 			Object.keys(data.masks).forEach(key => {
 				if (component.layers[key]) {
-					component.layers[key].assignMask(data.masks[key].mask);
+					const maskData = data.masks[key].mask;
+					const mask = {};
+					Object.keys(maskData).forEach(maskKey => {
+						mask[decodeURI(maskKey)] = maskData[maskKey];
+					});
+					component.layers[key].assignMask(mask);
 				}
 			});
 		}
@@ -64964,7 +70024,7 @@ class EntityReference extends EventHandler {
 
 		this._parentComponent.system[onOrOff]('beforeremove', this._onParentComponentRemove, this);
 
-		this._app[onOrOff]('postinitialize', this._onPostInitialize, this);
+		this._app.systems[onOrOff]('postPostInitialize', this._updateEntityReference, this);
 
 		this._app[onOrOff]('tools:sceneloaded', this._onSceneLoaded, this);
 
@@ -65008,10 +70068,6 @@ class EntityReference extends EventHandler {
 				this._updateEntityReference();
 			}
 		}
-	}
-
-	_onPostInitialize() {
-		this._updateEntityReference();
 	}
 
 	onParentComponentEnable() {
@@ -65182,6 +70238,10 @@ class EntityReference extends EventHandler {
 const BUTTON_TRANSITION_MODE_TINT = 0;
 const BUTTON_TRANSITION_MODE_SPRITE_CHANGE = 1;
 
+const ELEMENTTYPE_GROUP = 'group';
+const ELEMENTTYPE_IMAGE = 'image';
+const ELEMENTTYPE_TEXT = 'text';
+
 const VisualState = {
 	DEFAULT: 'DEFAULT',
 	HOVER: 'HOVER',
@@ -65315,13 +70375,17 @@ class ButtonComponent extends Component {
 
 	_storeDefaultVisualState() {
 		if (this._imageReference.hasComponent('element')) {
-			this._storeDefaultColor(this._imageReference.entity.element.color);
+			const element = this._imageReference.entity.element;
 
-			this._storeDefaultOpacity(this._imageReference.entity.element.opacity);
+			if (element.type !== ELEMENTTYPE_GROUP) {
+				this._storeDefaultColor(element.color);
 
-			this._storeDefaultSpriteAsset(this._imageReference.entity.element.spriteAsset);
+				this._storeDefaultOpacity(element.opacity);
 
-			this._storeDefaultSpriteFrame(this._imageReference.entity.element.spriteFrame);
+				this._storeDefaultSpriteAsset(element.spriteAsset);
+
+				this._storeDefaultSpriteFrame(element.spriteFrame);
+			}
 		}
 	}
 
@@ -65581,8 +70645,15 @@ class ButtonComponent extends Component {
 
 		if (this._imageReference.hasComponent('element')) {
 			this._isApplyingSprite = true;
-			this._imageReference.entity.element.spriteAsset = spriteAsset;
-			this._imageReference.entity.element.spriteFrame = spriteFrame;
+
+			if (this._imageReference.entity.element.spriteAsset !== spriteAsset) {
+				this._imageReference.entity.element.spriteAsset = spriteAsset;
+			}
+
+			if (this._imageReference.entity.element.spriteFrame !== spriteFrame) {
+				this._imageReference.entity.element.spriteFrame = spriteFrame;
+			}
+
 			this._isApplyingSprite = false;
 		}
 	}
@@ -65598,25 +70669,26 @@ class ButtonComponent extends Component {
 	}
 
 	_applyTintImmediately(tintColor) {
-		if (this._imageReference.hasComponent('element') && tintColor) {
-			this._isApplyingTint = true;
-			this._imageReference.entity.element.color = toColor3(tintColor);
-			this._imageReference.entity.element.opacity = tintColor.a;
-			this._isApplyingTint = false;
-		}
+		if (!tintColor || !this._imageReference.hasComponent('element')) return;
+		const color3 = toColor3(tintColor);
+		this._isApplyingTint = true;
+		if (!color3.equals(this._imageReference.entity.element.color)) this._imageReference.entity.element.color = color3;
+		if (this._imageReference.entity.element.opacity != tintColor.a) this._imageReference.entity.element.opacity = tintColor.a;
+		this._isApplyingTint = false;
 	}
 
 	_applyTintWithTween(tintColor) {
-		if (this._imageReference.hasComponent('element') && tintColor) {
-			const color = this._imageReference.entity.element.color;
-			const opacity = this._imageReference.entity.element.opacity;
-			this._tweenInfo = {
-				startTime: now(),
-				from: new Color(color.r, color.g, color.b, opacity),
-				to: tintColor.clone(),
-				lerpColor: new Color()
-			};
-		}
+		if (!tintColor || !this._imageReference.hasComponent('element')) return;
+		const color3 = toColor3(tintColor);
+		const color = this._imageReference.entity.element.color;
+		const opacity = this._imageReference.entity.element.opacity;
+		if (color3.equals(color) && tintColor.a == opacity) return;
+		this._tweenInfo = {
+			startTime: now(),
+			from: new Color(color.r, color.g, color.b, opacity),
+			to: tintColor.clone(),
+			lerpColor: new Color()
+		};
 	}
 
 	_updateTintTween() {
@@ -67765,10 +72837,6 @@ class ComponentSystemRegistry extends EventHandler {
 
 }
 
-const ELEMENTTYPE_GROUP = 'group';
-const ELEMENTTYPE_IMAGE = 'image';
-const ELEMENTTYPE_TEXT = 'text';
-
 class StencilParameters {
 	constructor(options) {
 		this.func = options.func === undefined ? FUNC_ALWAYS : options.func;
@@ -68576,18 +73644,16 @@ class ImageElement {
 		const g = value.g;
 		const b = value.b;
 
-		if (this._color.r === r && this._color.g === g && this._color.b === b) {
-			return;
+		if (this._color.r !== r || this._color.g !== g || this._color.b !== b) {
+			this._color.r = r;
+			this._color.g = g;
+			this._color.b = b;
+			this._colorUniform[0] = r;
+			this._colorUniform[1] = g;
+			this._colorUniform[2] = b;
+
+			this._renderable.setParameter('material_emissive', this._colorUniform);
 		}
-
-		this._color.r = r;
-		this._color.g = g;
-		this._color.b = b;
-		this._colorUniform[0] = r;
-		this._colorUniform[1] = g;
-		this._colorUniform[2] = b;
-
-		this._renderable.setParameter('material_emissive', this._colorUniform);
 
 		if (this._element) {
 			this._element.fire('set:color', this._color);
@@ -68599,10 +73665,11 @@ class ImageElement {
 	}
 
 	set opacity(value) {
-		if (value === this._color.a) return;
-		this._color.a = value;
+		if (value !== this._color.a) {
+			this._color.a = value;
 
-		this._renderable.setParameter('material_opacity', value);
+			this._renderable.setParameter('material_opacity', value);
+		}
 
 		if (this._element) {
 			this._element.fire('set:opacity', value);
@@ -68846,10 +73913,10 @@ class ImageElement {
 			} else {
 				this.sprite = null;
 			}
+		}
 
-			if (this._element) {
-				this._element.fire('set:spriteAsset', _id);
-			}
+		if (this._element) {
+			this._element.fire('set:spriteAsset', _id);
 		}
 	}
 
@@ -68912,9 +73979,9 @@ class ImageElement {
 			this._spriteFrame = value;
 		}
 
-		if (this._spriteFrame === oldValue) return;
-
-		this._updateSprite();
+		if (this._spriteFrame !== oldValue) {
+			this._updateSprite();
+		}
 
 		if (this._element) {
 			this._element.fire('set:spriteFrame', value);
@@ -69304,47 +74371,45 @@ class Scanner {
 	}
 
 	_tag() {
-		while (true) {
-			switch (this._cur) {
-				case null:
-					this._error = "unexpected end of input reading tag";
+		switch (this._cur) {
+			case null:
+				this._error = "unexpected end of input reading tag";
+				return ERROR_TOKEN;
+
+			case "[":
+				this._store();
+
+				return OPEN_BRACKET_TOKEN;
+
+			case "]":
+				this._store();
+
+				this._mode = "text";
+				return CLOSE_BRACKET_TOKEN;
+
+			case "=":
+				this._store();
+
+				return EQUALS_TOKEN;
+
+			case " ":
+			case "\t":
+			case "\n":
+			case "\r":
+			case "\v":
+			case "\f":
+				return this._whitespace();
+
+			case "\"":
+				return this._string();
+
+			default:
+				if (!this._isIdentifierSymbol(this._cur)) {
+					this._error = "unrecognized character";
 					return ERROR_TOKEN;
+				}
 
-				case "[":
-					this._store();
-
-					return OPEN_BRACKET_TOKEN;
-
-				case "]":
-					this._store();
-
-					this._mode = "text";
-					return CLOSE_BRACKET_TOKEN;
-
-				case "=":
-					this._store();
-
-					return EQUALS_TOKEN;
-
-				case " ":
-				case "\t":
-				case "\n":
-				case "\r":
-				case "\v":
-				case "\f":
-					return this._whitespace();
-
-				case "\"":
-					return this._string();
-
-				default:
-					if (!this._isIdentifierSymbol(this._cur)) {
-						this._error = "unrecognized character";
-						return ERROR_TOKEN;
-					}
-
-					return this._identifier();
-			}
+				return this._identifier();
 		}
 	}
 
@@ -70155,12 +75220,7 @@ class TextElement {
 	}
 
 	_removeMeshInstance(meshInstance) {
-		meshInstance.material = null;
-		const oldMesh = meshInstance.mesh;
-
-		if (oldMesh) {
-			oldMesh.destroy();
-		}
+		meshInstance.destroy();
 
 		const idx = this._model.meshInstances.indexOf(meshInstance);
 
@@ -74146,7 +79206,8 @@ function createCalculator(orientation) {
 			const line = lines[lineIndex];
 
 			if (line.length === 0) {
-				return;
+				positionsAllLines.push([]);
+				continue;
 			}
 
 			const positionsThisLine = [];
@@ -75964,7 +81025,7 @@ class ModelComponentSystem extends ComponentSystem {
 		this.ComponentType = ModelComponent;
 		this.DataType = ModelComponentData;
 		this.schema = _schema$a;
-		this.defaultMaterial = app.scene.defaultMaterial;
+		this.defaultMaterial = DefaultMaterial.get(app.graphicsDevice);
 		this.on('beforeremove', this.onRemove, this);
 	}
 
@@ -76342,22 +81403,34 @@ class RenderComponent extends Component {
 		}
 	}
 
+	_updateMainMaterial(index, material) {
+		if (index === 0) {
+			this.material = material;
+		}
+	}
+
 	_onMaterialLoad(index, component, asset) {
 		if (this._meshInstances[index]) {
 			this._meshInstances[index].material = asset.resource;
 		}
+
+		this._updateMainMaterial(index, asset.resource);
 	}
 
 	_onMaterialRemove(index, component, asset) {
 		if (this._meshInstances[index]) {
 			this._meshInstances[index].material = this.system.defaultMaterial;
 		}
+
+		this._updateMainMaterial(index, this.system.defaultMaterial);
 	}
 
 	_onMaterialUnload(index, component, asset) {
 		if (this._meshInstances[index]) {
 			this._meshInstances[index].material = this.system.defaultMaterial;
 		}
+
+		this._updateMainMaterial(index, this.system.defaultMaterial);
 	}
 
 	get renderStyle() {
@@ -76719,7 +81792,7 @@ class RenderComponentSystem extends ComponentSystem {
 		this.ComponentType = RenderComponent;
 		this.DataType = RenderComponentData;
 		this.schema = _schema$9;
-		this.defaultMaterial = app.scene.defaultMaterial;
+		this.defaultMaterial = DefaultMaterial.get(app.graphicsDevice);
 		this.on('beforeremove', this.onRemove, this);
 	}
 
@@ -78471,6 +83544,7 @@ class SingleContactResult {
 		if (arguments.length === 0) {
 			this.a = null;
 			this.b = null;
+			this.impulse = 0;
 			this.localPointA = new Vec3();
 			this.localPointB = new Vec3();
 			this.pointA = new Vec3();
@@ -78479,6 +83553,7 @@ class SingleContactResult {
 		} else {
 			this.a = a;
 			this.b = b;
+			this.impulse = contactPoint.impulse;
 			this.localPointA = contactPoint.localPoint;
 			this.localPointB = contactPoint.localPointOther;
 			this.pointA = contactPoint.point;
@@ -78490,12 +83565,13 @@ class SingleContactResult {
 }
 
 class ContactPoint {
-	constructor(localPoint = new Vec3(), localPointOther = new Vec3(), point = new Vec3(), pointOther = new Vec3(), normal = new Vec3()) {
+	constructor(localPoint = new Vec3(), localPointOther = new Vec3(), point = new Vec3(), pointOther = new Vec3(), normal = new Vec3(), impulse = 0) {
 		this.localPoint = localPoint;
 		this.localPointOther = localPointOther;
 		this.point = point;
 		this.pointOther = pointOther;
 		this.normal = normal;
+		this.impulse = impulse;
 	}
 
 }
@@ -78737,6 +83813,7 @@ class RigidBodyComponentSystem extends ComponentSystem {
 		contact.point.set(positionWorldOnA.x(), positionWorldOnA.y(), positionWorldOnA.z());
 		contact.pointOther.set(positionWorldOnB.x(), positionWorldOnB.y(), positionWorldOnB.z());
 		contact.normal.set(normalWorldOnB.x(), normalWorldOnB.y(), normalWorldOnB.z());
+		contact.impulse = contactPoint.getAppliedImpulse();
 		return contact;
 	}
 
@@ -78752,6 +83829,7 @@ class RigidBodyComponentSystem extends ComponentSystem {
 		contact.pointOther.set(positionWorldOnA.x(), positionWorldOnA.y(), positionWorldOnA.z());
 		contact.point.set(positionWorldOnB.x(), positionWorldOnB.y(), positionWorldOnB.z());
 		contact.normal.set(normalWorldOnB.x(), normalWorldOnB.y(), normalWorldOnB.z());
+		contact.impulse = contactPoint.getAppliedImpulse();
 		return contact;
 	}
 
@@ -78764,6 +83842,7 @@ class RigidBodyComponentSystem extends ComponentSystem {
 		result.pointA = contactPoint.point;
 		result.pointB = contactPoint.pointOther;
 		result.normal = contactPoint.normal;
+		result.impulse = contactPoint.impulse;
 		return result;
 	}
 
@@ -85489,7 +90568,7 @@ class ApplicationStats {
 	}
 
 	get lightmapper() {
-		return getApplication().lightmapper._stats;
+		return getApplication().lightmapper.stats;
 	}
 
 	get batcher() {
@@ -85671,6 +90750,8 @@ class SceneRegistry {
 				self._app.systems.fire('initialize', entity);
 
 				self._app.systems.fire('postInitialize', entity);
+
+				self._app.systems.fire('postPostInitialize', entity);
 
 				if (callback) callback(err, entity);
 			};
@@ -86080,7 +91161,7 @@ class Application extends EventHandler {
 		this.xr = new XrManager(this);
 		if (this.elementInput) this.elementInput.attachSelectEvents();
 		this._inTools = false;
-		this._skyboxLast = 0;
+		this._skyboxAsset = null;
 		this._scriptPrefix = options.scriptPrefix || '';
 
 		if (this.enableBundles) {
@@ -86090,7 +91171,7 @@ class Application extends EventHandler {
 		this.loader.addHandler("animation", new AnimationHandler());
 		this.loader.addHandler("animclip", new AnimClipHandler());
 		this.loader.addHandler("animstategraph", new AnimStateGraphHandler());
-		this.loader.addHandler("model", new ModelHandler(this.graphicsDevice, this.scene.defaultMaterial));
+		this.loader.addHandler("model", new ModelHandler(this.graphicsDevice));
 		this.loader.addHandler("render", new RenderHandler(this.assets));
 		this.loader.addHandler("material", new MaterialHandler(this));
 		this.loader.addHandler("texture", new TextureHandler(this.graphicsDevice, this.assets, this.loader));
@@ -86110,7 +91191,7 @@ class Application extends EventHandler {
 		this.loader.addHandler("textureatlas", new TextureAtlasHandler(this.loader));
 		this.loader.addHandler("sprite", new SpriteHandler(this.assets, this.graphicsDevice));
 		this.loader.addHandler("template", new TemplateHandler(this));
-		this.loader.addHandler("container", new ContainerHandler(this.graphicsDevice, this.scene.defaultMaterial));
+		this.loader.addHandler("container", new ContainerHandler(this.graphicsDevice, this.assets));
 		this.systems = new ComponentSystemRegistry();
 		this.systems.add(new RigidBodyComponentSystem(this));
 		this.systems.add(new CollisionComponentSystem(this));
@@ -86508,6 +91589,7 @@ class Application extends EventHandler {
 		this.systems.fire('initialize', this.root);
 		this.fire('initialize');
 		this.systems.fire('postInitialize', this.root);
+		this.systems.fire('postPostInitialize', this.root);
 		this.fire('postinitialize');
 		this.tick();
 	}
@@ -86746,35 +91828,38 @@ class Application extends EventHandler {
 	}
 
 	setSkybox(asset) {
-		if (asset) {
-			if (this._skyboxLast === asset.id) {
-				if (this.scene.skyboxMip === 0 && !asset.loadFaces) {
-					this._skyboxLoad(asset);
-				} else {
-					this._onSkyboxChange(asset);
+		if (asset !== this._skyboxAsset) {
+			const onSkyboxRemoved = () => {
+				this.setSkybox(null);
+			};
+
+			const onSkyboxChanged = () => {
+				this.scene.setSkybox(this._skyboxAsset ? this._skyboxAsset.resources : null);
+			};
+
+			if (this._skyboxAsset) {
+				this.assets.off('load:' + this._skyboxAsset.id, onSkyboxChanged, this);
+				this.assets.off('remove:' + this._skyboxAsset.id, onSkyboxRemoved, this);
+
+				this._skyboxAsset.off('change', onSkyboxChanged, this);
+			}
+
+			this._skyboxAsset = asset;
+
+			if (this._skyboxAsset) {
+				this.assets.on('load:' + this._skyboxAsset.id, onSkyboxChanged, this);
+				this.assets.once('remove:' + this._skyboxAsset.id, onSkyboxRemoved, this);
+
+				this._skyboxAsset.on('change', onSkyboxChanged, this);
+
+				if (this.scene.skyboxMip === 0 && !this._skyboxAsset.loadFaces) {
+					this._skyboxAsset.loadFaces = true;
 				}
 
-				return;
+				this.assets.load(this._skyboxAsset);
 			}
 
-			if (this._skyboxLast) {
-				this.assets.off('add:' + this._skyboxLast, this.setSkybox, this);
-				this.assets.off('load:' + this._skyboxLast, this._onSkyboxChange, this);
-				this.assets.off('remove:' + this._skyboxLast, this._skyboxRemove, this);
-			}
-
-			this._skyboxLast = asset.id;
-			this.assets.on('load:' + asset.id, this._onSkyboxChange, this);
-			this.assets.once('remove:' + asset.id, this._skyboxRemove, this);
-			if (asset.resource) this.scene.setSkybox(asset.resources);
-
-			this._skyboxLoad(asset);
-		} else {
-			if (!this._skyboxLast) return;
-
-			this._skyboxRemove({
-				id: this._skyboxLast
-			});
+			onSkyboxChanged();
 		}
 	}
 
@@ -86789,26 +91874,6 @@ class Application extends EventHandler {
 			this.vr.destroy();
 			this.vr = null;
 		}
-	}
-
-	_onSkyboxChange(asset) {
-		this.scene.setSkybox(asset.resources);
-	}
-
-	_skyboxLoad(asset) {
-		if (this.scene.skyboxMip === 0) asset.loadFaces = true;
-		this.assets.load(asset);
-
-		this._onSkyboxChange(asset);
-	}
-
-	_skyboxRemove(asset) {
-		if (!this._skyboxLast) return;
-		this.assets.off('add:' + asset.id, this.setSkybox, this);
-		this.assets.off('load:' + asset.id, this._onSkyboxChange, this);
-		this.assets.off('remove:' + asset.id, this._skyboxRemove, this);
-		this.scene.setSkybox(null);
-		this._skyboxLast = null;
 	}
 
 	_firstBake() {
@@ -86992,6 +92057,7 @@ class Application extends EventHandler {
 		ParticleEmitter.staticDestroy();
 		this.renderer.destroy();
 		this.renderer = null;
+		DefaultMaterial.remove(this.graphicsDevice);
 		this.graphicsDevice.destroy();
 		this.graphicsDevice = null;
 		this.tick = null;
@@ -88086,7 +93152,9 @@ class Lightmapper {
 		const light = bakeLight.light;
 
 		if (!shadowMapRendered && light.castShadows) {
-			light.shadowMap = this.shadowMapCache.get(this.device, light);
+			if (!light.shadowMap) {
+				light.shadowMap = this.shadowMapCache.get(this.device, light);
+			}
 
 			if (light.type === LIGHTTYPE_DIRECTIONAL) {
 				this.renderer._shadowRenderer.cullDirectional(light, casters, this.camera);
@@ -88259,7 +93327,7 @@ class Lightmapper {
 					this.restoreMaterials(rcv);
 				}
 
-				bakeLight.endBake();
+				bakeLight.endBake(this.shadowMapCache);
 			}
 		}
 
@@ -88271,6 +93339,7 @@ class Lightmapper {
 
 		this.restoreLights(allLights);
 		this.restoreScene();
+		this.shadowMapCache.clear();
 	}
 
 }
@@ -91249,6 +96318,11 @@ const scene = {
 	Skin: Skin,
 	SkinInstance: SkinInstance
 };
+Object.defineProperty(Scene.prototype, 'defaultMaterial', {
+	get: function () {
+		return DefaultMaterial.get(getApplication().graphicsDevice);
+	}
+});
 Object.defineProperty(Batch.prototype, 'model', {
 	get: function () {
 		return null;

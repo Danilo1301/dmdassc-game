@@ -1,10 +1,9 @@
 import * as pc from "playcanvas";
-import { PositionComponent } from "../component/positionComponent";
-import { PlayCanvas } from "../playcanvas/playcanvas";
-import { Render } from "../render/render";
+import { Gameface } from "../gameface/gameface";
+import { Render } from "../gameface/render";
 
 export class Camera {
-    public static height: number = 150;
+    public static height: number = 1500;
     public static followPlayer: boolean = true;
     public static get positon() { return this._position; }
 
@@ -16,18 +15,16 @@ export class Camera {
 
     public static update(dt: number) {
         if(this.followPlayer) {
-            const player = Render.player;
+            const player = Gameface.Instance.player;
 
             if(!player) return;
 
-            const positionComponent = player.getComponent(PositionComponent);
-
-            this.setPosition(positionComponent.x, positionComponent.y);
+            this.setPosition(player.transform.position.x, player.transform.position.y);
         }
         
         this._position.z = this.height;
 
-        PlayCanvas.camera.setPosition(this._position.x / 10, this._position.z / 10, this._position.y / 10);
+        Render.camera.setPosition(this._position.x * 0.01, this._position.z * 0.01, this._position.y * 0.01);
     }
 
     public static setPosition(x: number, y: number) {

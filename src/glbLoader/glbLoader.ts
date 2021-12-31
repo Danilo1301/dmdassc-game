@@ -1,10 +1,10 @@
-import { Render } from "../render/render";
+import { Gameface } from "../gameface/gameface";
 
 export class GLBLoader {
     public static loadModel(url: string, callback: (entity: pc.Entity) => void) {
-        const utils = require('../playcanvas/glb-utils.js')
+        const utils = require('./glb-utils.js')
 
-        Render.app.assets.loadFromUrl(url, 'binary', function (err, glbAsset) {
+        Gameface.Instance.app.assets.loadFromUrl(url, 'binary', function (err, glbAsset) {
 
             if(!glbAsset) return console.error("error");
            

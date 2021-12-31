@@ -1,16 +1,24 @@
+import ByteBuffer from "bytebuffer";
 import { io, Socket } from "socket.io-client";
+import { Component } from "../component/component";
+import { InputHandlerComponent } from "../component/inputHandlerComponent";
+import { SyncComponent } from "../component/syncComponent";
+import { TransformComponent } from "../component/transformComponent";
 import { Entity } from "../entity/entity";
-import { GameClient } from "../game/gameClient";
-import { IPacket, IPacket_Component, IPacket_ControlEntity, IPacket_Entity, PACKET_TYPE } from "../packet/packets";
-import { Render } from "../render/render";
-import { WorldSync } from "../world/worldSync";
+import { EntityPlayer } from "../entity/player/entityPlayer";
+import { Gameface } from "../gameface/gameface";
+import { FormatPacket } from "../packet/formatPacket";
+import { Packet } from "../packet/packet";
+
+export enum PacketType {
+    ENTITY_DATA,
+    JOIN_SERVER,
+    SPAWN_ENTITY,
+    CONTROLL_ENTITY
+}
 
 export class Network {
-    public sendPacketIntervalMs: number = 80;
-
-    private _game: GameClient;
     private _socket: Socket;
-    private _sendPacketTime: number = 0;
 
     public get address() {
         if(location.host.includes('localhost')) return `${location.protocol}//${location.host}/`;
@@ -24,7 +32,13 @@ export class Network {
             reconnection: false
         });
 
-        this._socket.on('p', (packet: IPacket) => {
+        this._socket.on("p", (data: string) => {
+            //console.log("p", data)
+    
+            const buffer = ByteBuffer.fromBase64(data);
+            const packet = new Packet();
+            packet.buffer = buffer;
+
             this.onReceivePacket(packet);
         })
 
@@ -35,64 +49,86 @@ export class Network {
         this._socket.connect();
     }
 
+    public sendJoinServer(id: string) {
+        const packet = new Packet();
+        packet.writeShort(PacketType.JOIN_SERVER);
+        packet.writeString(id);
+
+        this.sendPacket(packet);
+    }
+
     public update(dt: number) {
-        this._sendPacketTime += dt;
+        const player = Gameface.Instance.player;
 
-        if(this._sendPacketTime >= this.sendPacketIntervalMs / 1000) {
-            this._sendPacketTime = 0;
-
-            const player = Render.player;
-
-            if(!player) return;
-
-            const packet = Network.serializeEntity(player);
-
-            this.send(PACKET_TYPE.ENTITY_DATA, packet);
-        }
-
+        if(player) this.sendPlayerData(player);
     }
 
-    public send(packetId: number, data: any) {
-        const packet: IPacket = {
-            id: packetId,
-            data: data
-        }
-        this._socket.emit('p', packet);
-
-        //console.log(`[network] send`, packet);
+    public sendPlayerData(entity: Entity) {
+        const components: Component[] = [entity.transform];
+        if(entity.hasComponent(InputHandlerComponent)) components.push(entity.getComponent(InputHandlerComponent));
+        const packet = FormatPacket.entityData(entity, components);
+        this.sendPacket(packet);
     }
 
-    public onReceivePacket(packet: IPacket) {
-        if(packet.id == PACKET_TYPE.ENTITY_DATA) {
-            WorldSync.processEntityPacketData(packet.data);
-        }
-
-        if(packet.id == PACKET_TYPE.CONTROL_ENTITY) {
-            const data = packet.data as IPacket_ControlEntity;
-            WorldSync.entityId = data.id;
-        }
+    public sendPacket(packet: Packet) {
+        packet.buffer.flip();
+        this._socket.emit('p', packet.buffer.toBase64());
     }
 
-    public static serializeEntity(entity: Entity) {
-        const componentsData: {[component: string]: IPacket_Component} = {};
+    public onReceivePacket(packet: Packet) {
+        const packetType: PacketType = packet.readShort();
+        
+        /*
+        if(packetType == PacketType.COMPONENT_DATA) {
+            const entityId: string = packet.readString();
+            const cindex: number = packet.readShort();
 
-        const entityFactory = entity.world.server.entityFactory;
+            const world = Gameface.Instance.game.worlds[0];
 
-        const packet: IPacket_Entity = {
-            id: entity.id,
-            type: entityFactory.getIndexOfEntity(entity),
-            cdata: componentsData
+            if(world.hasEntity(entityId)) {
+                const entity = world.getEntity(entityId)!;
+                entity.components.forEach(c => {
+                    try {
+                        if(cindex == world.game.entityFactory.getIndexOfComponent(c)) {
+                            c.unserialize(packet);
+                        }
+                    } catch (error) {}
+                });
+            }
+
         }
+        */
 
-        for (const component of entity.components) {
-            const serializedData = component.serialize();
-            if(!serializedData) continue;
+        if(packetType == PacketType.ENTITY_DATA) {
+            const entityId = packet.readString();
 
-            const id = entityFactory.getIndexOfComponent(component);
+            const world = Gameface.Instance.game.worlds[0];
+            const entity = world.getEntity(entityId);
             
-            componentsData[id] = serializedData;
+            if(entity) {
+                FormatPacket.unserializeEntityData(entity, packet);
+            }
         }
 
-        return packet;
+        if(packetType == PacketType.SPAWN_ENTITY) {
+            const entityId: string = packet.readString();
+            const entityType: number = packet.readShort();
+            
+            const world = Gameface.Instance.game.worlds[0];
+
+            const entity = world.spawnEntity(world.game.entityFactory.getEntityByIndex(entityType), {id: entityId});
+            entity.addComponent(new SyncComponent());
+
+            FormatPacket.unserializeEntityData(entity, packet);
+            
+            console.log("spsawn entity")
+        }
+
+        if(packetType == PacketType.CONTROLL_ENTITY) {
+            const entityId: string = packet.readString();
+
+            Gameface.Instance.controllingEntity = entityId;
+            Gameface.Instance.checkControllingEntity();
+        }
     }
 }
