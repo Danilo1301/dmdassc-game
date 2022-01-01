@@ -16950,6 +16950,15 @@ class CollisionComponent extends component_1.Component {
         var body = this.body;
         matter_js_1.default.Body.setPosition(body, { x: x, y: y });
     }
+    setVelocity(x, y) {
+        var body = this.body;
+        matter_js_1.default.Body.setVelocity(body, { x: x, y: y });
+    }
+    destroy() {
+        super.destroy();
+        const matterWorld = this.entity.world.matter.world;
+        matter_js_1.default.Composite.remove(matterWorld, this.body);
+    }
 }
 exports.CollisionComponent = CollisionComponent;
 /*
@@ -16993,6 +17002,9 @@ class Component {
     }
     init() {
         console.log(`[${this.constructor.name}] init`);
+    }
+    destroy() {
+        console.log(`[${this.constructor.name}] destroy`);
     }
     update(dt) { }
     postupdate(dt) { }
@@ -17098,6 +17110,7 @@ class ModelComponent extends component_1.Component {
         const entity = this.entity;
         glbLoader_1.GLBLoader.loadModel(this.path, (renderRootEntity) => {
             console.log(renderRootEntity);
+            this._renderRootEntity = renderRootEntity;
             entity.pcEntity.addChild(renderRootEntity);
             console.log(renderRootEntity);
         });
@@ -17107,6 +17120,11 @@ class ModelComponent extends component_1.Component {
     }
     postupdate(dt) {
         super.postupdate(dt);
+    }
+    destroy() {
+        var _a;
+        super.destroy();
+        (_a = this._renderRootEntity) === null || _a === void 0 ? void 0 : _a.destroy();
     }
 }
 exports.ModelComponent = ModelComponent;
@@ -17274,7 +17292,9 @@ class SyncComponent extends component_1.Component {
         this.priority = 0;
         this.syncType = SyncType.CLIENT_SYNC;
         this._targetPosition = new pc.Vec2();
+        this._targetVelocity = new pc.Vec2();
         this._targetAngle = 0;
+        this._lastUpdated = 0;
     }
     init() {
         super.init();
@@ -17283,18 +17303,36 @@ class SyncComponent extends component_1.Component {
         super.update(dt);
         if (this.syncType == SyncType.DONT_SYNC)
             return;
+        const now = Date.now();
+        if (now - this._lastUpdated > 500)
+            return;
         const transform = this.entity.transform;
-        const x = pc.math.lerp(transform.position.x, this._targetPosition.x, 0.3);
-        const y = pc.math.lerp(transform.position.y, this._targetPosition.y, 0.3);
-        const agle = pc.math.lerp(transform.angle, this._targetAngle, 0.3);
+        let posLerp = 0.3;
+        const distance = this._targetPosition.distance(transform.position);
+        if (distance > 30) {
+            posLerp = 1;
+        }
+        const x = pc.math.lerp(transform.position.x, this._targetPosition.x, posLerp);
+        const y = pc.math.lerp(transform.position.y, this._targetPosition.y, posLerp);
+        const angle = pc.math.lerp(transform.angle, this._targetAngle, 0.3);
+        const velX = pc.math.lerp(transform.velocity.x, this._targetVelocity.x, 0.5);
+        const velY = pc.math.lerp(transform.velocity.y, this._targetVelocity.y, 0.5);
         transform.setPosition(x, y);
-        transform.setAngle(this._targetAngle);
+        transform.setAngle(angle);
+        transform.setVelocity(velX, velY);
+        transform.setAngularVelocity(0);
     }
     setPosition(x, y) {
+        this._lastUpdated = Date.now();
         this._targetPosition.set(x, y);
     }
     setAngle(angle) {
+        this._lastUpdated = Date.now();
         this._targetAngle = angle;
+    }
+    setVelocity(x, y) {
+        this._lastUpdated = Date.now();
+        this._targetVelocity.set(x, y);
     }
 }
 exports.SyncComponent = SyncComponent;
@@ -17344,6 +17382,7 @@ class TransformComponent extends component_1.Component {
         super(...arguments);
         this.priority = 0;
         this.position = new pc.Vec2();
+        this.velocity = new pc.Vec2();
         this._angle = 0;
     }
     get angle() { return this._angle; }
@@ -17363,6 +17402,14 @@ class TransformComponent extends component_1.Component {
             c.setPosition(this.position.x, this.position.y);
         }
     }
+    setVelocity(x, y) {
+        this.velocity.x = x;
+        this.velocity.y = y;
+        if (this.entity.hasComponent(collisionComponent_1.CollisionComponent)) {
+            const c = this.entity.getComponent(collisionComponent_1.CollisionComponent);
+            c.setVelocity(this.velocity.x, this.velocity.y);
+        }
+    }
     setAngle(angle) {
         this._angle = angle;
         if (this.entity.hasComponent(collisionComponent_1.CollisionComponent)) {
@@ -17370,11 +17417,19 @@ class TransformComponent extends component_1.Component {
             matter_js_1.default.Body.setAngle(c.body, this._angle);
         }
     }
+    setAngularVelocity(velocity) {
+        if (this.entity.hasComponent(collisionComponent_1.CollisionComponent)) {
+            const c = this.entity.getComponent(collisionComponent_1.CollisionComponent);
+            matter_js_1.default.Body.setAngularVelocity(c.body, velocity);
+        }
+    }
     handleCollisionComponent() {
         if (this.entity.hasComponent(collisionComponent_1.CollisionComponent)) {
             const c = this.entity.getComponent(collisionComponent_1.CollisionComponent);
             this.position.x = c.body.position.x * 1;
             this.position.y = c.body.position.y * 1;
+            this.velocity.x = c.body.velocity.x * 1;
+            this.velocity.y = c.body.velocity.y * 1;
             this._angle = c.body.angle;
         }
     }
@@ -17384,17 +17439,22 @@ class TransformComponent extends component_1.Component {
     serialize(packet) {
         packet.writeDouble(this.position.x);
         packet.writeDouble(this.position.y);
+        packet.writeDouble(this.velocity.x);
+        packet.writeDouble(this.velocity.y);
         packet.writeDouble(this.angle); //change
         return packet;
     }
     unserialize(packet) {
         const x = packet.readDouble();
         const y = packet.readDouble();
+        const velX = packet.readDouble();
+        const velY = packet.readDouble();
         const angle = packet.readDouble();
         //console.log('unserialzied', x, y);
         if (this.entity.hasComponent(syncComponent_1.SyncComponent)) {
             this.entity.getComponent(syncComponent_1.SyncComponent).setPosition(x, y);
             this.entity.getComponent(syncComponent_1.SyncComponent).setAngle(angle);
+            this.entity.getComponent(syncComponent_1.SyncComponent).setVelocity(velX, velY);
         }
         else {
             this.setPosition(x, y);
@@ -17524,6 +17584,7 @@ const transformComponent_1 = __webpack_require__(/*! ../component/transformCompo
 class Entity {
     constructor(world, pcEntity) {
         this.data = {};
+        this.destroyed = false;
         this._id = (0, uuid_1.v4)();
         this._components = [];
         this._hasInitalized = false;
@@ -17580,6 +17641,13 @@ class Entity {
     postupdate(dt) {
         for (const component of this._components)
             component.postupdate(dt);
+    }
+    destroy() {
+        if (this.destroyed)
+            return;
+        this.destroyed = true;
+        for (const component of this._components)
+            component.destroy();
     }
 }
 exports.Entity = Entity;
@@ -17855,13 +17923,11 @@ class Render {
         const app = this.app;
         if (!world)
             return;
-        const pcEntities = this._pcEntities;
         for (const entity of world.entities) {
-            const pcEntity = entity.pcEntity;
-            if (!pcEntities.includes(pcEntity)) {
-                pcEntities.push(pcEntity);
+            if (!this._renderingEntities.includes(entity)) {
+                this._renderingEntities.push(entity);
                 console.log("[render] add pcEntity");
-                app.root.addChild(pcEntity);
+                app.root.addChild(entity.pcEntity);
                 const material = new pc.StandardMaterial();
                 material.diffuse = new pc.Color(0, 1, 0);
                 material.update();
@@ -17874,8 +17940,15 @@ class Render {
                 entity.pcEntity.addChild(centerPcEntity);
             }
             const transform = entity.transform;
-            pcEntity.setPosition(transform.position.x * 0.01, 0, transform.position.y * 0.01);
-            pcEntity.setEulerAngles(0, pc.math.RAD_TO_DEG * -transform.angle, 0);
+            entity.pcEntity.setPosition(transform.position.x * 0.01, 0, transform.position.y * 0.01);
+            entity.pcEntity.setEulerAngles(0, pc.math.RAD_TO_DEG * -transform.angle, 0);
+        }
+        for (const entity of this._renderingEntities) {
+            if (!world.entities.includes(entity)) {
+                this._renderingEntities.splice(this._renderingEntities.indexOf(entity), 1);
+                console.log("[render] remove pcEntity");
+                app.root.removeChild(entity.pcEntity);
+            }
         }
     }
     static setupLocalClientScene() {
@@ -17922,7 +17995,7 @@ class Render {
     }
 }
 exports.Render = Render;
-Render._pcEntities = [];
+Render._renderingEntities = [];
 
 
 /***/ }),
@@ -18050,9 +18123,14 @@ var PacketType;
     PacketType[PacketType["ENTITY_DATA"] = 0] = "ENTITY_DATA";
     PacketType[PacketType["JOIN_SERVER"] = 1] = "JOIN_SERVER";
     PacketType[PacketType["SPAWN_ENTITY"] = 2] = "SPAWN_ENTITY";
-    PacketType[PacketType["CONTROLL_ENTITY"] = 3] = "CONTROLL_ENTITY";
+    PacketType[PacketType["DESTROY_ENTITY"] = 3] = "DESTROY_ENTITY";
+    PacketType[PacketType["CONTROLL_ENTITY"] = 4] = "CONTROLL_ENTITY";
 })(PacketType = exports.PacketType || (exports.PacketType = {}));
 class Network {
+    constructor() {
+        this.sendPacketInterval = 80;
+        this._sendPacketTime = 0;
+    }
     get address() {
         if (location.host.includes('localhost'))
             return `${location.protocol}//${location.host}/`;
@@ -18083,9 +18161,13 @@ class Network {
         this.sendPacket(packet);
     }
     update(dt) {
-        const player = gameface_1.Gameface.Instance.player;
-        if (player)
-            this.sendPlayerData(player);
+        this._sendPacketTime += dt;
+        if (this._sendPacketTime >= this.sendPacketInterval / 1000) {
+            this._sendPacketTime = 0;
+            const player = gameface_1.Gameface.Instance.player;
+            if (player)
+                this.sendPlayerData(player);
+        }
     }
     sendPlayerData(entity) {
         const components = [entity.transform];
@@ -18132,10 +18214,19 @@ class Network {
             const entityId = packet.readString();
             const entityType = packet.readShort();
             const world = gameface_1.Gameface.Instance.game.worlds[0];
+            if (world.hasEntity(entityId))
+                return;
             const entity = world.spawnEntity(world.game.entityFactory.getEntityByIndex(entityType), { id: entityId });
             entity.addComponent(new syncComponent_1.SyncComponent());
             formatPacket_1.FormatPacket.unserializeEntityData(entity, packet);
             console.log("spsawn entity");
+        }
+        if (packetType == PacketType.DESTROY_ENTITY) {
+            const entityId = packet.readString();
+            const world = gameface_1.Gameface.Instance.game.worlds[0];
+            if (world.hasEntity(entityId)) {
+                world.removeEntity(world.getEntity(entityId));
+            }
         }
         if (packetType == PacketType.CONTROLL_ENTITY) {
             const entityId = packet.readString();
@@ -18175,6 +18266,32 @@ class FormatPacket {
         return packet;
     }
     */
+    static entitySpawn(entity) {
+        const components = [];
+        for (const c of entity.components) {
+            try {
+                entity.world.game.entityFactory.getIndexOfComponent(c);
+                components.push(c);
+            }
+            catch (error) { }
+        }
+        const packet = new packet_1.Packet();
+        packet.writeShort(network_1.PacketType.SPAWN_ENTITY);
+        packet.writeString(entity.id);
+        packet.writeShort(entity.world.game.entityFactory.getIndexOfEntity(entity));
+        packet.writeShort(components.length);
+        for (const component of components) {
+            packet.writeShort(entity.world.game.entityFactory.getIndexOfComponent(component));
+            component.serialize(packet);
+        }
+        return packet;
+    }
+    static entityDestroy(entity) {
+        const packet = new packet_1.Packet();
+        packet.writeShort(network_1.PacketType.DESTROY_ENTITY);
+        packet.writeString(entity.id);
+        return packet;
+    }
     static entityData(entity, components) {
         const packet = new packet_1.Packet();
         packet.writeShort(network_1.PacketType.ENTITY_DATA);
@@ -18394,6 +18511,10 @@ class World {
     }
     getEntity(id) {
         return this._entities.get(id);
+    }
+    removeEntity(entity) {
+        entity.destroy();
+        this._entities.delete(entity.id);
     }
     addEntity(entity) {
         console.log(`[world] add entity ${entity.constructor.name}`);

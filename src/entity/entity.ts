@@ -7,6 +7,8 @@ import { World } from '../world/world';
 export class Entity {
     public data: any = {};
 
+    public destroyed: boolean = false;
+
     public get id() { return this._id; }
     public get world() { return this._world; }
     public get components() { return this._components; }
@@ -68,4 +70,12 @@ export class Entity {
     public postupdate(dt: number) {
         for (const component of this._components) component.postupdate(dt);
     }
+
+    public destroy() {
+        if(this.destroyed) return;
+        this.destroyed = true;
+
+        for (const component of this._components) component.destroy();
+    }
+
 }

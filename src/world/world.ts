@@ -89,6 +89,11 @@ export class World {
         return this._entities.get(id);
     }
 
+    public removeEntity(entity: Entity) {
+        entity.destroy();
+        this._entities.delete(entity.id);
+    }
+
     public addEntity(entity: Entity) {
         console.log(`[world] add entity ${entity.constructor.name}`);
         

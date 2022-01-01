@@ -13,6 +13,7 @@ export class TransformComponent extends Component {
     
     public get angle() { return this._angle; };
     public position = new pc.Vec2();
+    public velocity = new pc.Vec2();
     
     private _angle: number = 0;
 
@@ -35,6 +36,16 @@ export class TransformComponent extends Component {
             c.setPosition(this.position.x, this.position.y);
         }
     }
+
+    public setVelocity(x: number, y: number) {
+        this.velocity.x = x;
+        this.velocity.y = y;
+
+        if(this.entity.hasComponent(CollisionComponent)) {
+            const c = this.entity.getComponent(CollisionComponent);
+            c.setVelocity(this.velocity.x, this.velocity.y);
+        }
+    }
     
     public setAngle(angle: number) {
         this._angle = angle;
@@ -45,12 +56,21 @@ export class TransformComponent extends Component {
         }
     }
 
+    public setAngularVelocity(velocity: number) {
+        if(this.entity.hasComponent(CollisionComponent)) {
+            const c = this.entity.getComponent(CollisionComponent);
+            Matter.Body.setAngularVelocity(c.body, velocity);
+        }
+    }
+
     private handleCollisionComponent() {
         if(this.entity.hasComponent(CollisionComponent)) {
             const c = this.entity.getComponent(CollisionComponent);
 
             this.position.x = c.body.position.x * 1;
             this.position.y = c.body.position.y * 1;
+            this.velocity.x = c.body.velocity.x * 1;
+            this.velocity.y = c.body.velocity.y * 1;
             this._angle = c.body.angle;
         }
     }
@@ -61,7 +81,9 @@ export class TransformComponent extends Component {
 
     public serialize(packet: Packet): any {
         packet.writeDouble(this.position.x);
-        packet.writeDouble(this.position.y);
+        packet.writeDouble(this.position.y);    
+        packet.writeDouble(this.velocity.x);    
+        packet.writeDouble(this.velocity.y);    
         packet.writeDouble(this.angle); //change
         return packet;
     }
@@ -69,6 +91,8 @@ export class TransformComponent extends Component {
     public unserialize(packet: Packet): any {
         const x = packet.readDouble();
         const y = packet.readDouble();
+        const velX = packet.readDouble();
+        const velY = packet.readDouble();
         const angle = packet.readDouble();
 
         //console.log('unserialzied', x, y);
@@ -76,6 +100,7 @@ export class TransformComponent extends Component {
         if(this.entity.hasComponent(SyncComponent)) {
             this.entity.getComponent(SyncComponent).setPosition(x, y);
             this.entity.getComponent(SyncComponent).setAngle(angle);
+            this.entity.getComponent(SyncComponent).setVelocity(velX, velY);
         } else {
             this.setPosition(x, y);
             this.setAngle(angle);

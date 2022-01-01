@@ -112,6 +112,18 @@ export class CollisionComponent extends Component {
         var body = this.body;
         Matter.Body.setPosition(body, {x: x, y: y});
     }
+
+    public setVelocity(x: number, y: number) {
+        var body = this.body;
+        Matter.Body.setVelocity(body, {x: x, y: y});
+    }
+
+    public destroy(): void {
+        super.destroy();
+        
+        const matterWorld = this.entity.world.matter.world!;
+        Matter.Composite.remove(matterWorld, this.body);
+    }
 }
 
 /*

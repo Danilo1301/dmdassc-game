@@ -9,6 +9,8 @@ export class ModelComponent extends Component {
     
     public path: string = "";
 
+    private _renderRootEntity?: pc.Entity;
+
     public init() {
         super.init();
 
@@ -20,6 +22,7 @@ export class ModelComponent extends Component {
 
         GLBLoader.loadModel(this.path, (renderRootEntity) => {
             console.log(renderRootEntity);
+            this._renderRootEntity = renderRootEntity;
 
             entity.pcEntity.addChild(renderRootEntity);
 
@@ -33,5 +36,11 @@ export class ModelComponent extends Component {
 
     public postupdate(dt: number) {
         super.postupdate(dt);
+    }
+
+    public destroy(): void {
+        super.destroy();
+
+        this._renderRootEntity?.destroy();
     }
 }

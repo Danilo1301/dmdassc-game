@@ -14,11 +14,15 @@ export enum PacketType {
     ENTITY_DATA,
     JOIN_SERVER,
     SPAWN_ENTITY,
+    DESTROY_ENTITY,
     CONTROLL_ENTITY
 }
 
 export class Network {
+    public sendPacketInterval: number = 80;
+
     private _socket: Socket;
+    private _sendPacketTime: number = 0;
 
     public get address() {
         if(location.host.includes('localhost')) return `${location.protocol}//${location.host}/`;
@@ -58,9 +62,13 @@ export class Network {
     }
 
     public update(dt: number) {
-        const player = Gameface.Instance.player;
+        this._sendPacketTime += dt;
+        if(this._sendPacketTime >= this.sendPacketInterval / 1000) {
+            this._sendPacketTime = 0;
 
-        if(player) this.sendPlayerData(player);
+            const player = Gameface.Instance.player;
+            if(player) this.sendPlayerData(player);
+        }
     }
 
     public sendPlayerData(entity: Entity) {
@@ -116,12 +124,24 @@ export class Network {
             
             const world = Gameface.Instance.game.worlds[0];
 
+            if(world.hasEntity(entityId)) return;
+
             const entity = world.spawnEntity(world.game.entityFactory.getEntityByIndex(entityType), {id: entityId});
             entity.addComponent(new SyncComponent());
 
             FormatPacket.unserializeEntityData(entity, packet);
             
             console.log("spsawn entity")
+        }
+
+        if(packetType == PacketType.DESTROY_ENTITY) {
+            const entityId: string = packet.readString();
+
+            const world = Gameface.Instance.game.worlds[0];
+
+            if(world.hasEntity(entityId)) {
+                world.removeEntity(world.getEntity(entityId)!);
+            }
         }
 
         if(packetType == PacketType.CONTROLL_ENTITY) {

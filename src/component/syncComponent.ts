@@ -18,7 +18,9 @@ export class SyncComponent extends Component {
     public syncType: SyncType = SyncType.CLIENT_SYNC;
 
     private _targetPosition = new pc.Vec2();
+    private _targetVelocity = new pc.Vec2();
     private _targetAngle = 0;
+    private _lastUpdated: number = 0;
 
     public init() {
         super.init();
@@ -29,21 +31,44 @@ export class SyncComponent extends Component {
 
         if(this.syncType == SyncType.DONT_SYNC) return;
 
+        const now = Date.now();
+
+        if(now - this._lastUpdated > 500) return;
+
+        
         const transform = this.entity.transform;
 
-        const x = pc.math.lerp(transform.position.x, this._targetPosition.x, 0.3);
-        const y = pc.math.lerp(transform.position.y, this._targetPosition.y, 0.3);
-        const agle = pc.math.lerp(transform.angle, this._targetAngle, 0.3);
+        let posLerp = 0.3;
+        const distance = this._targetPosition.distance(transform.position);
+        if(distance > 30) {
+            posLerp = 1;
+        }
+
+        const x = pc.math.lerp(transform.position.x, this._targetPosition.x, posLerp);
+        const y = pc.math.lerp(transform.position.y, this._targetPosition.y, posLerp);
+        const angle = pc.math.lerp(transform.angle, this._targetAngle, 0.3);
+
+        const velX = pc.math.lerp(transform.velocity.x, this._targetVelocity.x, 0.5);
+        const velY = pc.math.lerp(transform.velocity.y, this._targetVelocity.y, 0.5);
 
         transform.setPosition(x, y);
-        transform.setAngle(this._targetAngle);
+        transform.setAngle(angle);
+        transform.setVelocity(velX, velY);
+        transform.setAngularVelocity(0);
     }
 
     public setPosition(x: number, y: number) {
+        this._lastUpdated = Date.now();
         this._targetPosition.set(x, y);
     }
 
     public setAngle(angle: number) {
+        this._lastUpdated = Date.now();
         this._targetAngle = angle;
+    }
+
+    public setVelocity(x: number, y: number) {
+        this._lastUpdated = Date.now();
+        this._targetVelocity.set(x, y);
     }
 }

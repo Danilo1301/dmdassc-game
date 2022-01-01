@@ -1,4 +1,5 @@
 import * as pc from 'playcanvas'
+import { Entity } from '../entity/entity';
 import { World } from "../world/world";
 
 export class Render {
@@ -7,7 +8,7 @@ export class Render {
     public static camera: pc.Entity;
     public static sunLight: pc.Entity;
 
-    private static _pcEntities: pc.Entity[] = [];
+    private static _renderingEntities: Entity[] = [];
 
     public static init(app: pc.Application) {
         this.app = app;
@@ -25,18 +26,15 @@ export class Render {
 
         if(!world) return;
 
-        const pcEntities = this._pcEntities;
 
         for (const entity of world.entities) {
 
-            const pcEntity = entity.pcEntity;
-
-            if(!pcEntities.includes(pcEntity)) {
-                pcEntities.push(pcEntity);
+            if(!this._renderingEntities.includes(entity)) {
+                this._renderingEntities.push(entity);
 
                 console.log("[render] add pcEntity");
 
-                app.root.addChild(pcEntity);
+                app.root.addChild(entity.pcEntity);
 
                 const material = new pc.StandardMaterial();
                 material.diffuse = new pc.Color(0, 1, 0);
@@ -52,9 +50,19 @@ export class Render {
             }
 
             const transform = entity.transform;
-            pcEntity.setPosition(transform.position.x * 0.01, 0, transform.position.y * 0.01);
-            pcEntity.setEulerAngles(0, pc.math.RAD_TO_DEG * -transform.angle, 0);
+            entity.pcEntity.setPosition(transform.position.x * 0.01, 0, transform.position.y * 0.01);
+            entity.pcEntity.setEulerAngles(0, pc.math.RAD_TO_DEG * -transform.angle, 0);
             
+        }
+
+        for (const entity of this._renderingEntities) {
+            if(!world.entities.includes(entity)) 
+            {
+                this._renderingEntities.splice(this._renderingEntities.indexOf(entity), 1);
+
+                console.log("[render] remove pcEntity");
+                app.root.removeChild(entity.pcEntity);
+            }
         }
     }
 

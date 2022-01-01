@@ -9,6 +9,7 @@ import { FormatPacket } from '../packet/formatPacket';
 import { Packet } from '../packet/packet';
 
 export class Client {
+    public sendPacketInterval: number = 40;
     public get id() { return this._id; }
 
     private _id: string = uuidv4();
@@ -17,6 +18,7 @@ export class Client {
     private _player?: Entity;
 
     private _streamedEntities: Entity[] = [];
+    private _sendPacketTime: number = 0;
 
     public setPlayer(player: Entity) {
         this._player = player;
@@ -70,42 +72,53 @@ export class Client {
 
         if(!player) return;
 
+        const playerPosition = player.transform.position;
+
         const world = player.world;
 
         for (const entity of world.entities) {
-            
-            if(!this._streamedEntities.includes(entity)) {
-                console.log(`[client] entity stream in ${entity.id}`);
 
-                this._streamedEntities.push(entity);
+            const distance: number = playerPosition.distance(entity.transform.position);
 
-                this.sendEntitySpawn(entity);
+            let canBeStreamed = false;
+            if(distance < 500) canBeStreamed = true;
+
+            if(canBeStreamed) {
+                if(!this._streamedEntities.includes(entity)) {
+                    console.log(`[client] entity stream in ${entity.id}`);
+    
+                    this._streamedEntities.push(entity);
+    
+                    this.sendEntitySpawn(entity);
+                }
+            } else {
+                if(this._streamedEntities.includes(entity)) {
+                    console.log(`[client] entity stream out ${entity.id}`);
+    
+                    this._streamedEntities.splice(this._streamedEntities.indexOf(entity), 1);
+    
+                    this.sendEntityDestroy(entity);
+                }
             }
+            
 
         }
     }
 
     public update(dt: number) {
-        const player = this._player;
-
         this.checkStreamedEntities();
 
-        if(player) {
-            for (const entity of this._streamedEntities) {
-
-                this.sendEntityData(entity);
-
-                /*
-                entity.components.map(component => {
-                    try {
-                        const packet = FormatPacket.componentData(component);
-                        this.sendPacket(packet);
-                    } catch (error) {}
-                })
-                */
-            }
+        this._sendPacketTime += dt;
+        if(this._sendPacketTime >= this.sendPacketInterval / 1000) {
+            this._sendPacketTime = 0;
+            this.sendStreamedEntitiesData();
         }
+    }
 
+    private sendStreamedEntitiesData() {
+        for (const entity of this._streamedEntities) {
+            this.sendEntityData(entity);
+        }
     }
 
     public sendPacket(packet: Packet) {
@@ -128,29 +141,12 @@ export class Client {
     }
 
     public sendEntitySpawn(entity: Entity) {
-        console.log("[client] sendEntitySpawn", entity.id);
+        const packet = FormatPacket.entitySpawn(entity);
+        this.sendPacket(packet);
+    }
 
-        const components: Component[] = [];
-
-        for (const c of entity.components) {
-            try {
-                entity.world.game.entityFactory.getIndexOfComponent(c);
-                components.push(c);
-            } catch (error) { }
-
-        }
-
-        const packet = new Packet();
-        packet.writeShort(PacketType.SPAWN_ENTITY);
-        packet.writeString(entity.id);
-        packet.writeShort(entity.world.game.entityFactory.getIndexOfEntity(entity));
-        packet.writeShort(components.length);
-
-        for (const component of components) {
-            packet.writeShort(entity.world.game.entityFactory.getIndexOfComponent(component));
-            component.serialize(packet);
-        }
-
+    public sendEntityDestroy(entity: Entity) {
+        const packet = FormatPacket.entityDestroy(entity);
         this.sendPacket(packet);
     }
 }

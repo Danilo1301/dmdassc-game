@@ -18,6 +18,37 @@ export class FormatPacket {
     }
     */
 
+    public static entitySpawn(entity: Entity) {
+        const components: Component[] = [];
+
+        for (const c of entity.components) {
+            try {
+                entity.world.game.entityFactory.getIndexOfComponent(c);
+                components.push(c);
+            } catch (error) { }
+
+        }
+
+        const packet = new Packet();
+        packet.writeShort(PacketType.SPAWN_ENTITY);
+        packet.writeString(entity.id);
+        packet.writeShort(entity.world.game.entityFactory.getIndexOfEntity(entity));
+        packet.writeShort(components.length);
+
+        for (const component of components) {
+            packet.writeShort(entity.world.game.entityFactory.getIndexOfComponent(component));
+            component.serialize(packet);
+        }
+        return packet;
+    }
+
+    public static entityDestroy(entity: Entity) {
+        const packet = new Packet();
+        packet.writeShort(PacketType.DESTROY_ENTITY);
+        packet.writeString(entity.id);
+        return packet;
+    }
+
     public static entityData(entity: Entity, components: Component[]) {
         const packet = new Packet();
         packet.writeShort(PacketType.ENTITY_DATA);
