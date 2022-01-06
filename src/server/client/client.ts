@@ -27,6 +27,10 @@ export class Client {
     private _streamedEntities: Entity[] = [];
     private _sendPacketTime: number = 0;
 
+    public getCurrentAddress() {
+        return this._socket!.handshake.address
+    }
+
     public setPlayer(player: Entity) {
         this._player = player;
         this.sendControllingEntity(player);
@@ -44,6 +48,7 @@ export class Client {
         
         this.resetClient();
         this.addIPAddress(socket.handshake.address)
+        this.onConnect();
     }
 
     private addIPAddress(address: string) {
@@ -61,12 +66,18 @@ export class Client {
         this.onReceivePacket(packet);
     }
 
+    private onConnect() {
+        MasterServer.postGameLog(this.getCurrentAddress(), "connected")
+    }
+
     private onDisconnect() {
         const server = this._server;
 
         if(server) {
             server.onClientLeave(this);
         }
+
+        MasterServer.postGameLog(this.getCurrentAddress(), "disconnected")
     }
 
     public sendControllingEntity(entity: Entity) {
