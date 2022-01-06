@@ -19,18 +19,14 @@ export class MasterServer {
 
         io.on("connection", this.onSocketConnect.bind(this));
  
-        var self = this;
-        var lastUpdate = Date.now();
-        var myInterval = setInterval(tick, 1);
-        function tick() {
-            var now = Date.now();
-            var dt = now - lastUpdate;
-            lastUpdate = now;
-        
-            if(dt == 0) dt = 0.01;
+        let lastTick = 0;
+        setInterval(() => {
+            let now = Date.now();
+            let dt = (now - (lastTick == 0 ? now : lastTick)) / 1000;
+            lastTick = now;
 
-            self.update(dt);
-        }
+            this.update(dt);
+        }, 16)
     }
 
     public onSocketConnect(socket: socketio.Socket) {

@@ -67,7 +67,7 @@ export class Client {
     }
 
     private onConnect() {
-        MasterServer.postGameLog(this.getCurrentAddress(), "connected")
+        //MasterServer.postGameLog(this.getCurrentAddress(), "connected")
     }
 
     private onDisconnect() {
@@ -77,7 +77,7 @@ export class Client {
             server.onClientLeave(this);
         }
 
-        MasterServer.postGameLog(this.getCurrentAddress(), "disconnected")
+        //MasterServer.postGameLog(this.getCurrentAddress(), "disconnected")
     }
 
     public sendControllingEntity(entity: Entity) {
