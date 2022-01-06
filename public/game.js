@@ -16679,60 +16679,65 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const matter_js_1 = __importDefault(__webpack_require__(/*! matter-js */ "./node_modules/matter-js/build/matter.js"));
-const gameface_1 = __webpack_require__(/*! ../src/gameface/gameface */ "./src/gameface/gameface.ts");
-const render_1 = __webpack_require__(/*! ../src/gameface/render */ "./src/gameface/render.ts");
+const gameface_1 = __webpack_require__(/*! ../src/client/gameface/gameface */ "./src/client/gameface/gameface.ts");
+const render_1 = __webpack_require__(/*! ../src/client/gameface/render */ "./src/client/gameface/render.ts");
+const input_1 = __webpack_require__(/*! ../src/shared/input/input */ "./src/shared/input/input.ts");
 const gameface = new gameface_1.Gameface(document.getElementById('game'));
 gameface.start();
 window['gameface'] = gameface;
 window['Render'] = render_1.Render;
-const width = 800;
-const height = 600;
-const s = 3;
-// renderer
-const engine = gameface.game.worlds[0].matter.engine;
-const render = matter_js_1.default.Render.create({
-    element: document.body,
-    engine: engine,
-    bounds: {
-        min: {
-            x: -width / 2 * s,
-            y: -height / 2 * s
+window['Input'] = input_1.Input;
+//createMatterRender();
+function createMatterRender() {
+    const width = 800;
+    const height = 600;
+    const s = 8;
+    // renderer
+    const engine = gameface.game.worlds[0].matter.engine;
+    const render = matter_js_1.default.Render.create({
+        element: document.body,
+        engine: engine,
+        bounds: {
+            min: {
+                x: -width / 2 * s,
+                y: -height / 2 * s
+            },
+            max: {
+                x: width / 2 * s,
+                y: height / 2 * s
+            }
         },
-        max: {
-            x: width / 2 * s,
-            y: height / 2 * s
+        options: {
+            hasBounds: true,
+            width: width,
+            height: height,
+            showAngleIndicator: true
         }
-    },
-    options: {
-        hasBounds: true,
-        width: width,
-        height: height,
-        showAngleIndicator: true
-    }
-});
-matter_js_1.default.Render.run(render);
-// mouse constraint
-const matterWorld = gameface.game.worlds[0].matter.world;
-const constraint = {
-    stiffness: 0.2,
-    render: {
-        visible: false
-    }
-};
-const mouse = matter_js_1.default.Mouse.create(render.canvas);
-const mouseConstraint = matter_js_1.default.MouseConstraint.create(engine, {
-    mouse: mouse,
-    constraint: constraint
-});
-matter_js_1.default.Composite.add(matterWorld, mouseConstraint);
+    });
+    matter_js_1.default.Render.run(render);
+    // mouse constraint
+    const matterWorld = gameface.game.worlds[0].matter.world;
+    const constraint = {
+        stiffness: 0.2,
+        render: {
+            visible: false
+        }
+    };
+    const mouse = matter_js_1.default.Mouse.create(render.canvas);
+    const mouseConstraint = matter_js_1.default.MouseConstraint.create(engine, {
+        mouse: mouse,
+        constraint: constraint
+    });
+    matter_js_1.default.Composite.add(matterWorld, mouseConstraint);
+}
 
 
 /***/ }),
 
-/***/ "./src/animatedMaterial/animatedMaterial.ts":
-/*!**************************************************!*\
-  !*** ./src/animatedMaterial/animatedMaterial.ts ***!
-  \**************************************************/
+/***/ "./src/client/animatedMaterial/animatedMaterial.ts":
+/*!*********************************************************!*\
+  !*** ./src/client/animatedMaterial/animatedMaterial.ts ***!
+  \*********************************************************/
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -16800,10 +16805,10 @@ exports.AnimatedMaterial = AnimatedMaterial;
 
 /***/ }),
 
-/***/ "./src/camera/camera.ts":
-/*!******************************!*\
-  !*** ./src/camera/camera.ts ***!
-  \******************************/
+/***/ "./src/client/camera/camera.ts":
+/*!*************************************!*\
+  !*** ./src/client/camera/camera.ts ***!
+  \*************************************/
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -16830,8 +16835,8 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.Camera = void 0;
 const pc = __importStar(__webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs"));
-const gameface_1 = __webpack_require__(/*! ../gameface/gameface */ "./src/gameface/gameface.ts");
-const render_1 = __webpack_require__(/*! ../gameface/render */ "./src/gameface/render.ts");
+const gameface_1 = __webpack_require__(/*! ../gameface/gameface */ "./src/client/gameface/gameface.ts");
+const render_1 = __webpack_require__(/*! ../gameface/render */ "./src/client/gameface/render.ts");
 class Camera {
     static get positon() { return this._position; }
     static init() {
@@ -16853,924 +16858,17 @@ class Camera {
     }
 }
 exports.Camera = Camera;
-Camera.height = 1500;
+Camera.height = 1000;
 Camera.followPlayer = true;
 Camera._position = new pc.Vec3();
 
 
 /***/ }),
 
-/***/ "./src/component/collisionComponent.ts":
-/*!*********************************************!*\
-  !*** ./src/component/collisionComponent.ts ***!
-  \*********************************************/
-/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
-
-"use strict";
-
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.CollisionComponent = void 0;
-const matter_js_1 = __importDefault(__webpack_require__(/*! matter-js */ "./node_modules/matter-js/build/matter.js"));
-const component_1 = __webpack_require__(/*! ./component */ "./src/component/component.ts");
-class BodyPart {
-    constructor(key, x, y, type) {
-        this.Width = 0;
-        this.Height = 0;
-        this.Radius = 0;
-        this.Key = key;
-        this.X = x;
-        this.Y = y;
-        this.Type = type;
-    }
-}
-var BodyType;
-(function (BodyType) {
-    BodyType[BodyType["RECTANGLE"] = 0] = "RECTANGLE";
-    BodyType[BodyType["CIRCLE"] = 1] = "CIRCLE";
-})(BodyType || (BodyType = {}));
-class CollisionComponent extends component_1.Component {
-    constructor() {
-        super(...arguments);
-        this.priority = 0;
-        this.options = { friction: 0.001, frictionAir: 0.3 };
-        this._bodyParts = new Map();
-    }
-    get body() { return this._body; }
-    init() {
-        console.log("colision init");
-        super.init();
-        this.createBody();
-        //const body = this._body = Matter.Bodies.rectangle(0, 0, 100, 100, this.options);
-        //Matter.Composite.add(this.entity.world.matter.world!, body);
-    }
-    createBody() {
-        const options = Object.assign({}, this.options);
-        const parts = [];
-        const matterWorld = this.entity.world.matter.world;
-        for (const bodyPart of this._bodyParts.values()) {
-            if (bodyPart.Type == BodyType.RECTANGLE)
-                bodyPart.Body = matter_js_1.default.Bodies.rectangle(bodyPart.X, bodyPart.Y, bodyPart.Width, bodyPart.Height, options);
-            if (bodyPart.Type == BodyType.CIRCLE)
-                bodyPart.Body = matter_js_1.default.Bodies.circle(bodyPart.X, bodyPart.Y, bodyPart.Radius, options);
-            parts.push(bodyPart.Body);
-        }
-        options.parts = parts;
-        var body = matter_js_1.default.Body.create(options);
-        matter_js_1.default.Composite.add(matterWorld, body);
-        //matter.world.add(body)
-        this._body = body;
-        //this.setPosition(this.entity.transform.position.x, this.entity.transform.position.y)
-    }
-    update(dt) {
-        super.update(dt);
-    }
-    postupdate(dt) {
-        super.postupdate(dt);
-    }
-    getBodyPart(key) {
-        return this._bodyParts.get(key);
-    }
-    addRectangle(key, x, y, width, height) {
-        var bodyPart = new BodyPart(key, x, y, BodyType.RECTANGLE);
-        bodyPart.Width = width;
-        bodyPart.Height = height;
-        this._bodyParts.set(key, bodyPart);
-        return bodyPart;
-    }
-    addCircle(key, x, y, radius) {
-        var bodyPart = new BodyPart(key, x, y, BodyType.CIRCLE);
-        bodyPart.Radius = radius;
-        this._bodyParts.set(key, bodyPart);
-        return bodyPart;
-    }
-    setPosition(x, y) {
-        var body = this.body;
-        matter_js_1.default.Body.setPosition(body, { x: x, y: y });
-    }
-    setVelocity(x, y) {
-        var body = this.body;
-        matter_js_1.default.Body.setVelocity(body, { x: x, y: y });
-    }
-    destroy() {
-        super.destroy();
-        const matterWorld = this.entity.world.matter.world;
-        matter_js_1.default.Composite.remove(matterWorld, this.body);
-    }
-}
-exports.CollisionComponent = CollisionComponent;
-/*
-xport class CollisionComponent extends Component {
-    private _body: Matter.Body;
-
-    public get body() { return this._body; }
-
-    public size = new pc.Vec2(10, 10);
-    public frictionAir: number = 0.2;
-
-    public init() {
-        super.init();
-
-        const body = this._body = Matter.Bodies.rectangle(0, 0, this.size.x * 10, this.size.y * 10, { friction: 0.001, frictionAir: this.frictionAir });
-        Matter.Composite.add(this.entity.world.matterWorld, body);
-    }
-
-    public update(dt: number) {
-        super.update(dt);
-    }
-}
-*/ 
-
-
-/***/ }),
-
-/***/ "./src/component/component.ts":
-/*!************************************!*\
-  !*** ./src/component/component.ts ***!
-  \************************************/
-/***/ ((__unused_webpack_module, exports) => {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.Component = void 0;
-class Component {
-    constructor() {
-        this.priority = 0;
-    }
-    init() {
-        console.log(`[${this.constructor.name}] init`);
-    }
-    destroy() {
-        console.log(`[${this.constructor.name}] destroy`);
-    }
-    update(dt) { }
-    postupdate(dt) { }
-    serialize(packet) {
-        return packet;
-    }
-    unserialize(packet) {
-        return packet;
-    }
-    ;
-}
-exports.Component = Component;
-
-
-/***/ }),
-
-/***/ "./src/component/inputHandlerComponent.ts":
-/*!************************************************!*\
-  !*** ./src/component/inputHandlerComponent.ts ***!
-  \************************************************/
-/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.InputHandlerComponent = void 0;
-const input_1 = __webpack_require__(/*! ../input/input */ "./src/input/input.ts");
-const component_1 = __webpack_require__(/*! ./component */ "./src/component/component.ts");
-const syncComponent_1 = __webpack_require__(/*! ./syncComponent */ "./src/component/syncComponent.ts");
-class InputHandlerComponent extends component_1.Component {
-    constructor() {
-        super(...arguments);
-        this.priority = 0;
-        this.enabled = false;
-        this.speed = 4;
-        this.horizontal = 0;
-        this.vertical = 0;
-    }
-    init() {
-        super.init();
-    }
-    update(dt) {
-        super.update(dt);
-        if (this.enabled) {
-            const KEY_LEFT = 65;
-            const KEY_RIGHT = 68;
-            const KEY_UP = 87;
-            const KEY_DOWN = 83;
-            this.horizontal = (input_1.Input.getKeyDown(KEY_RIGHT) ? 1 : 0) + ((input_1.Input.getKeyDown(KEY_LEFT) ? -1 : 0));
-            this.vertical = (input_1.Input.getKeyDown(KEY_DOWN) ? 1 : 0) + ((input_1.Input.getKeyDown(KEY_UP) ? -1 : 0));
-            //console.log(this.horizontal, this.vertical)
-        }
-    }
-    serialize(packet) {
-        packet.writeDouble(this.horizontal);
-        packet.writeDouble(this.vertical);
-        return packet;
-    }
-    unserialize(packet) {
-        const horizontal = packet.readDouble();
-        const vertical = packet.readDouble();
-        let sync = true;
-        if (this.entity.hasComponent(syncComponent_1.SyncComponent)) {
-            if (this.entity.getComponent(syncComponent_1.SyncComponent).syncType == syncComponent_1.SyncType.DONT_SYNC)
-                sync = false;
-        }
-        if (sync) {
-            this.horizontal = horizontal;
-            this.vertical = vertical;
-        }
-        return packet;
-    }
-}
-exports.InputHandlerComponent = InputHandlerComponent;
-
-
-/***/ }),
-
-/***/ "./src/component/modelComponent.ts":
+/***/ "./src/client/gameface/gameface.ts":
 /*!*****************************************!*\
-  !*** ./src/component/modelComponent.ts ***!
+  !*** ./src/client/gameface/gameface.ts ***!
   \*****************************************/
-/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.ModelComponent = void 0;
-const render_1 = __webpack_require__(/*! ../gameface/render */ "./src/gameface/render.ts");
-const glbLoader_1 = __webpack_require__(/*! ../glbLoader/glbLoader */ "./src/glbLoader/glbLoader.ts");
-const component_1 = __webpack_require__(/*! ./component */ "./src/component/component.ts");
-class ModelComponent extends component_1.Component {
-    constructor() {
-        super(...arguments);
-        this.priority = 0;
-        this.path = "";
-    }
-    init() {
-        super.init();
-        if (!render_1.Render.app)
-            return;
-        console.log("start loading", this.path);
-        const entity = this.entity;
-        glbLoader_1.GLBLoader.loadModel(this.path, (renderRootEntity) => {
-            console.log(renderRootEntity);
-            this._renderRootEntity = renderRootEntity;
-            entity.pcEntity.addChild(renderRootEntity);
-            console.log(renderRootEntity);
-        });
-    }
-    update(dt) {
-        super.update(dt);
-    }
-    postupdate(dt) {
-        super.postupdate(dt);
-    }
-    destroy() {
-        var _a;
-        super.destroy();
-        (_a = this._renderRootEntity) === null || _a === void 0 ? void 0 : _a.destroy();
-    }
-}
-exports.ModelComponent = ModelComponent;
-
-
-/***/ }),
-
-/***/ "./src/component/playerComponent.ts":
-/*!******************************************!*\
-  !*** ./src/component/playerComponent.ts ***!
-  \******************************************/
-/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
-
-"use strict";
-
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.PlayerComponent = void 0;
-const matter_js_1 = __importDefault(__webpack_require__(/*! matter-js */ "./node_modules/matter-js/build/matter.js"));
-const pc = __importStar(__webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs"));
-const collisionComponent_1 = __webpack_require__(/*! ./collisionComponent */ "./src/component/collisionComponent.ts");
-const component_1 = __webpack_require__(/*! ./component */ "./src/component/component.ts");
-const inputHandlerComponent_1 = __webpack_require__(/*! ./inputHandlerComponent */ "./src/component/inputHandlerComponent.ts");
-class PlayerComponent extends component_1.Component {
-    constructor() {
-        super(...arguments);
-        this.speed = 40;
-    }
-    init() {
-        super.init();
-    }
-    update(dt) {
-        super.update(dt);
-        if (!this.entity.hasComponent(inputHandlerComponent_1.InputHandlerComponent))
-            return;
-        const inputHandler = this.entity.getComponent(inputHandlerComponent_1.InputHandlerComponent);
-        const move = new pc.Vec2(inputHandler.horizontal, inputHandler.vertical);
-        if (move.length() > 0) {
-            const collisionComponent = this.entity.getComponent(collisionComponent_1.CollisionComponent);
-            const s = this.speed * 0.05 * dt;
-            matter_js_1.default.Body.applyForce(collisionComponent.body, collisionComponent.body.position, { x: move.x * s, y: move.y * s });
-        }
-    }
-}
-exports.PlayerComponent = PlayerComponent;
-
-
-/***/ }),
-
-/***/ "./src/component/spriteComponent.ts":
-/*!******************************************!*\
-  !*** ./src/component/spriteComponent.ts ***!
-  \******************************************/
-/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.SpriteComponent = void 0;
-const render_1 = __webpack_require__(/*! ../gameface/render */ "./src/gameface/render.ts");
-const planeSprite_1 = __webpack_require__(/*! ../planeSprite/planeSprite */ "./src/planeSprite/planeSprite.ts");
-const component_1 = __webpack_require__(/*! ./component */ "./src/component/component.ts");
-class SpriteComponent extends component_1.Component {
-    constructor() {
-        super(...arguments);
-        this.priority = 0;
-        this.path = "";
-        this._spriteOptions = new Map();
-    }
-    init() {
-        super.init();
-    }
-    add(id, texture, frames, width, height) {
-        const spriteOptions = {
-            texture: texture,
-            frames: frames,
-            width: width,
-            height: height
-        };
-        this._spriteOptions.set(id, spriteOptions);
-    }
-    update(dt) {
-        super.update(dt);
-        if (!render_1.Render.app)
-            return;
-        Array.from(this._spriteOptions.keys()).map(id => {
-            const spriteOptions = this._spriteOptions.get(id);
-            if (!spriteOptions.planeSprite) {
-                spriteOptions.planeSprite = new planeSprite_1.PlaneSprite(spriteOptions.texture, spriteOptions.frames, spriteOptions.width, spriteOptions.height);
-                this.entity.pcEntity.addChild(spriteOptions.planeSprite.pcEntity);
-            }
-            spriteOptions.planeSprite.update(dt);
-        });
-    }
-    postupdate(dt) {
-        super.postupdate(dt);
-    }
-}
-exports.SpriteComponent = SpriteComponent;
-
-
-/***/ }),
-
-/***/ "./src/component/syncComponent.ts":
-/*!****************************************!*\
-  !*** ./src/component/syncComponent.ts ***!
-  \****************************************/
-/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
-
-"use strict";
-
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.SyncComponent = exports.SyncType = void 0;
-const pc = __importStar(__webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs"));
-const component_1 = __webpack_require__(/*! ./component */ "./src/component/component.ts");
-var SyncType;
-(function (SyncType) {
-    SyncType[SyncType["DONT_SYNC"] = 0] = "DONT_SYNC";
-    SyncType[SyncType["CLIENT_SYNC"] = 1] = "CLIENT_SYNC";
-    SyncType[SyncType["SERVER_SYNC"] = 2] = "SERVER_SYNC";
-})(SyncType = exports.SyncType || (exports.SyncType = {}));
-class SyncComponent extends component_1.Component {
-    constructor() {
-        super(...arguments);
-        this.priority = 0;
-        this.syncType = SyncType.CLIENT_SYNC;
-        this._targetPosition = new pc.Vec2();
-        this._targetVelocity = new pc.Vec2();
-        this._targetAngle = 0;
-        this._lastUpdated = 0;
-    }
-    init() {
-        super.init();
-    }
-    update(dt) {
-        super.update(dt);
-        if (this.syncType == SyncType.DONT_SYNC)
-            return;
-        const now = Date.now();
-        if (now - this._lastUpdated > 500)
-            return;
-        const transform = this.entity.transform;
-        let posLerp = 0.3;
-        const distance = this._targetPosition.distance(transform.position);
-        if (distance > 30) {
-            posLerp = 1;
-        }
-        const x = pc.math.lerp(transform.position.x, this._targetPosition.x, posLerp);
-        const y = pc.math.lerp(transform.position.y, this._targetPosition.y, posLerp);
-        const angle = pc.math.lerp(transform.angle, this._targetAngle, 0.3);
-        const velX = pc.math.lerp(transform.velocity.x, this._targetVelocity.x, 0.5);
-        const velY = pc.math.lerp(transform.velocity.y, this._targetVelocity.y, 0.5);
-        transform.setPosition(x, y);
-        transform.setAngle(angle);
-        transform.setVelocity(velX, velY);
-        transform.setAngularVelocity(0);
-    }
-    setPosition(x, y) {
-        this._lastUpdated = Date.now();
-        this._targetPosition.set(x, y);
-    }
-    setAngle(angle) {
-        this._lastUpdated = Date.now();
-        this._targetAngle = angle;
-    }
-    setVelocity(x, y) {
-        this._lastUpdated = Date.now();
-        this._targetVelocity.set(x, y);
-    }
-}
-exports.SyncComponent = SyncComponent;
-
-
-/***/ }),
-
-/***/ "./src/component/transformComponent.ts":
-/*!*********************************************!*\
-  !*** ./src/component/transformComponent.ts ***!
-  \*********************************************/
-/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
-
-"use strict";
-
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.TransformComponent = void 0;
-const matter_js_1 = __importDefault(__webpack_require__(/*! matter-js */ "./node_modules/matter-js/build/matter.js"));
-const pc = __importStar(__webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs"));
-const collisionComponent_1 = __webpack_require__(/*! ./collisionComponent */ "./src/component/collisionComponent.ts");
-const component_1 = __webpack_require__(/*! ./component */ "./src/component/component.ts");
-const syncComponent_1 = __webpack_require__(/*! ./syncComponent */ "./src/component/syncComponent.ts");
-class TransformComponent extends component_1.Component {
-    constructor() {
-        super(...arguments);
-        this.priority = 0;
-        this.position = new pc.Vec2();
-        this.velocity = new pc.Vec2();
-        this._angle = 0;
-    }
-    get angle() { return this._angle; }
-    ;
-    init() {
-        super.init();
-    }
-    update(dt) {
-        super.update(dt);
-        this.handleCollisionComponent();
-    }
-    setPosition(x, y) {
-        this.position.x = x;
-        this.position.y = y;
-        if (this.entity.hasComponent(collisionComponent_1.CollisionComponent)) {
-            const c = this.entity.getComponent(collisionComponent_1.CollisionComponent);
-            c.setPosition(this.position.x, this.position.y);
-        }
-    }
-    setVelocity(x, y) {
-        this.velocity.x = x;
-        this.velocity.y = y;
-        if (this.entity.hasComponent(collisionComponent_1.CollisionComponent)) {
-            const c = this.entity.getComponent(collisionComponent_1.CollisionComponent);
-            c.setVelocity(this.velocity.x, this.velocity.y);
-        }
-    }
-    setAngle(angle) {
-        this._angle = angle;
-        if (this.entity.hasComponent(collisionComponent_1.CollisionComponent)) {
-            const c = this.entity.getComponent(collisionComponent_1.CollisionComponent);
-            matter_js_1.default.Body.setAngle(c.body, this._angle);
-        }
-    }
-    setAngularVelocity(velocity) {
-        if (this.entity.hasComponent(collisionComponent_1.CollisionComponent)) {
-            const c = this.entity.getComponent(collisionComponent_1.CollisionComponent);
-            matter_js_1.default.Body.setAngularVelocity(c.body, velocity);
-        }
-    }
-    handleCollisionComponent() {
-        if (this.entity.hasComponent(collisionComponent_1.CollisionComponent)) {
-            const c = this.entity.getComponent(collisionComponent_1.CollisionComponent);
-            this.position.x = c.body.position.x * 1;
-            this.position.y = c.body.position.y * 1;
-            this.velocity.x = c.body.velocity.x * 1;
-            this.velocity.y = c.body.velocity.y * 1;
-            this._angle = c.body.angle;
-        }
-    }
-    postupdate(dt) {
-        super.postupdate(dt);
-    }
-    serialize(packet) {
-        packet.writeDouble(this.position.x);
-        packet.writeDouble(this.position.y);
-        packet.writeDouble(this.velocity.x);
-        packet.writeDouble(this.velocity.y);
-        packet.writeDouble(this.angle); //change
-        return packet;
-    }
-    unserialize(packet) {
-        const x = packet.readDouble();
-        const y = packet.readDouble();
-        const velX = packet.readDouble();
-        const velY = packet.readDouble();
-        const angle = packet.readDouble();
-        //console.log('unserialzied', x, y);
-        if (this.entity.hasComponent(syncComponent_1.SyncComponent)) {
-            this.entity.getComponent(syncComponent_1.SyncComponent).setPosition(x, y);
-            this.entity.getComponent(syncComponent_1.SyncComponent).setAngle(angle);
-            this.entity.getComponent(syncComponent_1.SyncComponent).setVelocity(velX, velY);
-        }
-        else {
-            this.setPosition(x, y);
-            this.setAngle(angle);
-        }
-        return packet;
-    }
-}
-exports.TransformComponent = TransformComponent;
-
-
-/***/ }),
-
-/***/ "./src/entityFactory/entityFactory.ts":
-/*!********************************************!*\
-  !*** ./src/entityFactory/entityFactory.ts ***!
-  \********************************************/
-/***/ ((__unused_webpack_module, exports) => {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.EntityFactory = void 0;
-class EntityFactory {
-    constructor() {
-        this._allComponents = [];
-        this._allEntities = new Map();
-    }
-    registerEntity(name, constr) {
-        this._allEntities.set(name, constr);
-    }
-    registerComponent(constr) {
-        this._allComponents.push(constr);
-    }
-    getIndexOfComponent(c) {
-        let i = 0;
-        for (const constr of this._allComponents) {
-            if (c instanceof constr)
-                return i;
-            i++;
-        }
-        throw "Component " + c.constructor.name + " not found";
-    }
-    getEntityByIndex(index) {
-        return Array.from(this._allEntities.values())[index];
-    }
-    getIndexOfEntity(c) {
-        let i = 0;
-        for (const constr of this._allEntities.values()) {
-            if (c instanceof constr)
-                return i;
-            i++;
-        }
-        throw "Entity " + c.constructor.name + " not found";
-    }
-}
-exports.EntityFactory = EntityFactory;
-
-
-/***/ }),
-
-/***/ "./src/entity/building/entityBuilding.ts":
-/*!***********************************************!*\
-  !*** ./src/entity/building/entityBuilding.ts ***!
-  \***********************************************/
-/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.EntityBuilding = void 0;
-const collisionComponent_1 = __webpack_require__(/*! ../../component/collisionComponent */ "./src/component/collisionComponent.ts");
-const modelComponent_1 = __webpack_require__(/*! ../../component/modelComponent */ "./src/component/modelComponent.ts");
-const entity_1 = __webpack_require__(/*! ../entity */ "./src/entity/entity.ts");
-class EntityBuilding extends entity_1.Entity {
-    constructor(world) {
-        super(world);
-        //this.addComponent(new PlayerComponent());
-        //const sprite = this.addComponent(new SpriteComponent());
-        //sprite.add('default', 'assets/car.png', 1, 200, 100);
-        const collision = this.addComponent(new collisionComponent_1.CollisionComponent());
-        collision.options.frictionAir = 0.1;
-        //collision.options.isStatic = true;
-        collision.addRectangle('default', 0, 0, 20, 20);
-        //collision.addRectangle('part2', 0, 300, 200, 100);
-        const model = this.addComponent(new modelComponent_1.ModelComponent());
-        model.path = "assets/building.glb";
-    }
-}
-exports.EntityBuilding = EntityBuilding;
-
-
-/***/ }),
-
-/***/ "./src/entity/entity.ts":
-/*!******************************!*\
-  !*** ./src/entity/entity.ts ***!
-  \******************************/
-/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
-
-"use strict";
-
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.Entity = void 0;
-const pc = __importStar(__webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs"));
-const uuid_1 = __webpack_require__(/*! uuid */ "./node_modules/uuid/dist/esm-browser/index.js");
-const transformComponent_1 = __webpack_require__(/*! ../component/transformComponent */ "./src/component/transformComponent.ts");
-class Entity {
-    constructor(world, pcEntity) {
-        this.data = {};
-        this.destroyed = false;
-        this._id = (0, uuid_1.v4)();
-        this._components = [];
-        this._hasInitalized = false;
-        this._world = world;
-        if (pcEntity)
-            this._pcEntity = pcEntity;
-        this._transform = this.addComponent(new transformComponent_1.TransformComponent());
-    }
-    get id() { return this._id; }
-    get world() { return this._world; }
-    get components() { return this._components; }
-    get transform() { return this._transform; }
-    get pcEntity() {
-        if (!this._pcEntity)
-            this._pcEntity = new pc.Entity();
-        return this._pcEntity;
-    }
-    setId(id) {
-        this._id = id;
-    }
-    /*
-    public setPcEntity(entity: pc.Entity) {
-        this._pcEntity = entity;
-    }
-    */
-    addComponent(c) {
-        c.entity = this;
-        this._components.push(c);
-        if (this._hasInitalized)
-            c.init();
-        return c;
-    }
-    hasComponent(constr) {
-        for (const component of this._components)
-            if (component instanceof constr)
-                return true;
-        return false;
-    }
-    getComponent(constr) {
-        for (const component of this._components)
-            if (component instanceof constr)
-                return component;
-        throw new Error(`Component ${constr.name} not found on Entity ${this.constructor.name}`);
-    }
-    init() {
-        for (const component of this._components)
-            component.init();
-        this._hasInitalized = true;
-    }
-    update(dt) {
-        for (const component of this._components)
-            component.update(dt);
-    }
-    postupdate(dt) {
-        for (const component of this._components)
-            component.postupdate(dt);
-    }
-    destroy() {
-        if (this.destroyed)
-            return;
-        this.destroyed = true;
-        for (const component of this._components)
-            component.destroy();
-    }
-}
-exports.Entity = Entity;
-
-
-/***/ }),
-
-/***/ "./src/entity/player/entityPlayer.ts":
-/*!*******************************************!*\
-  !*** ./src/entity/player/entityPlayer.ts ***!
-  \*******************************************/
-/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.EntityPlayer = void 0;
-const collisionComponent_1 = __webpack_require__(/*! ../../component/collisionComponent */ "./src/component/collisionComponent.ts");
-const inputHandlerComponent_1 = __webpack_require__(/*! ../../component/inputHandlerComponent */ "./src/component/inputHandlerComponent.ts");
-const playerComponent_1 = __webpack_require__(/*! ../../component/playerComponent */ "./src/component/playerComponent.ts");
-const spriteComponent_1 = __webpack_require__(/*! ../../component/spriteComponent */ "./src/component/spriteComponent.ts");
-const entity_1 = __webpack_require__(/*! ../entity */ "./src/entity/entity.ts");
-class EntityPlayer extends entity_1.Entity {
-    constructor(world) {
-        super(world);
-        this.addComponent(new playerComponent_1.PlayerComponent());
-        this.addComponent(new inputHandlerComponent_1.InputHandlerComponent());
-        const sprite = this.addComponent(new spriteComponent_1.SpriteComponent());
-        sprite.add('default', 'assets/player.png', 3, 100, 100);
-        const collision = this.addComponent(new collisionComponent_1.CollisionComponent());
-        collision.options.frictionAir = 0.2;
-        collision.addRectangle('default', 0, 0, 100, 100);
-    }
-}
-exports.EntityPlayer = EntityPlayer;
-
-
-/***/ }),
-
-/***/ "./src/entity/vehicle/entityVehicle.ts":
-/*!*********************************************!*\
-  !*** ./src/entity/vehicle/entityVehicle.ts ***!
-  \*********************************************/
-/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.EntityVehicle = void 0;
-const collisionComponent_1 = __webpack_require__(/*! ../../component/collisionComponent */ "./src/component/collisionComponent.ts");
-const spriteComponent_1 = __webpack_require__(/*! ../../component/spriteComponent */ "./src/component/spriteComponent.ts");
-const entity_1 = __webpack_require__(/*! ../entity */ "./src/entity/entity.ts");
-class EntityVehicle extends entity_1.Entity {
-    constructor(world) {
-        super(world);
-        const sprite = this.addComponent(new spriteComponent_1.SpriteComponent());
-        sprite.add('default', 'assets/car.png', 1, 200, 100);
-        const collision = this.addComponent(new collisionComponent_1.CollisionComponent());
-        collision.options.frictionAir = 0.1;
-        collision.addRectangle('default', 0, 0, 200, 100);
-        //collision.addRectangle('part2', 0, 300, 200, 100);
-        //const model = this.addComponent(new ModelComponent());
-        //model.path = "assets/building.glb";
-    }
-}
-exports.EntityVehicle = EntityVehicle;
-
-
-/***/ }),
-
-/***/ "./src/game/game.ts":
-/*!**************************!*\
-  !*** ./src/game/game.ts ***!
-  \**************************/
-/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.Game = void 0;
-const inputHandlerComponent_1 = __webpack_require__(/*! ../component/inputHandlerComponent */ "./src/component/inputHandlerComponent.ts");
-const playerComponent_1 = __webpack_require__(/*! ../component/playerComponent */ "./src/component/playerComponent.ts");
-const transformComponent_1 = __webpack_require__(/*! ../component/transformComponent */ "./src/component/transformComponent.ts");
-const entityBuilding_1 = __webpack_require__(/*! ../entity/building/entityBuilding */ "./src/entity/building/entityBuilding.ts");
-const entityPlayer_1 = __webpack_require__(/*! ../entity/player/entityPlayer */ "./src/entity/player/entityPlayer.ts");
-const entityVehicle_1 = __webpack_require__(/*! ../entity/vehicle/entityVehicle */ "./src/entity/vehicle/entityVehicle.ts");
-const entityFactory_1 = __webpack_require__(/*! ../entityFactory/entityFactory */ "./src/entityFactory/entityFactory.ts");
-const world_1 = __webpack_require__(/*! ../world/world */ "./src/world/world.ts");
-class Game {
-    constructor() {
-        this._worlds = new Map();
-        this._entityFactory = new entityFactory_1.EntityFactory();
-        this._entityFactory.registerComponent(inputHandlerComponent_1.InputHandlerComponent);
-        this._entityFactory.registerComponent(playerComponent_1.PlayerComponent);
-        this._entityFactory.registerComponent(transformComponent_1.TransformComponent);
-        this._entityFactory.registerEntity('EntityBuilding', entityBuilding_1.EntityBuilding);
-        this._entityFactory.registerEntity('EntityPlayer', entityPlayer_1.EntityPlayer);
-        this._entityFactory.registerEntity('EntityVehicle', entityVehicle_1.EntityVehicle);
-    }
-    get worlds() { return Array.from(this._worlds.values()); }
-    get entityFactory() { return this._entityFactory; }
-    start() {
-        console.log(`[game] start`);
-    }
-    update(dt) {
-        this.worlds.map(world => world.update(dt));
-    }
-    createWorld(name) {
-        console.log(`[game] create world '${name}'`);
-        const world = new world_1.World(this);
-        this._worlds.set(name, world);
-        return world;
-    }
-}
-exports.Game = Game;
-
-
-/***/ }),
-
-/***/ "./src/gameface/gameface.ts":
-/*!**********************************!*\
-  !*** ./src/gameface/gameface.ts ***!
-  \**********************************/
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -17797,17 +16895,18 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.Gameface = void 0;
 const pc = __importStar(__webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs"));
-const camera_1 = __webpack_require__(/*! ../camera/camera */ "./src/camera/camera.ts");
-const inputHandlerComponent_1 = __webpack_require__(/*! ../component/inputHandlerComponent */ "./src/component/inputHandlerComponent.ts");
-const syncComponent_1 = __webpack_require__(/*! ../component/syncComponent */ "./src/component/syncComponent.ts");
-const entityPlayer_1 = __webpack_require__(/*! ../entity/player/entityPlayer */ "./src/entity/player/entityPlayer.ts");
-const game_1 = __webpack_require__(/*! ../game/game */ "./src/game/game.ts");
-const input_1 = __webpack_require__(/*! ../input/input */ "./src/input/input.ts");
-const network_1 = __webpack_require__(/*! ../network/network */ "./src/network/network.ts");
-const render_1 = __webpack_require__(/*! ./render */ "./src/gameface/render.ts");
+const camera_1 = __webpack_require__(/*! ../camera/camera */ "./src/client/camera/camera.ts");
+const inputHandlerComponent_1 = __webpack_require__(/*! ../../shared/component/inputHandlerComponent */ "./src/shared/component/inputHandlerComponent.ts");
+const syncComponent_1 = __webpack_require__(/*! ../../shared/component/syncComponent */ "./src/shared/component/syncComponent.ts");
+const entityPlayer_1 = __webpack_require__(/*! ../../shared/entity/player/entityPlayer */ "./src/shared/entity/player/entityPlayer.ts");
+const game_1 = __webpack_require__(/*! ../../shared/game/game */ "./src/shared/game/game.ts");
+const input_1 = __webpack_require__(/*! ../../shared/input/input */ "./src/shared/input/input.ts");
+const network_1 = __webpack_require__(/*! ../network/network */ "./src/client/network/network.ts");
+const render_1 = __webpack_require__(/*! ./render */ "./src/client/gameface/render.ts");
+const textScript_1 = __webpack_require__(/*! ../playcanvas/scripts/textScript */ "./src/client/playcanvas/scripts/textScript.ts");
 class Gameface {
     constructor(canvas) {
-        this.controllingEntity = "";
+        this.controllingEntityId = "";
         this._canvas = canvas;
         this._game = new game_1.Game();
         this._network = new network_1.Network();
@@ -17840,6 +16939,7 @@ class Gameface {
     update(dt) {
         this.game.update(dt);
         this.network.update(dt);
+        this.checkControllingEntity();
         camera_1.Camera.update(dt);
         render_1.Render.update(dt);
     }
@@ -17850,13 +16950,24 @@ class Gameface {
             touch: new pc.TouchDevice(canvas),
             keyboard: new pc.Keyboard(document.body)
         });
-        ///pc.registerScript(TextScript, 'textScript', app);
+        pc.registerScript(textScript_1.TextScript, 'textScript', app);
         app.resizeCanvas(800, 600);
         app.setCanvasFillMode(pc.FILLMODE_FILL_WINDOW);
         app.setCanvasResolution(pc.RESOLUTION_AUTO);
         app.scene.ambientLight = new pc.Color(0.2, 0.2, 0.2);
         app.on('update', (dt) => this.update(dt));
         app.start();
+        window.addEventListener('resize', function (event) {
+            app.resizeCanvas();
+        }, true);
+        //--
+        /*
+        const text = new pc.Entity('text');
+        app.root.addChild(text);
+        const textScript = (text.addComponent('script') as pc.ScriptComponent).create('textScript') as TextScript;
+
+        console.log(textScript)
+        */
     }
     setPlayer(entity) {
         this.player = entity;
@@ -17865,11 +16976,13 @@ class Gameface {
     }
     checkControllingEntity() {
         if (this.player) {
-            if (this.player.id == this.controllingEntity)
+            if (this.player.id == this.controllingEntityId)
                 return;
         }
         const world = this.game.worlds[0];
-        const entity = world.getEntity(this.controllingEntity);
+        if (!world)
+            return;
+        const entity = world.getEntity(this.controllingEntityId);
         if (entity) {
             this.setPlayer(entity);
         }
@@ -17880,10 +16993,10 @@ exports.Gameface = Gameface;
 
 /***/ }),
 
-/***/ "./src/gameface/render.ts":
-/*!********************************!*\
-  !*** ./src/gameface/render.ts ***!
-  \********************************/
+/***/ "./src/client/gameface/render.ts":
+/*!***************************************!*\
+  !*** ./src/client/gameface/render.ts ***!
+  \***************************************/
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -17910,6 +17023,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.Render = void 0;
 const pc = __importStar(__webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs"));
+const worldTextManager_1 = __webpack_require__(/*! ../worldText/worldTextManager */ "./src/client/worldText/worldTextManager.ts");
 class Render {
     static init(app) {
         this.app = app;
@@ -17917,6 +17031,7 @@ class Render {
     }
     static update(dt) {
         this.renderWorld();
+        worldTextManager_1.WorldTextManager.render();
     }
     static renderWorld() {
         const world = this.world;
@@ -17928,20 +17043,28 @@ class Render {
                 this._renderingEntities.push(entity);
                 console.log("[render] add pcEntity");
                 app.root.addChild(entity.pcEntity);
-                const material = new pc.StandardMaterial();
-                material.diffuse = new pc.Color(0, 1, 0);
-                material.update();
-                const centerPcEntity = new pc.Entity();
-                centerPcEntity.addComponent("render", {
-                    material: material,
-                    type: "box",
-                });
-                centerPcEntity.setLocalScale(new pc.Vec3(0.2, 0.2, 0.2));
-                entity.pcEntity.addChild(centerPcEntity);
+                console.log(entity.pcEntityRoot.children);
+                console.log("found", entity.pcEntityRoot.findByName('CenterDebug'));
+                if (!entity.pcEntityRoot.findByName('CenterDebug')) {
+                    const material = new pc.StandardMaterial();
+                    material.diffuse = new pc.Color(0, 1, 0);
+                    material.update();
+                    const centerPcEntity = new pc.Entity('CenterDebug');
+                    centerPcEntity.addComponent("render", {
+                        material: material,
+                        type: "box",
+                    });
+                    centerPcEntity.setLocalScale(new pc.Vec3(0.2, 0.2, 0.2));
+                    entity.pcEntityRoot.addChild(centerPcEntity);
+                    console.log('CenterDebug', entity);
+                }
+                /*
+                can't create new pc.Entity every time it streams in..
+                */
             }
             const transform = entity.transform;
             entity.pcEntity.setPosition(transform.position.x * 0.01, 0, transform.position.y * 0.01);
-            entity.pcEntity.setEulerAngles(0, pc.math.RAD_TO_DEG * -transform.angle, 0);
+            entity.pcEntityRoot.setEulerAngles(0, pc.math.RAD_TO_DEG * -transform.angle, 0);
         }
         for (const entity of this._renderingEntities) {
             if (!world.entities.includes(entity)) {
@@ -18000,108 +17123,10 @@ Render._renderingEntities = [];
 
 /***/ }),
 
-/***/ "./src/glbLoader/glbLoader.ts":
-/*!************************************!*\
-  !*** ./src/glbLoader/glbLoader.ts ***!
-  \************************************/
-/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.GLBLoader = void 0;
-const gameface_1 = __webpack_require__(/*! ../gameface/gameface */ "./src/gameface/gameface.ts");
-class GLBLoader {
-    static loadModel(url, callback) {
-        const utils = __webpack_require__(/*! ./glb-utils.js */ "./src/glbLoader/glb-utils.js");
-        gameface_1.Gameface.Instance.app.assets.loadFromUrl(url, 'binary', function (err, glbAsset) {
-            if (!glbAsset)
-                return console.error("error");
-            utils.loadGlbContainerFromAsset(glbAsset, null, glbAsset.name, function (err, asset) {
-                var renderRootEntity = asset.resource.instantiateRenderEntity();
-                callback(renderRootEntity);
-            });
-        });
-    }
-}
-exports.GLBLoader = GLBLoader;
-
-
-/***/ }),
-
-/***/ "./src/input/input.ts":
-/*!****************************!*\
-  !*** ./src/input/input.ts ***!
-  \****************************/
-/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
-
-"use strict";
-
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.Input = void 0;
-const pc = __importStar(__webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs"));
-class Input {
-    static init(app) {
-        console.log("[input] init");
-        app.keyboard.on(pc.EVENT_KEYDOWN, this.onKeyDown, this);
-        app.keyboard.on(pc.EVENT_KEYUP, this.onKeyUp, this);
-    }
-    static update(dt) {
-    }
-    static getKeyDown(key) {
-        const keyCodes = [];
-        if (typeof key == 'string') {
-            keyCodes.push(key.toLowerCase().charCodeAt(0));
-            keyCodes.push(key.toUpperCase().charCodeAt(0));
-        }
-        else {
-            keyCodes.push(key);
-        }
-        for (const keyCode of keyCodes) {
-            const state = this._keys.get(keyCode) === true;
-            if (state)
-                return true;
-        }
-        return false;
-    }
-    static onKeyDown(e) {
-        const keyCode = parseInt(e.key);
-        this._keys.set(keyCode, true);
-    }
-    static onKeyUp(e) {
-        const keyCode = parseInt(e.key);
-        this._keys.set(keyCode, false);
-    }
-}
-exports.Input = Input;
-Input._keys = new Map();
-
-
-/***/ }),
-
-/***/ "./src/network/network.ts":
-/*!********************************!*\
-  !*** ./src/network/network.ts ***!
-  \********************************/
+/***/ "./src/client/network/network.ts":
+/*!***************************************!*\
+  !*** ./src/client/network/network.ts ***!
+  \***************************************/
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -18113,11 +17138,11 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.Network = exports.PacketType = void 0;
 const bytebuffer_1 = __importDefault(__webpack_require__(/*! bytebuffer */ "./node_modules/bytebuffer/dist/bytebuffer.js"));
 const socket_io_client_1 = __webpack_require__(/*! socket.io-client */ "./node_modules/socket.io-client/build/cjs/index.js");
-const inputHandlerComponent_1 = __webpack_require__(/*! ../component/inputHandlerComponent */ "./src/component/inputHandlerComponent.ts");
-const syncComponent_1 = __webpack_require__(/*! ../component/syncComponent */ "./src/component/syncComponent.ts");
-const gameface_1 = __webpack_require__(/*! ../gameface/gameface */ "./src/gameface/gameface.ts");
-const formatPacket_1 = __webpack_require__(/*! ../packet/formatPacket */ "./src/packet/formatPacket.ts");
-const packet_1 = __webpack_require__(/*! ../packet/packet */ "./src/packet/packet.ts");
+const inputHandlerComponent_1 = __webpack_require__(/*! ../../shared/component/inputHandlerComponent */ "./src/shared/component/inputHandlerComponent.ts");
+const syncComponent_1 = __webpack_require__(/*! ../../shared/component/syncComponent */ "./src/shared/component/syncComponent.ts");
+const gameface_1 = __webpack_require__(/*! ../gameface/gameface */ "./src/client/gameface/gameface.ts");
+const formatPacket_1 = __webpack_require__(/*! ../../shared/packet/formatPacket */ "./src/shared/packet/formatPacket.ts");
+const packet_1 = __webpack_require__(/*! ../../shared/packet/packet */ "./src/shared/packet/packet.ts");
 var PacketType;
 (function (PacketType) {
     PacketType[PacketType["ENTITY_DATA"] = 0] = "ENTITY_DATA";
@@ -18230,7 +17255,7 @@ class Network {
         }
         if (packetType == PacketType.CONTROLL_ENTITY) {
             const entityId = packet.readString();
-            gameface_1.Gameface.Instance.controllingEntity = entityId;
+            gameface_1.Gameface.Instance.controllingEntityId = entityId;
             gameface_1.Gameface.Instance.checkControllingEntity();
         }
     }
@@ -18240,18 +17265,1339 @@ exports.Network = Network;
 
 /***/ }),
 
-/***/ "./src/packet/formatPacket.ts":
-/*!************************************!*\
-  !*** ./src/packet/formatPacket.ts ***!
-  \************************************/
+/***/ "./src/client/planeSprite/planeSprite.ts":
+/*!***********************************************!*\
+  !*** ./src/client/planeSprite/planeSprite.ts ***!
+  \***********************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.PlaneSprite = void 0;
+const pc = __importStar(__webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs"));
+const animatedMaterial_1 = __webpack_require__(/*! ../animatedMaterial/animatedMaterial */ "./src/client/animatedMaterial/animatedMaterial.ts");
+const render_1 = __webpack_require__(/*! ../gameface/render */ "./src/client/gameface/render.ts");
+class PlaneSprite {
+    constructor(url, frames, width, height) {
+        const animatedMaterial = this._animatedMaterial = new animatedMaterial_1.AnimatedMaterial(frames, 1, 200);
+        render_1.Render.loadAsset(url, (asset) => {
+            animatedMaterial.setAsset(asset);
+        });
+        const pcEntity = this._pcEntity = new pc.Entity();
+        pcEntity.addComponent("render", {
+            material: animatedMaterial.material,
+            type: "plane",
+        });
+        pcEntity.setLocalScale(new pc.Vec3(width * 0.01, 1, height * 0.01));
+    }
+    get pcEntity() { return this._pcEntity; }
+    update(dt) {
+        this._animatedMaterial.update(dt);
+    }
+}
+exports.PlaneSprite = PlaneSprite;
+
+
+/***/ }),
+
+/***/ "./src/client/playcanvas/glbLoader/glbLoader.ts":
+/*!******************************************************!*\
+  !*** ./src/client/playcanvas/glbLoader/glbLoader.ts ***!
+  \******************************************************/
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.GLBLoader = void 0;
+const gameface_1 = __webpack_require__(/*! ../../gameface/gameface */ "./src/client/gameface/gameface.ts");
+class GLBLoader {
+    static loadModel(url, callback) {
+        const utils = __webpack_require__(/*! ./glb-utils.js */ "./src/client/playcanvas/glbLoader/glb-utils.js");
+        gameface_1.Gameface.Instance.app.assets.loadFromUrl(url, 'binary', function (err, glbAsset) {
+            if (!glbAsset)
+                return console.error("error");
+            utils.loadGlbContainerFromAsset(glbAsset, null, glbAsset.name, function (err, asset) {
+                var renderRootEntity = asset.resource.instantiateRenderEntity();
+                callback(renderRootEntity);
+            });
+        });
+    }
+}
+exports.GLBLoader = GLBLoader;
+
+
+/***/ }),
+
+/***/ "./src/client/playcanvas/scripts/textScript.ts":
+/*!*****************************************************!*\
+  !*** ./src/client/playcanvas/scripts/textScript.ts ***!
+  \*****************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.TextScript = void 0;
+const pc = __importStar(__webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs"));
+class TextScript extends pc.ScriptType {
+    constructor() {
+        super(...arguments);
+        this.text = "WorldText";
+        this.fontsize = 20;
+        this.height = 20;
+    }
+    initialize() {
+        this.fire('initialize');
+        // Create a canvas to do the text rendering
+        this.canvas = document.createElement('canvas');
+        this.context = this.canvas.getContext("2d");
+        this.texture = new pc.Texture(this.app.graphicsDevice, {
+            format: pc.PIXELFORMAT_R8_G8_B8_A8
+        });
+        this.texture.setSource(this.canvas);
+        this.texture.minFilter = pc.FILTER_LINEAR_MIPMAP_LINEAR;
+        this.texture.magFilter = pc.FILTER_LINEAR;
+        this.texture.addressU = pc.ADDRESS_CLAMP_TO_EDGE;
+        this.texture.addressV = pc.ADDRESS_CLAMP_TO_EDGE;
+        const material = new pc.StandardMaterial();
+        this.entity.addComponent("render", {
+            material: material,
+            type: "plane",
+        });
+        this.entity.render.castShadows = false;
+        this.entity.render.receiveShadows = false;
+        //material.emissiveMap = this.texture;
+        material.opacityMap = this.texture;
+        material.diffuseMap = this.texture;
+        material.blendType = pc.BLEND_NORMAL;
+        material.depthTest = false;
+        material.update();
+        this.setTextureSize(512, this.height);
+        this.updateText();
+    }
+    setTextureSize(x, y) {
+        this.canvas.width = x;
+        this.canvas.height = y;
+        this.entity.setLocalScale(x * 0.01, 1, y * 0.01);
+    }
+    setText(text) {
+        this.applyFont();
+        const ctx = this.context;
+        const width = ctx.measureText(text).width;
+        this.setTextureSize(width, this.height);
+        var w = ctx.canvas.width;
+        var h = ctx.canvas.height;
+        ctx.fillStyle = "#000000";
+        ctx.clearRect(0, 0, w, h);
+        ctx.fillRect(0, 0, w, h);
+        this.applyFont();
+        ctx.fillText(text, w / 2, h / 2);
+        this.texture.upload();
+    }
+    applyFont() {
+        var ctx = this.context;
+        ctx.font = 'bold ' + String(this.fontsize) + 'px Verdana';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = 'white';
+    }
+    updateText() {
+        this.setText(this.text);
+        setInterval(() => {
+            //this.text = `${Math.random()}`
+            //this.setText(this.text);
+        }, 200);
+    }
+    postInitialize() {
+        this.fire('postInitialize');
+    }
+    update(dt) {
+        this.fire('update', dt);
+    }
+    postUpdate(dt) {
+        this.fire('postUpdate', dt);
+        //var pos = PlayCanvas.camera.getPosition();
+        //this.entity.setPosition(pos.x, 0, pos.z)
+        //this.text = `${this.app.}`;
+        //this.updateText();
+    }
+    swap() {
+        this.fire('swap');
+    }
+}
+exports.TextScript = TextScript;
+//TestScript.attributes.add('height', {type: 'number', default: 5});
+//TestScript.attributes.add('followEntity', {type: 'entity'});
+
+
+/***/ }),
+
+/***/ "./src/client/worldText/worldTextManager.ts":
+/*!**************************************************!*\
+  !*** ./src/client/worldText/worldTextManager.ts ***!
+  \**************************************************/
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.WorldTextManager = void 0;
+class WorldTextManager {
+    static createWorldText(x, y) {
+    }
+    static render() {
+    }
+}
+exports.WorldTextManager = WorldTextManager;
+
+
+/***/ }),
+
+/***/ "./src/shared/component/collisionComponent.ts":
+/*!****************************************************!*\
+  !*** ./src/shared/component/collisionComponent.ts ***!
+  \****************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.CollisionComponent = void 0;
+const matter_js_1 = __importDefault(__webpack_require__(/*! matter-js */ "./node_modules/matter-js/build/matter.js"));
+const component_1 = __webpack_require__(/*! ./component */ "./src/shared/component/component.ts");
+class BodyPart {
+    constructor(key, x, y, type) {
+        this.Width = 0;
+        this.Height = 0;
+        this.Radius = 0;
+        this.Key = key;
+        this.X = x;
+        this.Y = y;
+        this.Type = type;
+    }
+}
+var BodyType;
+(function (BodyType) {
+    BodyType[BodyType["RECTANGLE"] = 0] = "RECTANGLE";
+    BodyType[BodyType["CIRCLE"] = 1] = "CIRCLE";
+})(BodyType || (BodyType = {}));
+class CollisionComponent extends component_1.Component {
+    constructor() {
+        super(...arguments);
+        this.priority = 0;
+        this.options = { mass: 20, friction: 0.001, frictionAir: 0.3 };
+        this._bodyParts = new Map();
+    }
+    get body() { return this._body; }
+    init() {
+        console.log("colision init");
+        super.init();
+        this.createBody();
+        //const body = this._body = Matter.Bodies.rectangle(0, 0, 100, 100, this.options);
+        //Matter.Composite.add(this.entity.world.matter.world!, body);
+    }
+    createBody() {
+        const options = Object.assign({}, this.options);
+        const parts = [];
+        const matterWorld = this.entity.world.matter.world;
+        for (const bodyPart of this._bodyParts.values()) {
+            if (bodyPart.Type == BodyType.RECTANGLE)
+                bodyPart.Body = matter_js_1.default.Bodies.rectangle(bodyPart.X, bodyPart.Y, bodyPart.Width, bodyPart.Height, options);
+            if (bodyPart.Type == BodyType.CIRCLE)
+                bodyPart.Body = matter_js_1.default.Bodies.circle(bodyPart.X, bodyPart.Y, bodyPart.Radius, options);
+            parts.push(bodyPart.Body);
+        }
+        options.parts = parts;
+        var body = matter_js_1.default.Body.create(options);
+        matter_js_1.default.Composite.add(matterWorld, body);
+        //matter.world.add(body)
+        this._body = body;
+        //this.setPosition(this.entity.transform.position.x, this.entity.transform.position.y)
+    }
+    update(dt) {
+        super.update(dt);
+    }
+    postupdate(dt) {
+        super.postupdate(dt);
+    }
+    getBodyPart(key) {
+        return this._bodyParts.get(key);
+    }
+    addRectangle(key, x, y, width, height) {
+        var bodyPart = new BodyPart(key, x, y, BodyType.RECTANGLE);
+        bodyPart.Width = width;
+        bodyPart.Height = height;
+        this._bodyParts.set(key, bodyPart);
+        return bodyPart;
+    }
+    addCircle(key, x, y, radius) {
+        var bodyPart = new BodyPart(key, x, y, BodyType.CIRCLE);
+        bodyPart.Radius = radius;
+        this._bodyParts.set(key, bodyPart);
+        return bodyPart;
+    }
+    setPosition(x, y) {
+        var body = this.body;
+        matter_js_1.default.Body.setPosition(body, { x: x, y: y });
+    }
+    setVelocity(x, y) {
+        var body = this.body;
+        matter_js_1.default.Body.setVelocity(body, { x: x, y: y });
+    }
+    destroy() {
+        super.destroy();
+        const matterWorld = this.entity.world.matter.world;
+        matter_js_1.default.Composite.remove(matterWorld, this.body);
+    }
+}
+exports.CollisionComponent = CollisionComponent;
+/*
+xport class CollisionComponent extends Component {
+    private _body: Matter.Body;
+
+    public get body() { return this._body; }
+
+    public size = new pc.Vec2(10, 10);
+    public frictionAir: number = 0.2;
+
+    public init() {
+        super.init();
+
+        const body = this._body = Matter.Bodies.rectangle(0, 0, this.size.x * 10, this.size.y * 10, { friction: 0.001, frictionAir: this.frictionAir });
+        Matter.Composite.add(this.entity.world.matterWorld, body);
+    }
+
+    public update(dt: number) {
+        super.update(dt);
+    }
+}
+*/ 
+
+
+/***/ }),
+
+/***/ "./src/shared/component/component.ts":
+/*!*******************************************!*\
+  !*** ./src/shared/component/component.ts ***!
+  \*******************************************/
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Component = void 0;
+class Component {
+    constructor() {
+        this.priority = 0;
+    }
+    init() {
+        console.log(`[${this.constructor.name}] init`);
+    }
+    destroy() {
+        console.log(`[${this.constructor.name}] destroy`);
+    }
+    update(dt) { }
+    postupdate(dt) { }
+    serialize(packet) {
+        return packet;
+    }
+    unserialize(packet) {
+        return packet;
+    }
+    ;
+}
+exports.Component = Component;
+
+
+/***/ }),
+
+/***/ "./src/shared/component/debugComponent.ts":
+/*!************************************************!*\
+  !*** ./src/shared/component/debugComponent.ts ***!
+  \************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.DebugComponent = void 0;
+const pc = __importStar(__webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs"));
+const render_1 = __webpack_require__(/*! ../../client/gameface/render */ "./src/client/gameface/render.ts");
+const component_1 = __webpack_require__(/*! ./component */ "./src/shared/component/component.ts");
+class DebugComponent extends component_1.Component {
+    constructor() {
+        super(...arguments);
+        this.priority = 0;
+    }
+    init() {
+        super.init();
+        if (!render_1.Render.app)
+            return;
+        const text = new pc.Entity('text');
+        const textScript = text.addComponent('script').create('textScript');
+        textScript.text = this.entity.constructor.name;
+        this.entity.pcEntity.addChild(text);
+    }
+    update(dt) {
+        super.update(dt);
+    }
+}
+exports.DebugComponent = DebugComponent;
+
+
+/***/ }),
+
+/***/ "./src/shared/component/inputHandlerComponent.ts":
+/*!*******************************************************!*\
+  !*** ./src/shared/component/inputHandlerComponent.ts ***!
+  \*******************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.InputHandlerComponent = void 0;
+const pc = __importStar(__webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs"));
+const render_1 = __webpack_require__(/*! ../../client/gameface/render */ "./src/client/gameface/render.ts");
+const input_1 = __webpack_require__(/*! ../input/input */ "./src/shared/input/input.ts");
+const component_1 = __webpack_require__(/*! ./component */ "./src/shared/component/component.ts");
+const syncComponent_1 = __webpack_require__(/*! ./syncComponent */ "./src/shared/component/syncComponent.ts");
+class InputHandlerComponent extends component_1.Component {
+    constructor() {
+        super(...arguments);
+        this.priority = 0;
+        this.enabled = false;
+        this.speed = 4;
+        this.horizontal = 0;
+        this.vertical = 0;
+    }
+    init() {
+        super.init();
+    }
+    update(dt) {
+        super.update(dt);
+        if (this.enabled) {
+            const KEY_LEFT = 65;
+            const KEY_RIGHT = 68;
+            const KEY_UP = 87;
+            const KEY_DOWN = 83;
+            this.horizontal = (input_1.Input.getKeyDown(KEY_RIGHT) ? 1 : 0) + ((input_1.Input.getKeyDown(KEY_LEFT) ? -1 : 0));
+            this.vertical = (input_1.Input.getKeyDown(KEY_DOWN) ? 1 : 0) + ((input_1.Input.getKeyDown(KEY_UP) ? -1 : 0));
+            if (render_1.Render.app) {
+                var graphicsDevice = render_1.Render.app.graphicsDevice;
+                var screenCenter = new pc.Vec2(graphicsDevice.width / 2, graphicsDevice.height / 2);
+                var direction = new pc.Vec2();
+                direction.sub2(input_1.Input.mousePosition, screenCenter);
+                direction.normalize();
+                var angle = Math.atan2(direction.y, direction.x);
+                this.entity.transform.setAngle(angle);
+            }
+            //console.log(this.horizontal, this.vertical)
+        }
+    }
+    serialize(packet) {
+        packet.writeDouble(this.horizontal);
+        packet.writeDouble(this.vertical);
+        return packet;
+    }
+    unserialize(packet) {
+        const horizontal = packet.readDouble();
+        const vertical = packet.readDouble();
+        let sync = true;
+        if (this.entity.hasComponent(syncComponent_1.SyncComponent)) {
+            if (this.entity.getComponent(syncComponent_1.SyncComponent).syncType == syncComponent_1.SyncType.DONT_SYNC)
+                sync = false;
+        }
+        if (sync) {
+            this.horizontal = horizontal;
+            this.vertical = vertical;
+        }
+        return packet;
+    }
+}
+exports.InputHandlerComponent = InputHandlerComponent;
+
+
+/***/ }),
+
+/***/ "./src/shared/component/modelComponent.ts":
+/*!************************************************!*\
+  !*** ./src/shared/component/modelComponent.ts ***!
+  \************************************************/
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ModelComponent = void 0;
+const render_1 = __webpack_require__(/*! ../../client/gameface/render */ "./src/client/gameface/render.ts");
+const glbLoader_1 = __webpack_require__(/*! ../../client/playcanvas/glbLoader/glbLoader */ "./src/client/playcanvas/glbLoader/glbLoader.ts");
+const component_1 = __webpack_require__(/*! ./component */ "./src/shared/component/component.ts");
+class ModelComponent extends component_1.Component {
+    constructor() {
+        super(...arguments);
+        this.priority = 0;
+        this.path = "";
+    }
+    init() {
+        super.init();
+        if (!render_1.Render.app)
+            return;
+        console.log("start loading", this.path);
+        const entity = this.entity;
+        glbLoader_1.GLBLoader.loadModel(this.path, (renderRootEntity) => {
+            console.log(renderRootEntity);
+            this._renderRootEntity = renderRootEntity;
+            entity.pcEntity.addChild(renderRootEntity);
+            console.log(renderRootEntity);
+        });
+    }
+    update(dt) {
+        super.update(dt);
+    }
+    postupdate(dt) {
+        super.postupdate(dt);
+    }
+    destroy() {
+        var _a;
+        super.destroy();
+        (_a = this._renderRootEntity) === null || _a === void 0 ? void 0 : _a.destroy();
+    }
+}
+exports.ModelComponent = ModelComponent;
+
+
+/***/ }),
+
+/***/ "./src/shared/component/playerComponent.ts":
+/*!*************************************************!*\
+  !*** ./src/shared/component/playerComponent.ts ***!
+  \*************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.PlayerComponent = void 0;
+const matter_js_1 = __importDefault(__webpack_require__(/*! matter-js */ "./node_modules/matter-js/build/matter.js"));
+const pc = __importStar(__webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs"));
+const collisionComponent_1 = __webpack_require__(/*! ./collisionComponent */ "./src/shared/component/collisionComponent.ts");
+const component_1 = __webpack_require__(/*! ./component */ "./src/shared/component/component.ts");
+const inputHandlerComponent_1 = __webpack_require__(/*! ./inputHandlerComponent */ "./src/shared/component/inputHandlerComponent.ts");
+class PlayerComponent extends component_1.Component {
+    constructor() {
+        super(...arguments);
+        this.speed = 100;
+    }
+    init() {
+        super.init();
+    }
+    update(dt) {
+        super.update(dt);
+        if (!this.entity.hasComponent(inputHandlerComponent_1.InputHandlerComponent))
+            return;
+        const inputHandler = this.entity.getComponent(inputHandlerComponent_1.InputHandlerComponent);
+        const move = new pc.Vec2(inputHandler.horizontal, inputHandler.vertical);
+        if (move.length() > 0) {
+            const collisionComponent = this.entity.getComponent(collisionComponent_1.CollisionComponent);
+            const s = this.speed * 0.05 * dt;
+            matter_js_1.default.Body.applyForce(collisionComponent.body, collisionComponent.body.position, { x: move.x * s, y: move.y * s });
+        }
+    }
+}
+exports.PlayerComponent = PlayerComponent;
+
+
+/***/ }),
+
+/***/ "./src/shared/component/spriteComponent.ts":
+/*!*************************************************!*\
+  !*** ./src/shared/component/spriteComponent.ts ***!
+  \*************************************************/
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.SpriteComponent = void 0;
+const render_1 = __webpack_require__(/*! ../../client/gameface/render */ "./src/client/gameface/render.ts");
+const planeSprite_1 = __webpack_require__(/*! ../../client/planeSprite/planeSprite */ "./src/client/planeSprite/planeSprite.ts");
+const component_1 = __webpack_require__(/*! ./component */ "./src/shared/component/component.ts");
+class SpriteComponent extends component_1.Component {
+    constructor() {
+        super(...arguments);
+        this.priority = 0;
+        this.path = "";
+        this._spriteOptions = new Map();
+    }
+    init() {
+        super.init();
+    }
+    add(id, texture, frames, width, height) {
+        const spriteOptions = {
+            texture: texture,
+            frames: frames,
+            width: width,
+            height: height
+        };
+        this._spriteOptions.set(id, spriteOptions);
+    }
+    update(dt) {
+        super.update(dt);
+        if (!render_1.Render.app)
+            return;
+        Array.from(this._spriteOptions.keys()).map(id => {
+            const spriteOptions = this._spriteOptions.get(id);
+            if (!spriteOptions.planeSprite) {
+                spriteOptions.planeSprite = new planeSprite_1.PlaneSprite(spriteOptions.texture, spriteOptions.frames, spriteOptions.width, spriteOptions.height);
+                this.entity.pcEntityRoot.addChild(spriteOptions.planeSprite.pcEntity);
+            }
+            spriteOptions.planeSprite.update(dt);
+        });
+    }
+    postupdate(dt) {
+        super.postupdate(dt);
+    }
+}
+exports.SpriteComponent = SpriteComponent;
+
+
+/***/ }),
+
+/***/ "./src/shared/component/syncComponent.ts":
+/*!***********************************************!*\
+  !*** ./src/shared/component/syncComponent.ts ***!
+  \***********************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.SyncComponent = exports.SyncType = void 0;
+const pc = __importStar(__webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs"));
+const component_1 = __webpack_require__(/*! ./component */ "./src/shared/component/component.ts");
+var SyncType;
+(function (SyncType) {
+    SyncType[SyncType["DONT_SYNC"] = 0] = "DONT_SYNC";
+    SyncType[SyncType["CLIENT_SYNC"] = 1] = "CLIENT_SYNC";
+    SyncType[SyncType["SERVER_SYNC"] = 2] = "SERVER_SYNC";
+})(SyncType = exports.SyncType || (exports.SyncType = {}));
+class SyncComponent extends component_1.Component {
+    constructor() {
+        super(...arguments);
+        this.priority = 0;
+        this.syncType = SyncType.CLIENT_SYNC;
+        this._targetPosition = new pc.Vec2();
+        this._targetVelocity = new pc.Vec2();
+        this._targetAngle = 0;
+        this._lastUpdated = 0;
+    }
+    init() {
+        super.init();
+    }
+    update(dt) {
+        super.update(dt);
+        if (this.syncType == SyncType.DONT_SYNC)
+            return;
+        const now = Date.now();
+        if (now - this._lastUpdated > 500)
+            return;
+        const transform = this.entity.transform;
+        let posLerp = 0.3;
+        const distance = this._targetPosition.distance(transform.position);
+        if (distance > 60) {
+            posLerp = 1;
+        }
+        const x = pc.math.lerp(transform.position.x, this._targetPosition.x, posLerp);
+        const y = pc.math.lerp(transform.position.y, this._targetPosition.y, posLerp);
+        const angle = pc.math.lerp(transform.angle, this._targetAngle, 0.7);
+        const velX = pc.math.lerp(transform.velocity.x, this._targetVelocity.x, 0.5);
+        const velY = pc.math.lerp(transform.velocity.y, this._targetVelocity.y, 0.5);
+        transform.setPosition(x, y);
+        transform.setAngle(angle);
+        transform.setVelocity(velX, velY);
+        transform.setAngularVelocity(0);
+    }
+    setPosition(x, y) {
+        this._lastUpdated = Date.now();
+        this._targetPosition.set(x, y);
+    }
+    setAngle(angle) {
+        this._lastUpdated = Date.now();
+        this._targetAngle = angle;
+    }
+    setVelocity(x, y) {
+        this._lastUpdated = Date.now();
+        this._targetVelocity.set(x, y);
+    }
+}
+exports.SyncComponent = SyncComponent;
+
+
+/***/ }),
+
+/***/ "./src/shared/component/transformComponent.ts":
+/*!****************************************************!*\
+  !*** ./src/shared/component/transformComponent.ts ***!
+  \****************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.TransformComponent = void 0;
+const matter_js_1 = __importDefault(__webpack_require__(/*! matter-js */ "./node_modules/matter-js/build/matter.js"));
+const pc = __importStar(__webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs"));
+const collisionComponent_1 = __webpack_require__(/*! ./collisionComponent */ "./src/shared/component/collisionComponent.ts");
+const component_1 = __webpack_require__(/*! ./component */ "./src/shared/component/component.ts");
+const syncComponent_1 = __webpack_require__(/*! ./syncComponent */ "./src/shared/component/syncComponent.ts");
+class TransformComponent extends component_1.Component {
+    constructor() {
+        super(...arguments);
+        this.priority = 0;
+        this.position = new pc.Vec2();
+        this.velocity = new pc.Vec2();
+        this._angle = 0;
+    }
+    get angle() { return this._angle; }
+    ;
+    init() {
+        super.init();
+    }
+    update(dt) {
+        super.update(dt);
+        this.handleCollisionComponent();
+    }
+    setPosition(x, y) {
+        this.position.x = x;
+        this.position.y = y;
+        if (this.entity.hasComponent(collisionComponent_1.CollisionComponent)) {
+            const c = this.entity.getComponent(collisionComponent_1.CollisionComponent);
+            c.setPosition(this.position.x, this.position.y);
+        }
+    }
+    setVelocity(x, y) {
+        this.velocity.x = x;
+        this.velocity.y = y;
+        if (this.entity.hasComponent(collisionComponent_1.CollisionComponent)) {
+            const c = this.entity.getComponent(collisionComponent_1.CollisionComponent);
+            c.setVelocity(this.velocity.x, this.velocity.y);
+        }
+    }
+    setAngle(angle) {
+        this._angle = angle;
+        if (this.entity.hasComponent(collisionComponent_1.CollisionComponent)) {
+            const c = this.entity.getComponent(collisionComponent_1.CollisionComponent);
+            matter_js_1.default.Body.setAngle(c.body, this._angle);
+        }
+    }
+    setAngularVelocity(velocity) {
+        if (this.entity.hasComponent(collisionComponent_1.CollisionComponent)) {
+            const c = this.entity.getComponent(collisionComponent_1.CollisionComponent);
+            matter_js_1.default.Body.setAngularVelocity(c.body, velocity);
+        }
+    }
+    handleCollisionComponent() {
+        if (this.entity.hasComponent(collisionComponent_1.CollisionComponent)) {
+            const c = this.entity.getComponent(collisionComponent_1.CollisionComponent);
+            this.position.x = c.body.position.x * 1;
+            this.position.y = c.body.position.y * 1;
+            this.velocity.x = c.body.velocity.x * 1;
+            this.velocity.y = c.body.velocity.y * 1;
+            this._angle = c.body.angle;
+        }
+    }
+    postupdate(dt) {
+        super.postupdate(dt);
+    }
+    serialize(packet) {
+        packet.writeDouble(this.position.x);
+        packet.writeDouble(this.position.y);
+        packet.writeDouble(this.velocity.x);
+        packet.writeDouble(this.velocity.y);
+        packet.writeDouble(this.angle); //change
+        return packet;
+    }
+    unserialize(packet) {
+        const x = packet.readDouble();
+        const y = packet.readDouble();
+        const velX = packet.readDouble();
+        const velY = packet.readDouble();
+        const angle = packet.readDouble();
+        //console.log('unserialzied', x, y);
+        if (this.entity.hasComponent(syncComponent_1.SyncComponent)) {
+            this.entity.getComponent(syncComponent_1.SyncComponent).setPosition(x, y);
+            this.entity.getComponent(syncComponent_1.SyncComponent).setAngle(angle);
+            this.entity.getComponent(syncComponent_1.SyncComponent).setVelocity(velX, velY);
+        }
+        else {
+            this.setPosition(x, y);
+            this.setAngle(angle);
+        }
+        return packet;
+    }
+}
+exports.TransformComponent = TransformComponent;
+
+
+/***/ }),
+
+/***/ "./src/shared/entityFactory/entityFactory.ts":
+/*!***************************************************!*\
+  !*** ./src/shared/entityFactory/entityFactory.ts ***!
+  \***************************************************/
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.EntityFactory = void 0;
+class EntityFactory {
+    constructor() {
+        this._allComponents = [];
+        this._allEntities = new Map();
+    }
+    registerEntity(name, constr) {
+        this._allEntities.set(name, constr);
+    }
+    registerComponent(constr) {
+        this._allComponents.push(constr);
+    }
+    getIndexOfComponent(c) {
+        let i = 0;
+        for (const constr of this._allComponents) {
+            if (c instanceof constr)
+                return i;
+            i++;
+        }
+        throw "Component " + c.constructor.name + " not found";
+    }
+    getEntityByIndex(index) {
+        return Array.from(this._allEntities.values())[index];
+    }
+    getIndexOfEntity(c) {
+        let i = 0;
+        for (const constr of this._allEntities.values()) {
+            if (c instanceof constr)
+                return i;
+            i++;
+        }
+        throw "Entity " + c.constructor.name + " not found";
+    }
+}
+exports.EntityFactory = EntityFactory;
+
+
+/***/ }),
+
+/***/ "./src/shared/entity/building/entityBuilding.ts":
+/*!******************************************************!*\
+  !*** ./src/shared/entity/building/entityBuilding.ts ***!
+  \******************************************************/
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.EntityBuilding = void 0;
+const collisionComponent_1 = __webpack_require__(/*! ../../component/collisionComponent */ "./src/shared/component/collisionComponent.ts");
+const debugComponent_1 = __webpack_require__(/*! ../../component/debugComponent */ "./src/shared/component/debugComponent.ts");
+const modelComponent_1 = __webpack_require__(/*! ../../component/modelComponent */ "./src/shared/component/modelComponent.ts");
+const entity_1 = __webpack_require__(/*! ../entity */ "./src/shared/entity/entity.ts");
+class EntityBuilding extends entity_1.Entity {
+    constructor(world) {
+        super(world);
+        this.addComponent(new debugComponent_1.DebugComponent());
+        //this.addComponent(new PlayerComponent());
+        //const sprite = this.addComponent(new SpriteComponent());
+        //sprite.add('default', 'assets/car.png', 1, 200, 100);
+        const collision = this.addComponent(new collisionComponent_1.CollisionComponent());
+        collision.options.frictionAir = 0.1;
+        collision.options.isStatic = true;
+        collision.addCircle('default', 0, 0, 10);
+        //collision.addRectangle('part2', 0, 300, 200, 100);
+        const model = this.addComponent(new modelComponent_1.ModelComponent());
+        model.path = "assets/building.glb";
+    }
+}
+exports.EntityBuilding = EntityBuilding;
+
+
+/***/ }),
+
+/***/ "./src/shared/entity/entity.ts":
+/*!*************************************!*\
+  !*** ./src/shared/entity/entity.ts ***!
+  \*************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Entity = void 0;
+const pc = __importStar(__webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs"));
+const uuid_1 = __webpack_require__(/*! uuid */ "./node_modules/uuid/dist/esm-browser/index.js");
+const transformComponent_1 = __webpack_require__(/*! ../component/transformComponent */ "./src/shared/component/transformComponent.ts");
+class Entity {
+    constructor(world, pcEntity) {
+        this.data = {};
+        this.destroyed = false;
+        this._id = (0, uuid_1.v4)();
+        this._components = [];
+        this._hasInitalized = false;
+        this._world = world;
+        if (pcEntity)
+            this._pcEntity = pcEntity;
+        this._transform = this.addComponent(new transformComponent_1.TransformComponent());
+    }
+    get id() { return this._id; }
+    get world() { return this._world; }
+    get components() { return this._components; }
+    get transform() { return this._transform; }
+    get pcEntity() {
+        if (!this._pcEntity) {
+            this._pcEntity = new pc.Entity('Entity');
+            this._pcEntity.addChild(new pc.Entity('Root'));
+        }
+        return this._pcEntity;
+    }
+    get pcEntityRoot() {
+        return this.pcEntity.findByName('Root');
+    }
+    setId(id) {
+        this._id = id;
+    }
+    /*
+    public setPcEntity(entity: pc.Entity) {
+        this._pcEntity = entity;
+    }
+    */
+    addComponent(c) {
+        c.entity = this;
+        this._components.push(c);
+        if (this._hasInitalized)
+            c.init();
+        return c;
+    }
+    hasComponent(constr) {
+        for (const component of this._components)
+            if (component instanceof constr)
+                return true;
+        return false;
+    }
+    getComponent(constr) {
+        for (const component of this._components)
+            if (component instanceof constr)
+                return component;
+        throw new Error(`Component ${constr.name} not found on Entity ${this.constructor.name}`);
+    }
+    init() {
+        for (const component of this._components)
+            component.init();
+        this._hasInitalized = true;
+    }
+    update(dt) {
+        for (const component of this._components)
+            component.update(dt);
+    }
+    postupdate(dt) {
+        for (const component of this._components)
+            component.postupdate(dt);
+    }
+    destroy() {
+        if (this.destroyed)
+            return;
+        this.destroyed = true;
+        for (const component of this._components)
+            component.destroy();
+    }
+}
+exports.Entity = Entity;
+
+
+/***/ }),
+
+/***/ "./src/shared/entity/player/entityPlayer.ts":
+/*!**************************************************!*\
+  !*** ./src/shared/entity/player/entityPlayer.ts ***!
+  \**************************************************/
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.EntityPlayer = void 0;
+const collisionComponent_1 = __webpack_require__(/*! ../../component/collisionComponent */ "./src/shared/component/collisionComponent.ts");
+const debugComponent_1 = __webpack_require__(/*! ../../component/debugComponent */ "./src/shared/component/debugComponent.ts");
+const inputHandlerComponent_1 = __webpack_require__(/*! ../../component/inputHandlerComponent */ "./src/shared/component/inputHandlerComponent.ts");
+const playerComponent_1 = __webpack_require__(/*! ../../component/playerComponent */ "./src/shared/component/playerComponent.ts");
+const spriteComponent_1 = __webpack_require__(/*! ../../component/spriteComponent */ "./src/shared/component/spriteComponent.ts");
+const entity_1 = __webpack_require__(/*! ../entity */ "./src/shared/entity/entity.ts");
+class EntityPlayer extends entity_1.Entity {
+    constructor(world) {
+        super(world);
+        this.addComponent(new debugComponent_1.DebugComponent());
+        this.addComponent(new playerComponent_1.PlayerComponent());
+        this.addComponent(new inputHandlerComponent_1.InputHandlerComponent());
+        const sprite = this.addComponent(new spriteComponent_1.SpriteComponent());
+        sprite.add('default', 'assets/player.png', 3, 100, 100);
+        const collision = this.addComponent(new collisionComponent_1.CollisionComponent());
+        collision.options.frictionAir = 0.2;
+        collision.addCircle('default', 0, 0, 50);
+    }
+}
+exports.EntityPlayer = EntityPlayer;
+
+
+/***/ }),
+
+/***/ "./src/shared/entity/vehicle/entityVehicle.ts":
+/*!****************************************************!*\
+  !*** ./src/shared/entity/vehicle/entityVehicle.ts ***!
+  \****************************************************/
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.EntityVehicle = void 0;
+const collisionComponent_1 = __webpack_require__(/*! ../../component/collisionComponent */ "./src/shared/component/collisionComponent.ts");
+const debugComponent_1 = __webpack_require__(/*! ../../component/debugComponent */ "./src/shared/component/debugComponent.ts");
+const spriteComponent_1 = __webpack_require__(/*! ../../component/spriteComponent */ "./src/shared/component/spriteComponent.ts");
+const entity_1 = __webpack_require__(/*! ../entity */ "./src/shared/entity/entity.ts");
+class EntityVehicle extends entity_1.Entity {
+    constructor(world) {
+        super(world);
+        this.addComponent(new debugComponent_1.DebugComponent());
+        const sprite = this.addComponent(new spriteComponent_1.SpriteComponent());
+        sprite.add('default', 'assets/car.png', 1, 200, 100);
+        const collision = this.addComponent(new collisionComponent_1.CollisionComponent());
+        collision.options.frictionAir = 0.1;
+        collision.options.mass = 100000;
+        collision.addRectangle('default', 0, 0, 200, 100);
+        //collision.addRectangle('part2', 0, 300, 200, 100);
+        //const model = this.addComponent(new ModelComponent());
+        //model.path = "assets/building.glb";
+    }
+}
+exports.EntityVehicle = EntityVehicle;
+
+
+/***/ }),
+
+/***/ "./src/shared/game/game.ts":
+/*!*********************************!*\
+  !*** ./src/shared/game/game.ts ***!
+  \*********************************/
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Game = void 0;
+const inputHandlerComponent_1 = __webpack_require__(/*! ../component/inputHandlerComponent */ "./src/shared/component/inputHandlerComponent.ts");
+const playerComponent_1 = __webpack_require__(/*! ../component/playerComponent */ "./src/shared/component/playerComponent.ts");
+const transformComponent_1 = __webpack_require__(/*! ../component/transformComponent */ "./src/shared/component/transformComponent.ts");
+const entityBuilding_1 = __webpack_require__(/*! ../entity/building/entityBuilding */ "./src/shared/entity/building/entityBuilding.ts");
+const entityPlayer_1 = __webpack_require__(/*! ../entity/player/entityPlayer */ "./src/shared/entity/player/entityPlayer.ts");
+const entityVehicle_1 = __webpack_require__(/*! ../entity/vehicle/entityVehicle */ "./src/shared/entity/vehicle/entityVehicle.ts");
+const entityFactory_1 = __webpack_require__(/*! ../entityFactory/entityFactory */ "./src/shared/entityFactory/entityFactory.ts");
+const world_1 = __webpack_require__(/*! ../world/world */ "./src/shared/world/world.ts");
+class Game {
+    constructor() {
+        this._worlds = new Map();
+        this._entityFactory = new entityFactory_1.EntityFactory();
+        this._entityFactory.registerComponent(inputHandlerComponent_1.InputHandlerComponent);
+        this._entityFactory.registerComponent(playerComponent_1.PlayerComponent);
+        this._entityFactory.registerComponent(transformComponent_1.TransformComponent);
+        this._entityFactory.registerEntity('EntityBuilding', entityBuilding_1.EntityBuilding);
+        this._entityFactory.registerEntity('EntityPlayer', entityPlayer_1.EntityPlayer);
+        this._entityFactory.registerEntity('EntityVehicle', entityVehicle_1.EntityVehicle);
+    }
+    get worlds() { return Array.from(this._worlds.values()); }
+    get entityFactory() { return this._entityFactory; }
+    start() {
+        console.log(`[game] start`);
+    }
+    update(dt) {
+        this.worlds.map(world => world.update(dt));
+    }
+    createWorld(name) {
+        console.log(`[game] create world '${name}'`);
+        const world = new world_1.World(this);
+        this._worlds.set(name, world);
+        return world;
+    }
+}
+exports.Game = Game;
+
+
+/***/ }),
+
+/***/ "./src/shared/input/input.ts":
+/*!***********************************!*\
+  !*** ./src/shared/input/input.ts ***!
+  \***********************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Input = void 0;
+const pc = __importStar(__webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs"));
+class Input {
+    static get mousePosition() { return this._mousePosition; }
+    static init(app) {
+        console.log("[input] init");
+        app.keyboard.on(pc.EVENT_KEYDOWN, this.onKeyDown, this);
+        app.keyboard.on(pc.EVENT_KEYUP, this.onKeyUp, this);
+        app.mouse.on(pc.EVENT_MOUSEMOVE, this.onMouseMove, this);
+        app.mouse.on(pc.EVENT_MOUSEDOWN, this.onMouseDown, this);
+        app.mouse.on(pc.EVENT_MOUSEUP, this.onMouseUp, this);
+    }
+    static updateMousePosition(event) {
+        this._mousePosition.set(event.x, event.y);
+    }
+    static onMouseMove(event) {
+        this.updateMousePosition(event);
+    }
+    static onMouseDown(event) {
+        this._mouseDown = true;
+        this.updateMousePosition(event);
+    }
+    static onMouseUp(event) {
+        this._mouseDown = false;
+        this.updateMousePosition(event);
+    }
+    static update(dt) {
+    }
+    static getKeyDown(key) {
+        const keyCodes = [];
+        if (typeof key == 'string') {
+            keyCodes.push(key.toLowerCase().charCodeAt(0));
+            keyCodes.push(key.toUpperCase().charCodeAt(0));
+        }
+        else {
+            keyCodes.push(key);
+        }
+        for (const keyCode of keyCodes) {
+            const state = this._keys.get(keyCode) === true;
+            if (state)
+                return true;
+        }
+        return false;
+    }
+    static onKeyDown(e) {
+        const keyCode = parseInt(e.key);
+        this._keys.set(keyCode, true);
+    }
+    static onKeyUp(e) {
+        const keyCode = parseInt(e.key);
+        this._keys.set(keyCode, false);
+    }
+}
+exports.Input = Input;
+Input._keys = new Map();
+Input._mousePosition = new pc.Vec2(0, 0);
+Input._mouseDown = false;
+
+
+/***/ }),
+
+/***/ "./src/shared/packet/formatPacket.ts":
+/*!*******************************************!*\
+  !*** ./src/shared/packet/formatPacket.ts ***!
+  \*******************************************/
 /***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.FormatPacket = void 0;
-const network_1 = __webpack_require__(/*! ../network/network */ "./src/network/network.ts");
-const packet_1 = __webpack_require__(/*! ./packet */ "./src/packet/packet.ts");
+const network_1 = __webpack_require__(/*! ../../client/network/network */ "./src/client/network/network.ts");
+const packet_1 = __webpack_require__(/*! ./packet */ "./src/shared/packet/packet.ts");
 class FormatPacket {
     /*
     public static componentData(c: Component) {
@@ -18325,10 +18671,10 @@ exports.FormatPacket = FormatPacket;
 
 /***/ }),
 
-/***/ "./src/packet/packet.ts":
-/*!******************************!*\
-  !*** ./src/packet/packet.ts ***!
-  \******************************/
+/***/ "./src/shared/packet/packet.ts":
+/*!*************************************!*\
+  !*** ./src/shared/packet/packet.ts ***!
+  \*************************************/
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -18384,65 +18730,10 @@ exports.Packet = Packet;
 
 /***/ }),
 
-/***/ "./src/planeSprite/planeSprite.ts":
-/*!****************************************!*\
-  !*** ./src/planeSprite/planeSprite.ts ***!
-  \****************************************/
-/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
-
-"use strict";
-
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.PlaneSprite = void 0;
-const pc = __importStar(__webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs"));
-const animatedMaterial_1 = __webpack_require__(/*! ../animatedMaterial/animatedMaterial */ "./src/animatedMaterial/animatedMaterial.ts");
-const render_1 = __webpack_require__(/*! ../gameface/render */ "./src/gameface/render.ts");
-class PlaneSprite {
-    constructor(url, frames, width, height) {
-        const animatedMaterial = this._animatedMaterial = new animatedMaterial_1.AnimatedMaterial(frames, 1, 200);
-        render_1.Render.loadAsset(url, (asset) => {
-            animatedMaterial.setAsset(asset);
-        });
-        const pcEntity = this._pcEntity = new pc.Entity();
-        pcEntity.addComponent("render", {
-            material: animatedMaterial.material,
-            type: "plane",
-        });
-        pcEntity.setLocalScale(new pc.Vec3(width * 0.01, 1, height * 0.01));
-    }
-    get pcEntity() { return this._pcEntity; }
-    update(dt) {
-        this._animatedMaterial.update(dt);
-    }
-}
-exports.PlaneSprite = PlaneSprite;
-
-
-/***/ }),
-
-/***/ "./src/world/world.ts":
-/*!****************************!*\
-  !*** ./src/world/world.ts ***!
-  \****************************/
+/***/ "./src/shared/world/world.ts":
+/*!***********************************!*\
+  !*** ./src/shared/world/world.ts ***!
+  \***********************************/
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -18453,8 +18744,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.World = void 0;
 const matter_js_1 = __importDefault(__webpack_require__(/*! matter-js */ "./node_modules/matter-js/build/matter.js"));
-const entityBuilding_1 = __webpack_require__(/*! ../entity/building/entityBuilding */ "./src/entity/building/entityBuilding.ts");
-const entityVehicle_1 = __webpack_require__(/*! ../entity/vehicle/entityVehicle */ "./src/entity/vehicle/entityVehicle.ts");
+const entityBuilding_1 = __webpack_require__(/*! ../entity/building/entityBuilding */ "./src/shared/entity/building/entityBuilding.ts");
+const entityVehicle_1 = __webpack_require__(/*! ../entity/vehicle/entityVehicle */ "./src/shared/entity/vehicle/entityVehicle.ts");
 class World {
     constructor(game) {
         this.matter = {};
@@ -18491,10 +18782,12 @@ class World {
     }
     generateWorld() {
         console.log(`[world] generate world`);
-        const building1 = this.spawnEntity(entityBuilding_1.EntityBuilding);
-        building1.transform.setPosition(300, 0);
-        const building2 = this.spawnEntity(entityBuilding_1.EntityBuilding);
-        building2.transform.setPosition(-300, 0);
+        for (let y = 0; y < 6; y++) {
+            for (let x = 0; x < 6; x++) {
+                const building = this.spawnEntity(entityBuilding_1.EntityBuilding);
+                building.transform.setPosition((x - 3) * 600, (y - 3) * 600);
+            }
+        }
         const vehicle1 = this.spawnEntity(entityVehicle_1.EntityVehicle);
         const vehicle2 = this.spawnEntity(entityVehicle_1.EntityVehicle);
     }
@@ -19465,10 +19758,10 @@ module.exports = yeast;
 
 /***/ }),
 
-/***/ "./src/glbLoader/glb-utils.js":
-/*!************************************!*\
-  !*** ./src/glbLoader/glb-utils.js ***!
-  \************************************/
+/***/ "./src/client/playcanvas/glbLoader/glb-utils.js":
+/*!******************************************************!*\
+  !*** ./src/client/playcanvas/glbLoader/glb-utils.js ***!
+  \******************************************************/
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 const pc = __webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs");
