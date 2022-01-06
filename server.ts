@@ -5,7 +5,7 @@ import path from 'path';
 import { MasterServer } from './src/server/masterServer/masterServer';
 
 const isDevelopment = (process.env.NODE_ENV || "development").trim() === 'development';
-const port = 3001;
+const port = 3000;
 const io: socketio.Server = new socketio.Server()
 const app: express.Application = express();
 const server: http.Server = http.createServer(app);
