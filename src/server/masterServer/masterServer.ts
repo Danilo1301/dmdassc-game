@@ -3,9 +3,6 @@ import socketio from 'socket.io';
 import { Client } from '../client/client';
 import { Server } from '../server/server';
 
-var request = require('request');
-
-
 export class MasterServer {
     public static Instance: MasterServer;
 
@@ -51,30 +48,6 @@ export class MasterServer {
                 return c
             }
         }
-    }
-
-    public static postGameLog(address: string, message: string) {
-        let url = "https://dmdassc.glitch.me/gamelog/log"
-
-        if(address.includes("127.0.0.1")) {
-            url = "http://127.0.0.1:3000/gamelog/log";
-        }
-
-        const data = {
-            service: 'dmdassc-game',
-            address: address,
-            message: message
-        }
-        
-        request.post(
-            url,
-            { json: data },
-            function (error, response, body) {
-                if (!error && response.statusCode == 200) {
-                    console.log(body);
-                }
-            }
-        ); 
     }
 
     public createServer() {

@@ -8,6 +8,7 @@ import { FormatPacket } from '../../shared/packet/formatPacket';
 import { Packet } from '../../shared/packet/packet';
 import { MasterServer } from '../masterServer/masterServer';
 import { Server } from '../server/server';
+import { Gamelog } from '../gamelog/gamelog';
 
 export class Client {
     public sendPacketInterval: number = 40;
@@ -28,7 +29,10 @@ export class Client {
     private _sendPacketTime: number = 0;
 
     public getCurrentAddress() {
-        return this._socket!.handshake.address
+        const f = this._socket?.handshake.headers["x-forwarded-for"]
+        if(typeof f == 'object') return f[0];
+        if(!f) return this._socket?.handshake.address || ""
+        return f;
     }
 
     public setPlayer(player: Entity) {
@@ -67,10 +71,13 @@ export class Client {
     }
 
     private onConnect() {
-        //MasterServer.postGameLog(this.getCurrentAddress(), "connected")
+        Gamelog.log(this.getCurrentAddress(), `${this.id} connected`);
+
     }
 
     private onDisconnect() {
+        Gamelog.log(this.getCurrentAddress(), `${this.id} disconnected`);
+
         const server = this._server;
 
         if(server) {
