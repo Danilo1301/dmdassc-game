@@ -1,6 +1,38 @@
-import ByteBuffer from "bytebuffer";
-import { PacketType } from "../../client/network/network";
+//import ByteBuffer from "bytebuffer";
 
+export enum PacketType {
+    ENTITY_DATA,
+    JOIN_SERVER,
+    SPAWN_ENTITY,
+    DESTROY_ENTITY,
+    CONTROL_ENTITY
+}
+
+export interface IPacketData_JoinServer {
+    id: string
+}
+
+export interface IPacketData_ControlEntity {
+    id: string
+}
+
+export interface IPacketData_SpawnEntity {
+    id: string
+    type: number
+    data: any
+}
+
+export interface IPacketData_EntityData {
+    id: string
+    data: any
+}
+
+export interface Packet {
+    type: PacketType
+    data: any
+}
+
+/*
 export class Packet {
     public buffer = new ByteBuffer();
     public index: string[] = [];
@@ -48,3 +80,4 @@ export class Packet {
         return this.buffer.readUTF8String(len);
     }
 }
+*/

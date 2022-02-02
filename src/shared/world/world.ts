@@ -1,5 +1,7 @@
 import Matter from "matter-js";
+import * as pc from "playcanvas";
 import { InputHandlerComponent } from "../component/inputHandlerComponent";
+import { NPCBehaviourComponent } from "../component/npcBehaviourComponent";
 import { TestCollisionComponent } from "../component/testCollisionComponent";
 import { EntityBuilding } from "../entity/building/entityBuilding";
 import { Entity } from "../entity/entity";
@@ -27,6 +29,12 @@ export class World {
 
     public init() {
         console.log(`[world] init`);
+
+        try {
+            window['world'] = this;
+        } catch(e) {
+
+        }
 
         this.initMatterWorld();
 
@@ -59,15 +67,42 @@ export class World {
     public generateWorld() {
         console.log(`[world] generate world`);
 
+        
         for (let y = 0; y < 6; y++) {
             for (let x = 0; x < 6; x++) {
                 const building = this.spawnEntity(EntityBuilding);
                 building.transform.setPosition((x-3) * 600, (y-3) * 600)
+       
             }
         }
 
-        const vehicle1 = this.spawnEntity(EntityVehicle);
-        const vehicle2 = this.spawnEntity(EntityVehicle);
+        for (let i = 0; i < 2; i++) {
+            const vehicle = this.spawnEntity(EntityVehicle);
+            vehicle.transform.setPosition(0, -80)
+        }
+        
+        for (let i = 0; i < 4; i++) {
+            const npc = this.spawnEntity(EntityPlayer);
+            npc.addComponent(new NPCBehaviourComponent())
+            //vehicle.transform.setPosition(0, -80)
+        }
+        
+
+
+        //vehicle2.data.mergeData({position: {x: 160, c: {a: 123}}})
+
+        /*
+        setInterval(() => {
+            vehicle2.transform.setVelocity(0.1, 3)
+            vehicle2.transform.setAngularVelocity(0.2)
+
+            if(vehicle2.transform.getPosition().distance(new pc.Vec2()) > 400) {
+                vehicle2.transform.setPosition(0, 0);
+            }
+        }, 500)
+
+        console.log(vehicle2.transform.angle)
+        */
     }
 
     
@@ -77,7 +112,10 @@ export class World {
 
         if(options) {
             if(options.id) entity.setId(options.id);
+
+            if(options.dontAdd) return entity;
         }
+        
         
         return this.addEntity(entity);
     }

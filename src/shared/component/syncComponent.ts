@@ -1,9 +1,5 @@
-import Matter from 'matter-js';
 import * as pc from 'playcanvas';
 import { Entity } from "../entity/entity";
-import { Gameface } from '../../client/gameface/gameface';
-import { Packet } from '../packet/packet';
-import { CollisionComponent } from './collisionComponent';
 import { Component } from "./component";
 
 export enum SyncType {
@@ -16,6 +12,7 @@ export class SyncComponent extends Component {
     public entity: Entity;
     public priority: number = 0;
     public syncType: SyncType = SyncType.CLIENT_SYNC;
+    public positionLerp: number = 0.3;
 
     private _targetPosition = new pc.Vec2();
     private _targetVelocity = new pc.Vec2();
@@ -32,21 +29,22 @@ export class SyncComponent extends Component {
         if(this.syncType == SyncType.DONT_SYNC) return;
 
         const now = Date.now();
-
         if(now - this._lastUpdated > 500) return;
 
         
         const transform = this.entity.transform;
 
-        let posLerp = 0.3;
-        const distance = this._targetPosition.distance(transform.position);
+        const position = transform.getPosition();
+
+        let posLerp = this.positionLerp;
+        const distance = this._targetPosition.distance(position);
         if(distance > 60) {
             posLerp = 1;
         }
 
-        const x = pc.math.lerp(transform.position.x, this._targetPosition.x, posLerp);
-        const y = pc.math.lerp(transform.position.y, this._targetPosition.y, posLerp);
-        const angle = pc.math.lerp(transform.angle, this._targetAngle, 0.7);
+        const x = pc.math.lerp(position.x, this._targetPosition.x, posLerp);
+        const y = pc.math.lerp(position.y, this._targetPosition.y, posLerp);
+        const angle = pc.math.lerp(transform.angle, this._targetAngle, 1);
 
         const velX = pc.math.lerp(transform.velocity.x, this._targetVelocity.x, 0.5);
         const velY = pc.math.lerp(transform.velocity.y, this._targetVelocity.y, 0.5);

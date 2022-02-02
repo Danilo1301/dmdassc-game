@@ -72,7 +72,14 @@ export class CollisionComponent extends Component {
 
         this._body = body;
 
-        //this.setPosition(this.entity.transform.position.x, this.entity.transform.position.y)
+
+        const position = this.entity.transform.getPosition();
+        const angle = this.entity.transform.angle;
+        this.setPosition(position.x, position.y)
+
+        console.log(angle)
+
+        this.entity.transform.setAngle(angle == undefined ? 0 : angle);
     }
 
     public update(dt: number) {

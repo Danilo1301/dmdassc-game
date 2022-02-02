@@ -114,6 +114,8 @@ export class Gameface {
         this.player = entity;
         this.player.getComponent(InputHandlerComponent).enabled = true;
         this.player.getComponent(SyncComponent).syncType = SyncType.DONT_SYNC;
+
+        console.warn("SETPLAYER")
     }
 
     public checkControllingEntity() {

@@ -67,7 +67,8 @@ export class Render {
             }
 
             const transform = entity.transform;
-            entity.pcEntity.setPosition(transform.position.x * 0.01, 0, transform.position.y * 0.01);
+            const position = transform.getPosition();
+            entity.pcEntity.setPosition(position.x * 0.01, 0, position.y * 0.01);
             entity.pcEntityRoot.setEulerAngles(0, pc.math.RAD_TO_DEG * -transform.angle, 0);
             
         }
@@ -104,9 +105,11 @@ export class Render {
         app.root.addChild(light);
         light.setEulerAngles(30, 30, 0);
 
+        
         light.light!.castShadows = true;
         light.light!.shadowType = 3;
         light.light!.shadowDistance = 40
+        
         console.log('light', light);
 
         window['light'] = light;

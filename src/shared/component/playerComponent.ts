@@ -7,7 +7,7 @@ import { Component } from "./component";
 import { InputHandlerComponent } from './inputHandlerComponent';
 
 export class PlayerComponent extends Component {
-    public speed: number = 100;
+    public speed: number = 40;
 
     public init() {
         super.init();

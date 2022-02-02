@@ -1,7 +1,7 @@
 import { Component } from "../component/component";
 import { Entity } from "../entity/entity";
-import { PacketType } from "../../client/network/network";
-import { Packet } from "./packet";
+//import { PacketType } from "../../client/network/network";
+//import { Packet } from "./packet";
 
 export class FormatPacket {
     /*
@@ -18,6 +18,7 @@ export class FormatPacket {
     }
     */
 
+    /*
     public static entitySpawn(entity: Entity) {
         const components: Component[] = [];
 
@@ -41,14 +42,18 @@ export class FormatPacket {
         }
         return packet;
     }
+    */
 
+    /*
     public static entityDestroy(entity: Entity) {
         const packet = new Packet();
         packet.writeShort(PacketType.DESTROY_ENTITY);
         packet.writeString(entity.id);
         return packet;
     }
+    */
 
+    /*
     public static entityData(entity: Entity, components: Component[]) {
         const packet = new Packet();
         packet.writeShort(PacketType.ENTITY_DATA);
@@ -62,7 +67,9 @@ export class FormatPacket {
 
         return packet;
     }
+    */
 
+    /*
     public static unserializeEntityData(entity: Entity, packet: Packet) {
         const numComponents: number = packet.readShort();
 
@@ -83,4 +90,5 @@ export class FormatPacket {
 
         //console.log(`[formatPacket] unserializeEntityData ${entity.id} ${numComponents} components`)
     }
+    */
 }

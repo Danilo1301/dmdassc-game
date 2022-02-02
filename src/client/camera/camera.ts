@@ -19,7 +19,9 @@ export class Camera {
 
             if(!player) return;
 
-            this.setPosition(player.transform.position.x, player.transform.position.y);
+            const position = player.transform.getPosition();
+
+            this.setPosition(position.x, position.y);
         }
         
         this._position.z = this.height;

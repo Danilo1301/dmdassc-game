@@ -1,12 +1,8 @@
 import { v4 as uuidv4 } from 'uuid';
 import { Client } from '../client/client';
-import { Component } from '../../shared/component/component';
 import { SyncComponent, SyncType } from '../../shared/component/syncComponent';
-import { Entity } from '../../shared/entity/entity';
 import { EntityPlayer } from '../../shared/entity/player/entityPlayer';
 import { Game } from '../../shared/game/game';
-import { PacketType } from '../../client/network/network';
-import { Packet } from '../../shared/packet/packet';
 
 export class Server {
     public get id() { return this._id; }
@@ -16,6 +12,9 @@ export class Server {
     private _id: string = uuidv4();
     private _game: Game;
     private _clients = new Map<string, Client>();
+
+    private _sendEntityDataTime: number = 0;
+    private _sendEntityDataIntervalMs: number = 30;
 
     constructor() {
         this._game = new Game();
@@ -33,6 +32,44 @@ export class Server {
     public update(dt: number) {
         this.game.update(dt);
         this.clients.map(client => client.update(dt));
+
+
+        this._sendEntityDataTime += dt;
+        if(this._sendEntityDataTime >= this._sendEntityDataIntervalMs/1000) {
+            this._sendEntityDataTime = 0;
+            this.sendEntitiesData();
+        }
+    }
+
+    public sendEntitiesData() {
+
+        //console.log("sending")
+
+        for (const world of this.game.worlds) {
+            
+            for (const entity of world.entities) {
+            
+                const data = entity.data.getChangedData();
+
+                if(data == undefined) continue;
+
+                //console.log(entity.id, data);
+                entity.data.clearChangedData();
+
+                for (const client of this.clients) {
+                    if(!client.isEntityStreamed(entity)) continue;
+
+                    client.sendEntityData(entity, data);
+                }
+
+            }
+
+        }
+
+        
+
+        
+
     }
 
     public onClientJoin(client: Client) {
@@ -45,6 +82,7 @@ export class Server {
         const player = world.spawnEntity(EntityPlayer);
         const syncComponent = player.addComponent(new SyncComponent());
         syncComponent.syncType = SyncType.SERVER_SYNC;
+        syncComponent.positionLerp = 0.8;
 
         client.checkStreamedEntities();
         client.setPlayer(player);

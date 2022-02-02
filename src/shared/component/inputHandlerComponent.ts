@@ -2,7 +2,6 @@ import * as pc from "playcanvas";
 import { Render } from "../../client/gameface/render";
 import { Entity } from "../entity/entity";
 import { Input } from "../input/input";
-import { Packet } from "../packet/packet";
 import { Component } from "./component";
 import { SyncComponent, SyncType } from "./syncComponent";
 
@@ -12,11 +11,18 @@ export class InputHandlerComponent extends Component {
     
     public enabled: boolean = false;
     public speed = 4;
-    public horizontal: number = 0;
-    public vertical: number = 0;
+    
+    public get horizontal() { return this.entity.data.getKey('input.h') as number; };
+    public set horizontal(value: number) { this.entity.data.setKey('input.h', value); };
+    
+    public get vertical() { return this.entity.data.getKey('input.v') as number; };
+    public set vertical(value: number) { this.entity.data.setKey('input.v', value); };
 
     public init() {
         super.init();
+
+        this.entity.data.defineKey("input.h", {minDifference: 0.1});
+        this.entity.data.defineKey("input.v", {minDifference: 0.1});
     }
 
     public update(dt: number) {
@@ -50,6 +56,7 @@ export class InputHandlerComponent extends Component {
         }
     }
 
+    /*
     public serialize(packet: Packet): any {
         packet.writeDouble(this.horizontal);
         packet.writeDouble(this.vertical);
@@ -74,4 +81,5 @@ export class InputHandlerComponent extends Component {
 
         return packet;
     }
+    */
 }

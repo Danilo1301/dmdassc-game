@@ -44,11 +44,12 @@ export class TextScript extends pc.ScriptType {
         material.opacityMap = this.texture;
         material.diffuseMap = this.texture;
         material.blendType = pc.BLEND_NORMAL;
-        material.depthTest = false;
+        //material.depthTest = false;
         material.update();
 
         this.setTextureSize(512, this.height)
         this.updateText();
+        
     }
 
     private setTextureSize(x: number, y: number) {
@@ -68,9 +69,9 @@ export class TextScript extends pc.ScriptType {
         var w = ctx.canvas.width;
         var h = ctx.canvas.height;
 
-        ctx.fillStyle = "#000000";
+        //ctx.fillStyle = "#000000";
         ctx.clearRect(0, 0, w, h);
-        ctx.fillRect(0, 0, w, h);
+        //ctx.fillRect(0, 0, w, h);
 
         this.applyFont()
         ctx.fillText(text, w / 2, h / 2);
@@ -83,7 +84,7 @@ export class TextScript extends pc.ScriptType {
         ctx.font = 'bold '+String(this.fontsize)+'px Verdana';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillStyle = 'white';
+        ctx.fillStyle = 'black';
     }
 
     private updateText() {

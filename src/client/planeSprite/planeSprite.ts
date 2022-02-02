@@ -28,6 +28,9 @@ export class PlaneSprite {
             type: "plane",
         });
         pcEntity.setLocalScale(new pc.Vec3(width * 0.01, 1, height * 0.01));
+        pcEntity.render!.castShadows= false
+
+        console.log("pcEntity planesprite", pcEntity)
     }
 
     public update(dt: number) {

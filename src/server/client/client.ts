@@ -3,15 +3,13 @@ import socketio from 'socket.io';
 import { v4 as uuidv4 } from 'uuid';
 import { Component } from '../../shared/component/component';
 import { Entity } from '../../shared/entity/entity';
-import { PacketType } from '../../client/network/network';
 import { FormatPacket } from '../../shared/packet/formatPacket';
-import { Packet } from '../../shared/packet/packet';
 import { MasterServer } from '../masterServer/masterServer';
 import { Server } from '../server/server';
 import { Gamelog } from '../gamelog/gamelog';
+import { IPacketData_ControlEntity, IPacketData_EntityData, IPacketData_JoinServer, IPacketData_SpawnEntity, Packet, PacketType } from '../../shared/packet/packet';
 
 export class Client {
-    public sendPacketInterval: number = 40;
     public get id() { return this._id; }
     public get addressList() { return this._addressList; }
     public get player() { return this._player; }
@@ -47,7 +45,9 @@ export class Client {
     public setSocket(socket: socketio.Socket) {
         this._socket = socket;
 
-        socket.on("p", this.onReceiveData.bind(this))
+        socket.on("p", (packet: Packet) => {
+            this.onReceivePacket(packet);
+        })
         socket.on("disconnect", this.onDisconnect.bind(this))
         
         this.resetClient();
@@ -60,14 +60,6 @@ export class Client {
         this._addressList.push(address);
             if(this._addressList.length >= 2) this._addressList.splice(0, 1)
         }
-    }
-
-    private onReceiveData(data: string) {
-        const buffer = ByteBuffer.fromBase64(data);
-        const packet = new Packet();
-        packet.buffer = buffer;
-
-        this.onReceivePacket(packet);
     }
 
     private onConnect() {
@@ -88,16 +80,51 @@ export class Client {
     }
 
     public sendControllingEntity(entity: Entity) {
-        const packet = new Packet();
-        packet.writeShort(PacketType.CONTROLL_ENTITY);
-        packet.writeString(entity.id);
-
-        this.sendPacket(packet);
-
-        console.log("control")
+        this.sendPacket<IPacketData_ControlEntity>(PacketType.CONTROL_ENTITY, {id: entity.id});
     }
 
     public onReceivePacket(packet: Packet) {
+        if(packet.type == PacketType.JOIN_SERVER) {
+            const packetData: IPacketData_JoinServer = packet.data;
+            const id = packetData.id;
+            
+            console.log("join", id)
+
+            const server = MasterServer.Instance.servers[0];
+            this._server = server;
+
+            server.onClientJoin(this);
+        }
+
+        if(packet.type == PacketType.ENTITY_DATA) {
+            const packetData: IPacketData_EntityData = packet.data;
+            const entityId = packetData.id;
+
+            if(!packetData.data) return;
+
+            
+            const player = this._player;
+
+            if(!player) return;
+            if(player.id != entityId) {
+                console.log("not same id");
+                return;
+            }
+
+            const data: any = {};
+
+            if(packetData.data.angle != undefined) data.angle = packetData.data.angle;
+            if(packetData.data.position != undefined) data.position = packetData.data.position;
+            if(packetData.data.input != undefined) data.input = packetData.data.input;
+
+            //console.log(data)
+
+            player.mergeEntityData(data);
+            
+
+        }
+
+        /*
         const packetType: PacketType = packet.readShort();
     
         if(packetType == PacketType.ENTITY_DATA) {
@@ -115,16 +142,12 @@ export class Client {
 
         }
 
-        if(packetType == PacketType.JOIN_SERVER) {
-            const id = packet.readString();
-            
-            console.log("join", id)
+        
+        */
+    }
 
-            const server = MasterServer.Instance.servers[0];
-            this._server = server;
-
-            server.onClientJoin(this);
-        }
+    public isEntityStreamed(entity: Entity) {
+        return this._streamedEntities.includes(entity);
     }
 
     public checkStreamedEntities() {
@@ -132,13 +155,13 @@ export class Client {
 
         if(!player) return;
 
-        const playerPosition = player.transform.position;
+        const playerPosition = player.transform.getPosition();
 
         const world = player.world;
 
         for (const entity of world.entities) {
 
-            const distance: number = playerPosition.distance(entity.transform.position);
+            const distance: number = playerPosition.distance(playerPosition);
 
             let canBeStreamed = false;
             if(distance < 1200) canBeStreamed = true;
@@ -167,27 +190,30 @@ export class Client {
 
     public update(dt: number) {
         this.checkStreamedEntities();
-
-        this._sendPacketTime += dt;
-        if(this._sendPacketTime >= this.sendPacketInterval / 1000) {
-            this._sendPacketTime = 0;
-            this.sendStreamedEntitiesData();
-        }
     }
 
+    /*
     private sendStreamedEntitiesData() {
         for (const entity of this._streamedEntities) {
             this.sendEntityData(entity);
         }
     }
+    */
 
-    public sendPacket(packet: Packet) {
-        packet.buffer.flip();
-        this._socket?.emit('p', packet.buffer.toBase64());
+    public sendPacket<T>(type: PacketType, packetData: T) {
+        const packet: Packet = {
+            type: type,
+            data: packetData
+        }
+        this._socket?.emit('p', packet);
     }
 
-    public sendEntityData(entity: Entity) {
 
+    public sendEntityData(entity: Entity, data: any) {
+
+        this.sendPacket<IPacketData_EntityData>(PacketType.ENTITY_DATA, {id: entity.id, data: data});
+
+        /*
         const components: Component[] = [];
         for (const c of entity.components) {
             try {
@@ -198,15 +224,23 @@ export class Client {
 
         const packet = FormatPacket.entityData(entity, components);
         this.sendPacket(packet);
+        */
     }
 
     public sendEntitySpawn(entity: Entity) {
-        const packet = FormatPacket.entitySpawn(entity);
-        this.sendPacket(packet);
+        this.sendPacket<IPacketData_SpawnEntity>(PacketType.SPAWN_ENTITY, {
+            id: entity.id,
+            type: entity.world.game.entityFactory.getIndexOfEntity(entity),
+            data: entity.data.getData()
+        });
     }
 
     public sendEntityDestroy(entity: Entity) {
+        throw "not yet destroy"
+
+        /*
         const packet = FormatPacket.entityDestroy(entity);
         this.sendPacket(packet);
+        */
     }
 }

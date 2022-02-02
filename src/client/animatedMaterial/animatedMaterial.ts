@@ -19,7 +19,11 @@ export class AnimatedMaterial {
         const material = this.material;
 
         material.diffuseMap = asset.resource;
-        //material.blendType = pc.BLENDMODE_SRC_ALPHA;
+        material.opacityMap = asset.resource;
+        //material.opacity = asset.resource;
+        
+        //dontusethis
+        material.blendType = pc.BLEND_NORMAL;
 
         material.update();
     }
@@ -43,6 +47,9 @@ export class AnimatedMaterial {
         const material = this.material;
         material.diffuseMapOffset.set(this._offset.x, this._offset.y);
         material.diffuseMapTiling.set(sx, sy);
+
+        material.opacityMapOffset.set(this._offset.x, this._offset.y);
+        material.opacityMapTiling.set(sx, sy);
         material.update();
     }
     

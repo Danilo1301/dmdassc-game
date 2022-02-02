@@ -8,15 +8,9 @@ import { Entity } from "../../shared/entity/entity";
 import { EntityPlayer } from "../../shared/entity/player/entityPlayer";
 import { Gameface } from "../gameface/gameface";
 import { FormatPacket } from "../../shared/packet/formatPacket";
-import { Packet } from "../../shared/packet/packet";
+import { IPacketData_ControlEntity, IPacketData_EntityData, IPacketData_JoinServer, IPacketData_SpawnEntity, Packet, PacketType } from "../../shared/packet/packet";
 
-export enum PacketType {
-    ENTITY_DATA,
-    JOIN_SERVER,
-    SPAWN_ENTITY,
-    DESTROY_ENTITY,
-    CONTROLL_ENTITY
-}
+
 
 export class Network {
     public sendPacketInterval: number = 80;
@@ -36,12 +30,9 @@ export class Network {
             reconnection: false
         });
 
-        this._socket.on("p", (data: string) => {
+        this._socket.on("p", (packet: Packet) => {
             //console.log("p", data)
     
-            const buffer = ByteBuffer.fromBase64(data);
-            const packet = new Packet();
-            packet.buffer = buffer;
 
             this.onReceivePacket(packet);
         })
@@ -54,11 +45,7 @@ export class Network {
     }
 
     public sendJoinServer(id: string) {
-        const packet = new Packet();
-        packet.writeShort(PacketType.JOIN_SERVER);
-        packet.writeString(id);
-
-        this.sendPacket(packet);
+        this.sendPacket<IPacketData_JoinServer>(PacketType.JOIN_SERVER, {id: id});
     }
 
     public update(dt: number) {
@@ -72,19 +59,81 @@ export class Network {
     }
 
     public sendPlayerData(entity: Entity) {
+
+        const data = entity.data.getChangedData();
+
+        //console.log(data)
+
+        entity.data.clearChangedData();
+
+        this.sendPacket<IPacketData_EntityData>(PacketType.ENTITY_DATA, {id: entity.id, data: data})
+
+        /*
         const components: Component[] = [entity.transform];
         if(entity.hasComponent(InputHandlerComponent)) components.push(entity.getComponent(InputHandlerComponent));
         const packet = FormatPacket.entityData(entity, components);
         this.sendPacket(packet);
+        */
     }
 
-    public sendPacket(packet: Packet) {
-        packet.buffer.flip();
-        this._socket.emit('p', packet.buffer.toBase64());
+    public sendPacket<T>(type: PacketType, packetData: T) {
+        const packet: Packet = {
+            type: type,
+            data: packetData
+        }
+        this._socket.emit('p', packet);
     }
 
     public onReceivePacket(packet: Packet) {
-        const packetType: PacketType = packet.readShort();
+        if(packet.type == PacketType.SPAWN_ENTITY) {
+            const packetData: IPacketData_SpawnEntity = packet.data;
+            
+            const entityId = packetData.id;
+            const entityType = packetData.type;
+
+
+            const world = Gameface.Instance.game.worlds[0];
+
+            if(world.hasEntity(entityId)) return;
+
+            const entity = world.spawnEntity(world.game.entityFactory.getEntityByIndex(entityType), {id: entityId, dontAdd: true});
+            const syncComponent = entity.addComponent(new SyncComponent());
+
+            entity.mergeEntityData(packetData.data);
+
+            world.addEntity(entity);
+
+
+            //FormatPacket.unserializeEntityData(entity, packet);
+            
+            console.log("spsawn entity", packetData)
+        }
+
+        if(packet.type == PacketType.ENTITY_DATA) {
+            const packetData: IPacketData_SpawnEntity = packet.data;
+            
+            const world = Gameface.Instance.game.worlds[0];
+            const entity = world.getEntity(packetData.id);
+
+            if(!entity) return;
+
+            entity.mergeEntityData(packetData.data);
+
+
+            //console.log(packet)
+
+            //console.log("got data");
+        }
+
+        if(packet.type == PacketType.CONTROL_ENTITY) {
+            const packetData: IPacketData_ControlEntity = packet.data;
+            
+
+            Gameface.Instance.controllingEntityId = packetData.id;
+            Gameface.Instance.checkControllingEntity();
+        }
+
+        //const packetType: PacketType = packet.readShort();
         
         /*
         if(packetType == PacketType.COMPONENT_DATA) {
@@ -107,6 +156,7 @@ export class Network {
         }
         */
 
+        /*
         if(packetType == PacketType.ENTITY_DATA) {
             const entityId = packet.readString();
 
@@ -144,11 +194,7 @@ export class Network {
             }
         }
 
-        if(packetType == PacketType.CONTROLL_ENTITY) {
-            const entityId: string = packet.readString();
-
-            Gameface.Instance.controllingEntityId = entityId;
-            Gameface.Instance.checkControllingEntity();
-        }
+        
+        */
     }
 }

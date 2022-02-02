@@ -1,8 +1,6 @@
 import Matter from 'matter-js';
 import * as pc from 'playcanvas';
 import { Entity } from "../entity/entity";
-import { Gameface } from '../../client/gameface/gameface';
-import { Packet } from '../packet/packet';
 import { CollisionComponent } from './collisionComponent';
 import { Component } from "./component";
 import { SyncComponent } from './syncComponent';
@@ -11,14 +9,27 @@ export class TransformComponent extends Component {
     public entity: Entity;
     public priority: number = 0;
     
-    public get angle() { return this._angle; };
-    public position = new pc.Vec2();
+    public get angle() { return this.entity.data.getKey('angle') as number; };
+    public set angle(value: number) { this.entity.data.setKey('angle', value); };
     public velocity = new pc.Vec2();
-    
-    private _angle: number = 0;
 
     public init() {
         super.init();
+
+        this.entity.data.defineKey("position.x", {minDifference: 0.1});
+        this.entity.data.defineKey("position.y", {minDifference: 0.1});
+        this.entity.data.defineKey("angle", {minDifference: 0.01});
+ 
+        
+        console.log("data on init", this.entity.data['_data'])
+
+        //console.log(this.entity.data.getKey("position.x"));
+
+        //const positionAbc = this.entity.data.getObject("position.abc");
+
+
+        //const test = this.entity.data.getObject("test");
+
     }
 
     public update(dt: number) {
@@ -27,13 +38,20 @@ export class TransformComponent extends Component {
         this.handleCollisionComponent();
     }
 
+    public getPosition() {
+        return new pc.Vec2(
+            this.entity.data.getKey('position.x'),
+            this.entity.data.getKey('position.y')
+        )
+    }
+
     public setPosition(x: number, y: number) {
-        this.position.x = x;
-        this.position.y = y;
+        this.entity.data.setKey('position.x', x);
+        this.entity.data.setKey('position.y', y);
 
         if(this.entity.hasComponent(CollisionComponent)) {
             const c = this.entity.getComponent(CollisionComponent);
-            c.setPosition(this.position.x, this.position.y);
+            c.setPosition(x, y);
         }
     }
 
@@ -48,11 +66,11 @@ export class TransformComponent extends Component {
     }
     
     public setAngle(angle: number) {
-        this._angle = angle;
+        this.angle = angle;
 
         if(this.entity.hasComponent(CollisionComponent)) {
             const c = this.entity.getComponent(CollisionComponent);
-            Matter.Body.setAngle(c.body, this._angle);
+            Matter.Body.setAngle(c.body, this.angle);
         }
     }
 
@@ -65,13 +83,19 @@ export class TransformComponent extends Component {
 
     private handleCollisionComponent() {
         if(this.entity.hasComponent(CollisionComponent)) {
+            
             const c = this.entity.getComponent(CollisionComponent);
 
-            this.position.x = c.body.position.x * 1;
-            this.position.y = c.body.position.y * 1;
+            const pos = {
+                x: c.body.position.x * 1,
+                y: c.body.position.y * 1
+            };
+
+            this.setPosition(pos.x, pos.y);
+            
             this.velocity.x = c.body.velocity.x * 1;
             this.velocity.y = c.body.velocity.y * 1;
-            this._angle = c.body.angle;
+            this.angle = c.body.angle;
         }
     }
 
@@ -79,12 +103,8 @@ export class TransformComponent extends Component {
         super.postupdate(dt);
     }
 
+    /*
     public serialize(packet: Packet): any {
-        packet.writeDouble(this.position.x);
-        packet.writeDouble(this.position.y);    
-        packet.writeDouble(this.velocity.x);    
-        packet.writeDouble(this.velocity.y);    
-        packet.writeDouble(this.angle); //change
         return packet;
     }
 
@@ -108,4 +128,5 @@ export class TransformComponent extends Component {
 
         return packet;
     }
+    */
 }
