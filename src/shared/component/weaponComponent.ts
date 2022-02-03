@@ -22,7 +22,7 @@ export class WeaponComponent extends Component {
             
             const p = bodyPart!.Body!.position
             
-            console.log(bodyPart)
+            //console.log(bodyPart)
 
             
                 Render.createGunFlash(p.x * 0.01, p.y * 0.01);

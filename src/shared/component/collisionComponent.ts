@@ -45,7 +45,6 @@ export class CollisionComponent extends Component {
     private _bodyParts = new Map<string, BodyPart>();
 
     public init() {
-        console.log("colision init")
         super.init();
 
         this.createBody();
