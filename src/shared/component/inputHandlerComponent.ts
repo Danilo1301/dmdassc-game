@@ -1,7 +1,7 @@
 import * as pc from "playcanvas";
-import { Render } from "../../client/gameface/render";
+import { Render } from "../../client/render";
 import { Entity } from "../entity/entity";
-import { Input } from "../input/input";
+import { Input } from "../input";
 import { Component } from "./component";
 import { SyncComponent, SyncType } from "./syncComponent";
 

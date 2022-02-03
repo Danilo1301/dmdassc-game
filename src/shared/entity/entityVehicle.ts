@@ -1,10 +1,8 @@
-import { CollisionComponent } from "../../component/collisionComponent";
-import { DebugComponent } from "../../component/debugComponent";
-import { ModelComponent } from "../../component/modelComponent";
-import { PlayerComponent } from "../../component/playerComponent";
-import { SpriteComponent } from "../../component/spriteComponent";
-import { World } from "../../world/world";
-import { Entity } from "../entity";
+import { CollisionComponent } from "../component/collisionComponent";
+import { DebugComponent } from "../component/debugComponent";
+import { SpriteComponent } from "../component/spriteComponent";
+import { World } from "../world";
+import { Entity } from "./entity";
 
 export class EntityVehicle extends Entity {
     constructor(world: World) {

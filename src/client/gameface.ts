@@ -1,14 +1,14 @@
 import * as pc from 'playcanvas';
-import { Camera } from '../camera/camera';
-import { InputHandlerComponent } from '../../shared/component/inputHandlerComponent';
-import { SyncComponent, SyncType } from '../../shared/component/syncComponent';
-import { Entity } from '../../shared/entity/entity';
-import { EntityPlayer } from '../../shared/entity/player/entityPlayer';
-import { Game } from '../../shared/game/game';
-import { Input } from '../../shared/input/input';
-import { Network } from '../network/network';
+import { Camera } from './camera';
+import { InputHandlerComponent } from '../shared/component/inputHandlerComponent';
+import { SyncComponent, SyncType } from '../shared/component/syncComponent';
+import { Entity } from '../shared/entity/entity';
+import { EntityPlayer } from '../shared/entity/entityPlayer';
+import { Game } from '../shared/game';
+import { Input } from '../shared/input';
+import { Network } from './network';
 import { Render } from './render';
-import { TextScript } from '../playcanvas/scripts/textScript';
+import { TextScript } from './playcanvas/scripts/textScript';
 
 export class Gameface {
     public static Instance: Gameface;
@@ -67,7 +67,12 @@ export class Gameface {
         this.game.update(dt);
         this.network.update(dt);
 
-        
+        var app = this.app;
+        var start = new pc.Vec3(0, 0, 0);
+        var end = new pc.Vec3(1, 0, 0);
+        var worldLayer = app.scene.layers.getLayerById(pc.LAYERID_WORLD);
+        app.drawLine(start, end, pc.Color.WHITE, true, worldLayer);
+
         this.checkControllingEntity();
 
         Camera.update(dt);

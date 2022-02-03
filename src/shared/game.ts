@@ -1,12 +1,14 @@
-import { InputHandlerComponent } from "../component/inputHandlerComponent";
-import { PlayerComponent } from "../component/playerComponent";
-import { TransformComponent } from "../component/transformComponent";
-import { EntityBuilding } from "../entity/building/entityBuilding";
-import { Entity } from "../entity/entity";
-import { EntityPlayer } from "../entity/player/entityPlayer";
-import { EntityVehicle } from "../entity/vehicle/entityVehicle";
-import { EntityFactory } from "../entityFactory/entityFactory";
-import { World } from "../world/world";
+import { InputHandlerComponent } from "./component/inputHandlerComponent";
+import { PlayerComponent } from "./component/playerComponent";
+import { TransformComponent } from "./component/transformComponent";
+import { EntityBuilding } from "./entity/entityBuilding";
+import { Entity } from "./entity/entity";
+import { EntityPlayer } from "./entity/entityPlayer";
+import { EntityVehicle } from "./entity/entityVehicle";
+import { EntityFactory } from "./entityFactory";
+import { World } from "./world";
+import { EntityWeapon } from "./entity/entityWeapon";
+import { EntityBullet } from "./entity/entityBullet";
 
 export class Game {
     public get worlds() { return Array.from(this._worlds.values()); }
@@ -25,6 +27,8 @@ export class Game {
         this._entityFactory.registerEntity('EntityBuilding', EntityBuilding);
         this._entityFactory.registerEntity('EntityPlayer', EntityPlayer);
         this._entityFactory.registerEntity('EntityVehicle', EntityVehicle);
+        this._entityFactory.registerEntity('EntityWeapon', EntityWeapon);
+        this._entityFactory.registerEntity('EntityBullet', EntityBullet);
     }
 
     public start() {

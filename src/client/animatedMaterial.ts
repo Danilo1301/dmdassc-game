@@ -19,11 +19,10 @@ export class AnimatedMaterial {
         const material = this.material;
 
         material.diffuseMap = asset.resource;
-        material.opacityMap = asset.resource;
-        //material.opacity = asset.resource;
-        
-        //dontusethis
         material.blendType = pc.BLEND_NORMAL;
+        material.opacityMap = asset.resource;
+        /*
+        */
 
         material.update();
     }

@@ -1,8 +1,8 @@
 import { v4 as uuidv4 } from 'uuid';
-import { Client } from '../client/client';
-import { SyncComponent, SyncType } from '../../shared/component/syncComponent';
-import { EntityPlayer } from '../../shared/entity/player/entityPlayer';
-import { Game } from '../../shared/game/game';
+import { Client } from './client';
+import { SyncComponent, SyncType } from '../shared/component/syncComponent';
+import { EntityPlayer } from '../shared/entity/entityPlayer';
+import { Game } from '../shared/game';
 
 export class Server {
     public get id() { return this._id; }
@@ -49,6 +49,9 @@ export class Server {
             
             for (const entity of world.entities) {
             
+                if(Date.now() - entity.lastSync < entity.syncInterval) continue;
+                entity.lastSync = Date.now();
+
                 const data = entity.data.getChangedData();
 
                 if(data == undefined) continue;

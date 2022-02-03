@@ -1,7 +1,7 @@
 import Matter from 'matter-js';
 import * as pc from 'playcanvas';
-import { Render } from '../../client/gameface/render';
-import { Input } from '../input/input';
+import { Render } from '../../client/render';
+import { Input } from '../input';
 import { CollisionComponent } from './collisionComponent';
 import { Component } from "./component";
 import { InputHandlerComponent } from './inputHandlerComponent';

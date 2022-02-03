@@ -1,5 +1,5 @@
 import { Entity } from "../entity/entity";
-import { Render } from "../../client/gameface/render";
+import { Render } from "../../client/render";
 import { GLBLoader } from "../../client/playcanvas/glbLoader/glbLoader";
 import { Component } from "./component";
 
@@ -21,12 +21,12 @@ export class ModelComponent extends Component {
         const entity = this.entity;
 
         GLBLoader.loadModel(this.path, (renderRootEntity) => {
-            console.log(renderRootEntity);
+            //console.log(renderRootEntity);
             this._renderRootEntity = renderRootEntity;
 
             entity.pcEntity.addChild(renderRootEntity);
 
-            console.log(renderRootEntity)
+            //console.log(renderRootEntity)
         });
     }
 

@@ -1,5 +1,5 @@
-import { Component } from "../component/component";
-import { Entity } from "../entity/entity";
+import { Component } from "./component/component";
+import { Entity } from "./entity/entity";
 
 export class EntityFactory {
     private _allComponents: { new(...args: any[]): Component }[] = [];

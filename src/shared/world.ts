@@ -1,13 +1,15 @@
 import Matter from "matter-js";
 import * as pc from "playcanvas";
-import { InputHandlerComponent } from "../component/inputHandlerComponent";
-import { NPCBehaviourComponent } from "../component/npcBehaviourComponent";
-import { TestCollisionComponent } from "../component/testCollisionComponent";
-import { EntityBuilding } from "../entity/building/entityBuilding";
-import { Entity } from "../entity/entity";
-import { EntityPlayer } from "../entity/player/entityPlayer";
-import { EntityVehicle } from "../entity/vehicle/entityVehicle";
-import { Game } from "../game/game";
+import { InputHandlerComponent } from "./component/inputHandlerComponent";
+import { NPCBehaviourComponent } from "./component/npcBehaviourComponent";
+import { TestCollisionComponent } from "./component/testCollisionComponent";
+import { EntityBuilding } from "./entity/entityBuilding";
+import { Entity } from "./entity/entity";
+import { EntityPlayer } from "./entity/entityPlayer";
+import { EntityVehicle } from "./entity/entityVehicle";
+import { Game } from "./game";
+import { EntityWeapon } from "./entity/entityWeapon";
+import { WeaponComponent } from "./component/weaponComponent";
 
 interface IWorldMatter {
     engine?: Matter.Engine
@@ -67,6 +69,17 @@ export class World {
     public generateWorld() {
         console.log(`[world] generate world`);
 
+        const keepincenter = (entity: Entity) => {
+
+            setInterval(() => {
+
+                if(entity.transform.getPosition().distance(new pc.Vec2()) > 700) {
+                    entity.transform.setPosition(0, 0);
+                }
+                
+            }, 2000)
+
+        }
         
         for (let y = 0; y < 6; y++) {
             for (let x = 0; x < 6; x++) {
@@ -79,15 +92,25 @@ export class World {
         for (let i = 0; i < 2; i++) {
             const vehicle = this.spawnEntity(EntityVehicle);
             vehicle.transform.setPosition(0, -80)
+            
+            keepincenter(vehicle);
         }
         
-        for (let i = 0; i < 4; i++) {
+        for (let i = 0; i < 8; i++) {
             const npc = this.spawnEntity(EntityPlayer);
             npc.addComponent(new NPCBehaviourComponent())
             //vehicle.transform.setPosition(0, -80)
         }
         
+        for (let i = 0; i < 2; i++) {
+            const wpn = this.spawnEntity(EntityWeapon);
+            wpn.getComponent(WeaponComponent).enabled = true;
 
+            keepincenter(wpn);
+            //vehicle.transform.setPosition(0, -80)
+        }
+        
+        
 
         //vehicle2.data.mergeData({position: {x: 160, c: {a: 123}}})
 

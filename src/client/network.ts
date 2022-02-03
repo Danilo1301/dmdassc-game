@@ -1,14 +1,9 @@
-import ByteBuffer from "bytebuffer";
+
 import { io, Socket } from "socket.io-client";
-import { Component } from "../../shared/component/component";
-import { InputHandlerComponent } from "../../shared/component/inputHandlerComponent";
-import { SyncComponent } from "../../shared/component/syncComponent";
-import { TransformComponent } from "../../shared/component/transformComponent";
-import { Entity } from "../../shared/entity/entity";
-import { EntityPlayer } from "../../shared/entity/player/entityPlayer";
-import { Gameface } from "../gameface/gameface";
-import { FormatPacket } from "../../shared/packet/formatPacket";
-import { IPacketData_ControlEntity, IPacketData_EntityData, IPacketData_JoinServer, IPacketData_SpawnEntity, Packet, PacketType } from "../../shared/packet/packet";
+import { SyncComponent } from "../shared/component/syncComponent";
+import { Entity } from "../shared/entity/entity";
+import { Gameface } from "./gameface";
+import { IPacketData_ControlEntity, IPacketData_DestroyEntity, IPacketData_EntityData, IPacketData_JoinServer, IPacketData_SpawnEntity, Packet, PacketType } from "../shared/packet";
 
 
 
@@ -131,6 +126,17 @@ export class Network {
 
             Gameface.Instance.controllingEntityId = packetData.id;
             Gameface.Instance.checkControllingEntity();
+        }
+
+        if(packet.type == PacketType.DESTROY_ENTITY) {
+            const packetData: IPacketData_DestroyEntity = packet.data;
+            const entityId = packetData.id;
+            
+            const world = Gameface.Instance.game.worlds[0];
+
+            if(world.hasEntity(entityId)) {
+                world.removeEntity(world.getEntity(entityId)!);
+            }
         }
 
         //const packetType: PacketType = packet.readShort();

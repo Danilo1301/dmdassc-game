@@ -1,7 +1,7 @@
 import Matter from "matter-js";
-import { Gameface } from "../src/client/gameface/gameface";
-import { Render } from "../src/client/gameface/render";
-import { Input } from "../src/shared/input/input";
+import { Gameface } from "../src/client/gameface";
+import { Render } from "../src/client/render";
+import { Input } from "../src/shared/input";
 
 const gameface = new Gameface(document.getElementById('game'));
 gameface.start();
@@ -10,12 +10,12 @@ window['gameface'] = gameface;
 window['Render'] = Render;
 window['Input'] = Input;
 
-//createMatterRender();
+createMatterRender();
 
 function createMatterRender() {
     const width = 800;
     const height = 600;
-    const s = 8;
+    const s = 2;
     
     // renderer
     const engine = gameface.game.worlds[0].matter.engine!;

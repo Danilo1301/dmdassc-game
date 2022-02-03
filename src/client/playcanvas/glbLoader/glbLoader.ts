@@ -1,4 +1,4 @@
-import { Gameface } from "../../gameface/gameface";
+import { Gameface } from "../../gameface";
 
 export class GLBLoader {
     public static loadModel(url: string, callback: (entity: pc.Entity) => void) {

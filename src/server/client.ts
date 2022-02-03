@@ -1,13 +1,10 @@
-import ByteBuffer from 'bytebuffer';
 import socketio from 'socket.io';
 import { v4 as uuidv4 } from 'uuid';
-import { Component } from '../../shared/component/component';
-import { Entity } from '../../shared/entity/entity';
-import { FormatPacket } from '../../shared/packet/formatPacket';
-import { MasterServer } from '../masterServer/masterServer';
-import { Server } from '../server/server';
-import { Gamelog } from '../gamelog/gamelog';
-import { IPacketData_ControlEntity, IPacketData_EntityData, IPacketData_JoinServer, IPacketData_SpawnEntity, Packet, PacketType } from '../../shared/packet/packet';
+import { Entity } from '../shared/entity/entity';
+import { MasterServer } from './masterServer';
+import { Server } from './server';
+import { Gamelog } from './gamelog';
+import { IPacketData_ControlEntity, IPacketData_DestroyEntity, IPacketData_EntityData, IPacketData_JoinServer, IPacketData_SpawnEntity, Packet, PacketType } from '../shared/packet';
 
 export class Client {
     public get id() { return this._id; }
@@ -24,7 +21,6 @@ export class Client {
     private _addressList: string[] = [];
 
     private _streamedEntities: Entity[] = [];
-    private _sendPacketTime: number = 0;
 
     public getCurrentAddress() {
         const f = this._socket?.handshake.headers["x-forwarded-for"]
@@ -117,7 +113,7 @@ export class Client {
             if(packetData.data.position != undefined) data.position = packetData.data.position;
             if(packetData.data.input != undefined) data.input = packetData.data.input;
 
-            //console.log(data)
+            //sdconsole.log(data)
 
             player.mergeEntityData(data);
             
@@ -161,7 +157,7 @@ export class Client {
 
         for (const entity of world.entities) {
 
-            const distance: number = playerPosition.distance(playerPosition);
+            const distance: number = playerPosition.distance(entity.transform.getPosition());
 
             let canBeStreamed = false;
             if(distance < 1200) canBeStreamed = true;
@@ -236,7 +232,9 @@ export class Client {
     }
 
     public sendEntityDestroy(entity: Entity) {
-        throw "not yet destroy"
+        this.sendPacket<IPacketData_DestroyEntity>(PacketType.DESTROY_ENTITY, {
+            id: entity.id,
+        });
 
         /*
         const packet = FormatPacket.entityDestroy(entity);

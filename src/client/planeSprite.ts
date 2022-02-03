@@ -1,6 +1,6 @@
 import * as pc from 'playcanvas';
-import { AnimatedMaterial } from "../animatedMaterial/animatedMaterial";
-import { Render } from "../gameface/render";
+import { AnimatedMaterial } from "./animatedMaterial";
+import { Render } from "./render";
 
 
 export class PlaneSprite {
@@ -28,7 +28,7 @@ export class PlaneSprite {
             type: "plane",
         });
         pcEntity.setLocalScale(new pc.Vec3(width * 0.01, 1, height * 0.01));
-        pcEntity.render!.castShadows= false
+        pcEntity.render!.castShadows = false
 
         console.log("pcEntity planesprite", pcEntity)
     }

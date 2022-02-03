@@ -22,6 +22,10 @@ export interface IPacketData_SpawnEntity {
     data: any
 }
 
+export interface IPacketData_DestroyEntity {
+    id: string
+}
+
 export interface IPacketData_EntityData {
     id: string
     data: any

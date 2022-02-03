@@ -2,7 +2,7 @@ import express from 'express';
 import http from 'http';
 import socketio from 'socket.io';
 import path from 'path';
-import { MasterServer } from './src/server/masterServer/masterServer';
+import { MasterServer } from './src/server/masterServer';
 
 const isDevelopment = (process.env.NODE_ENV || "development").trim() === 'development';
 const port = 3000;

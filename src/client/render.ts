@@ -1,7 +1,6 @@
 import * as pc from 'playcanvas'
-import { Entity } from '../../shared/entity/entity';
-import { World } from "../../shared/world/world";
-import { WorldTextManager } from '../worldText/worldTextManager';
+import { Entity } from '../shared/entity/entity';
+import { World } from "../shared/world";
 
 export class Render {
     public static app: pc.Application;
@@ -19,8 +18,6 @@ export class Render {
 
     public static update(dt: number) {
         this.renderWorld();
-
-        WorldTextManager.render()
     }
 
     private static renderWorld() {
@@ -52,7 +49,8 @@ export class Render {
                         material: material,
                         type: "box",
                     });
-                    centerPcEntity.setLocalScale(new pc.Vec3(0.2, 0.2, 0.2));
+                    centerPcEntity.render!.castShadows = false;
+                    centerPcEntity.setLocalScale(new pc.Vec3(0.1, 0.1, 0.1));
                     entity.pcEntityRoot.addChild(centerPcEntity);
 
                     console.log('CenterDebug', entity)
@@ -98,21 +96,32 @@ export class Render {
         
         console.log('camera', camera);
 
+        app.scene.ambientLight.set(0, 0, 0)
+
         //
 
+        /*
+        
         const light = this.sunLight = new pc.Entity('light');
         light.addComponent('light');
         app.root.addChild(light);
+        //light.setEulerAngles(30, 30, 0);
         light.setEulerAngles(30, 30, 0);
 
+
         
+        light.light!.color = new pc.Color(1, 1, 1);
         light.light!.castShadows = true;
         light.light!.shadowType = 3;
         light.light!.shadowDistance = 40
+        light.light!.intensity = 0.05
+
         
         console.log('light', light);
 
         window['light'] = light;
+        */
+        
 
         //
 
@@ -120,6 +129,38 @@ export class Render {
         app.root.addChild(text);
         (text.addComponent('script') as pc.ScriptComponent).create('textScript');
    
+        this.test();
+
+    }
+
+    private static test() {
+        const app = this.app;
+
+        const light = new pc.Entity('light');
+        const lightComponent = light.addComponent('light') as pc.LightComponent;
+        light.setPosition(2, 2, 0)
+        app.root.addChild(light);
+
+        lightComponent.type = "point"
+        lightComponent.color = new pc.Color(1, 1, 1);
+        lightComponent.range = 10;
+        lightComponent.intensity = 1;
+        lightComponent.shadowBias = 0.2
+        
+        lightComponent.castShadows = true;
+
+        window['testlight'] = lightComponent
+        //lightComponent.shadowType = 3;
+        //lightComponent.shadowDistance = 40
+
+        /*
+        temp1.range = 3
+        temp1.entity.setPosition(0, 0.5, 0)
+        temp1.intensity = 32
+        */
+
+        console.warn(lightComponent)
+        //lightComponent.shape = pc.LIGHTSHAPE_SPHERE;
     }
 
     public static loadAsset(url: string, callback: (asset: pc.Asset) => void) {
@@ -141,5 +182,26 @@ export class Render {
         app.assets.add(asset);
         app.assets.load(asset);
         return asset;
+    }
+
+    public static createGunFlash(x: number, y: number) {
+        const app = this.app;
+
+        if(!app) return;
+
+        const light = new pc.Entity('light');
+        const lightComponent = light.addComponent('light') as pc.LightComponent;
+        light.setPosition(x, 0.2, y)
+        app.root.addChild(light);
+
+        lightComponent.type = "point"
+        lightComponent.color = new pc.Color(1, 1, 0);
+        lightComponent.range = 1;
+        lightComponent.intensity = 1
+
+        setTimeout(() => {
+            light.destroy();
+            app.root.removeChild(light);
+        }, 60);
     }
 }

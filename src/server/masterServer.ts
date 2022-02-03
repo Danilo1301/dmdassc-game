@@ -1,7 +1,7 @@
 
 import socketio from 'socket.io';
-import { Client } from '../client/client';
-import { Server } from '../server/server';
+import { Client } from './client';
+import { Server } from './server';
 
 export class MasterServer {
     public static Instance: MasterServer;

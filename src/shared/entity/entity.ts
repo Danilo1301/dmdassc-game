@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { Component } from '../component/component';
 import { SyncComponent } from '../component/syncComponent';
 import { TransformComponent } from '../component/transformComponent';
-import { World } from '../world/world';
+import { World } from '../world';
 
 class DataObject {
     private _object;
@@ -164,6 +164,9 @@ export class Entity {
 
     public destroyed: boolean = false;
 
+    public syncInterval: number = 0;
+    public lastSync: number = 0;
+    
     public get id() { return this._id; }
     public get world() { return this._world; }
     public get components() { return this._components; }

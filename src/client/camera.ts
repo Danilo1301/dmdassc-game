@@ -1,6 +1,6 @@
 import * as pc from "playcanvas";
-import { Gameface } from "../gameface/gameface";
-import { Render } from "../gameface/render";
+import { Gameface } from "./gameface";
+import { Render } from "./render";
 
 export class Camera {
     public static height: number = 1000;

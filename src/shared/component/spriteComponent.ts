@@ -1,7 +1,7 @@
 import * as pc from "playcanvas";
 import { Entity } from "../entity/entity";
-import { Render } from "../../client/gameface/render";
-import { PlaneSprite } from "../../client/planeSprite/planeSprite";
+import { Render } from "../../client/render";
+import { PlaneSprite } from "../../client/planeSprite";
 import { Component } from "./component";
 
 interface ISpriteOption {

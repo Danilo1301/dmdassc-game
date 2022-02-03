@@ -1,5 +1,5 @@
 import * as pc from "playcanvas";
-import { Render } from "../../client/gameface/render";
+import { Render } from "../../client/render";
 import { TextScript } from "../../client/playcanvas/scripts/textScript";
 import { Entity } from "../entity/entity";
 import { Component } from "./component";
@@ -14,6 +14,7 @@ export class DebugComponent extends Component {
         if(!Render.app) return;
         
         const text = new pc.Entity('text');
+        text.setLocalPosition(0, 0.1, 0)
         const textScript = (text.addComponent('script') as pc.ScriptComponent).create('textScript') as TextScript;
 
         textScript.text = this.entity.constructor.name
