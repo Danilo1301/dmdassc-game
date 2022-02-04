@@ -10,7 +10,7 @@ window['gameface'] = gameface;
 window['Render'] = Render;
 window['Input'] = Input;
 
-createMatterRender();
+//createMatterRender();
 
 function createMatterRender() {
     const width = 800;

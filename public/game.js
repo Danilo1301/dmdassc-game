@@ -11715,7 +11715,7 @@ gameface.start();
 window['gameface'] = gameface;
 window['Render'] = render_1.Render;
 window['Input'] = input_1.Input;
-createMatterRender();
+//createMatterRender();
 function createMatterRender() {
     const width = 800;
     const height = 600;
