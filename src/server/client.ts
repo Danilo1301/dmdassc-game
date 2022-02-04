@@ -157,6 +157,8 @@ export class Client {
 
         for (const entity of world.entities) {
 
+            if(!entity.canSync) continue;
+            
             const distance: number = playerPosition.distance(entity.transform.getPosition());
 
             let canBeStreamed = false;

@@ -191,7 +191,7 @@ export class Render {
 
         const light = new pc.Entity('light');
         const lightComponent = light.addComponent('light') as pc.LightComponent;
-        light.setPosition(x, 0.2, y)
+        light.setPosition(x * 0.01, 0.2, y * 0.01)
         app.root.addChild(light);
 
         lightComponent.type = "point"

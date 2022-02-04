@@ -9,6 +9,8 @@ import { Input } from '../shared/input';
 import { Network } from './network';
 import { Render } from './render';
 import { TextScript } from './playcanvas/scripts/textScript';
+import { EntityWeapon } from '../shared/entity/entityWeapon';
+import { WeaponComponent } from '../shared/component/weaponComponent';
 
 export class Gameface {
     public static Instance: Gameface;
@@ -63,15 +65,19 @@ export class Gameface {
         }
     }
 
+    public equipGun(entity: Entity) {
+
+ 
+        const weapon = entity.world.spawnEntity(EntityWeapon);
+
+        weapon.getComponent(WeaponComponent).attachedToEntity = entity;
+
+    }
+
     public update(dt: number) {
         this.game.update(dt);
         this.network.update(dt);
 
-        var app = this.app;
-        var start = new pc.Vec3(0, 0, 0);
-        var end = new pc.Vec3(1, 0, 0);
-        var worldLayer = app.scene.layers.getLayerById(pc.LAYERID_WORLD);
-        app.drawLine(start, end, pc.Color.WHITE, true, worldLayer);
 
         this.checkControllingEntity();
 

@@ -53,6 +53,7 @@ export class World {
 
     public update(dt: number) {
         this.entities.map(entity => entity.update(dt));
+        this.entities.map(entity => entity.postupdate(dt));
     }
 
     private initMatterWorld() {
@@ -100,11 +101,16 @@ export class World {
             const npc = this.spawnEntity(EntityPlayer);
             npc.addComponent(new NPCBehaviourComponent())
             //vehicle.transform.setPosition(0, -80)
+
+            if(i == 0) {
+                const weapon = this.spawnEntity(EntityWeapon);
+                weapon.getComponent(WeaponComponent).attachedToEntity = npc;
+            }
         }
         
         for (let i = 0; i < 2; i++) {
             const wpn = this.spawnEntity(EntityWeapon);
-            wpn.getComponent(WeaponComponent).enabled = true;
+            //wpn.getComponent(WeaponComponent).enabled = true;
 
             keepincenter(wpn);
             //vehicle.transform.setPosition(0, -80)

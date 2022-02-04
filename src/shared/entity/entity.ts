@@ -165,6 +165,7 @@ export class Entity {
     public destroyed: boolean = false;
 
     public syncInterval: number = 0;
+    public canSync: boolean = true;
     public lastSync: number = 0;
     
     public get id() { return this._id; }

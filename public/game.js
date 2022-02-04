@@ -11885,6 +11885,15 @@ class Camera {
         }
         this._position.z = this.height;
         render_1.Render.camera.setPosition(this._position.x * 0.01, this._position.z * 0.01, this._position.y * 0.01);
+        if (this.testMode) {
+            //Input.mousePosition
+            const player = gameface_1.Gameface.Instance.player;
+            const position = player.transform.getPosition();
+            //Render.camera.setPosition(0, this.height * 0.01, 0);
+            //Render.camera.lookAt(this._position.x * 0.01, this._position.z * 0.01, this._position.y * 0.01)
+            render_1.Render.camera.setPosition(0, 20, 0);
+            render_1.Render.camera.lookAt(position.x * 0.01, 0, position.y * 0.01);
+        }
     }
     static setPosition(x, y) {
         this._position.x = x;
@@ -11894,6 +11903,7 @@ class Camera {
 exports.Camera = Camera;
 Camera.height = 1000;
 Camera.followPlayer = true;
+Camera.testMode = false;
 Camera._position = new pc.Vec3();
 
 
@@ -11938,6 +11948,8 @@ const input_1 = __webpack_require__(/*! ../shared/input */ "./src/shared/input.t
 const network_1 = __webpack_require__(/*! ./network */ "./src/client/network.ts");
 const render_1 = __webpack_require__(/*! ./render */ "./src/client/render.ts");
 const textScript_1 = __webpack_require__(/*! ./playcanvas/scripts/textScript */ "./src/client/playcanvas/scripts/textScript.ts");
+const entityWeapon_1 = __webpack_require__(/*! ../shared/entity/entityWeapon */ "./src/shared/entity/entityWeapon.ts");
+const weaponComponent_1 = __webpack_require__(/*! ../shared/component/weaponComponent */ "./src/shared/component/weaponComponent.ts");
 class Gameface {
     constructor(canvas) {
         this.controllingEntityId = "";
@@ -11970,14 +11982,13 @@ class Gameface {
             this.setPlayer(entity);
         }
     }
+    equipGun(entity) {
+        const weapon = entity.world.spawnEntity(entityWeapon_1.EntityWeapon);
+        weapon.getComponent(weaponComponent_1.WeaponComponent).attachedToEntity = entity;
+    }
     update(dt) {
         this.game.update(dt);
         this.network.update(dt);
-        var app = this.app;
-        var start = new pc.Vec3(0, 0, 0);
-        var end = new pc.Vec3(1, 0, 0);
-        var worldLayer = app.scene.layers.getLayerById(pc.LAYERID_WORLD);
-        app.drawLine(start, end, pc.Color.WHITE, true, worldLayer);
         this.checkControllingEntity();
         camera_1.Camera.update(dt);
         render_1.Render.update(dt);
@@ -12584,7 +12595,7 @@ class Render {
             return;
         const light = new pc.Entity('light');
         const lightComponent = light.addComponent('light');
-        light.setPosition(x, 0.2, y);
+        light.setPosition(x * 0.01, 0.2, y * 0.01);
         app.root.addChild(light);
         lightComponent.type = "point";
         lightComponent.color = new pc.Color(1, 1, 0);
@@ -12701,7 +12712,6 @@ class CollisionComponent extends component_1.Component {
     }
     get body() { return this._body; }
     init() {
-        console.log("colision init");
         super.init();
         this.createBody();
         //const body = this._body = Matter.Bodies.rectangle(0, 0, 100, 100, this.options);
@@ -12832,10 +12842,10 @@ class Component {
         this.priority = 0;
     }
     init() {
-        console.log(`[${this.constructor.name}] init`);
+        //console.log(`[${this.constructor.name}] init`);
     }
     destroy() {
-        console.log(`[${this.constructor.name}] destroy`);
+        //console.log(`[${this.constructor.name}] destroy`);
     }
     update(dt) { }
     postupdate(dt) { }
@@ -13306,8 +13316,8 @@ class SyncComponent extends component_1.Component {
         if (this.syncType == SyncType.DONT_SYNC)
             return;
         const now = Date.now();
-        if (now - this._lastUpdated > (this.entity.syncInterval == 0 ? 500 : 1))
-            return;
+        const lerpFactor = (1 - (Math.min(500, now - this._lastUpdated) / 500));
+        //if(now - this._lastUpdated > (this.entity.syncInterval == 0 ? 500 : 1)) return;
         const transform = this.entity.transform;
         const position = transform.getPosition();
         let posLerp = this.positionLerp;
@@ -13315,9 +13325,11 @@ class SyncComponent extends component_1.Component {
         if (distance > 60) {
             posLerp = 1;
         }
-        const x = pc.math.lerp(position.x, this._targetPosition.x, posLerp);
-        const y = pc.math.lerp(position.y, this._targetPosition.y, posLerp);
-        const angle = pc.math.lerpAngle(transform.angle, this._targetAngle, 0.7);
+        const x = pc.math.lerp(position.x, this._targetPosition.x, posLerp * lerpFactor);
+        const y = pc.math.lerp(position.y, this._targetPosition.y, posLerp * lerpFactor);
+        let angle = pc.math.lerpAngle(transform.angle, this._targetAngle, 0.7 * lerpFactor);
+        if (Math.abs(angle - this._targetAngle) >= Math.PI / 4)
+            angle = this._targetAngle;
         const velX = pc.math.lerp(transform.velocity.x, this._targetVelocity.x, 0.5);
         const velY = pc.math.lerp(transform.velocity.y, this._targetVelocity.y, 0.5);
         transform.setPosition(x, y);
@@ -13487,14 +13499,40 @@ exports.TransformComponent = TransformComponent;
 /*!*************************************************!*\
   !*** ./src/shared/component/weaponComponent.ts ***!
   \*************************************************/
-/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
 
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.WeaponComponent = void 0;
+const matter_js_1 = __importDefault(__webpack_require__(/*! matter-js */ "./node_modules/matter-js/build/matter.js"));
+const pc = __importStar(__webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs"));
 const render_1 = __webpack_require__(/*! ../../client/render */ "./src/client/render.ts");
-const entityBullet_1 = __webpack_require__(/*! ../entity/entityBullet */ "./src/shared/entity/entityBullet.ts");
+const entityPlayer_1 = __webpack_require__(/*! ../entity/entityPlayer */ "./src/shared/entity/entityPlayer.ts");
+const entityVehicle_1 = __webpack_require__(/*! ../entity/entityVehicle */ "./src/shared/entity/entityVehicle.ts");
+const input_1 = __webpack_require__(/*! ../input */ "./src/shared/input.ts");
 const collisionComponent_1 = __webpack_require__(/*! ./collisionComponent */ "./src/shared/component/collisionComponent.ts");
 const component_1 = __webpack_require__(/*! ./component */ "./src/shared/component/component.ts");
 const inputHandlerComponent_1 = __webpack_require__(/*! ./inputHandlerComponent */ "./src/shared/component/inputHandlerComponent.ts");
@@ -13502,27 +13540,165 @@ class WeaponComponent extends component_1.Component {
     constructor() {
         super(...arguments);
         this.speed = 40;
-        this.enabled = false;
+        this._lastShotHit = false;
+        this.offset = new pc.Vec2(0, 30);
+        this._shotTime = 0;
     }
     init() {
         super.init();
         setInterval(() => {
-            const collisionComponent = this.entity.getComponent(collisionComponent_1.CollisionComponent);
+            //this.shot();
+        }, 500);
+        /*
+        setInterval(() => {
+
+            
+            
+            const collisionComponent = this.entity.getComponent(CollisionComponent);
             const bodyPart = collisionComponent.getBodyPart("muzzle");
-            const p = bodyPart.Body.position;
-            console.log(bodyPart);
-            render_1.Render.createGunFlash(p.x * 0.01, p.y * 0.01);
-            if (this.enabled) {
-                const bullet = this.entity.world.spawnEntity(entityBullet_1.EntityBullet);
-                bullet.transform.setPosition(p.x, p.y);
-                bullet.transform.setAngle(this.entity.transform.angle);
-            }
+            
+            const p = bodyPart!.Body!.position
+            
+            //console.log(bodyPart)
+
+            
+                Render.createGunFlash(p.x * 0.01, p.y * 0.01);
+
+                if(this.enabled) {
+                    const bullet = this.entity.world.spawnEntity(EntityBullet);
+
+                    bullet.transform.setPosition(p.x, p.y);
+                    bullet.transform.setAngle(this.entity.transform.angle);
+
+                }
+
         }, 2000);
+        */
+    }
+    raycast(bodies, start, r, dist) {
+        var normRay = matter_js_1.default.Vector.normalise(r);
+        var ray = normRay;
+        var point = matter_js_1.default.Vector.add(ray, start);
+        for (var i = 0; i < dist; i++) {
+            ray = matter_js_1.default.Vector.mult(normRay, i);
+            ray = matter_js_1.default.Vector.add(start, ray);
+            var bod = matter_js_1.default.Query.point(bodies, ray)[0];
+            if (bod) {
+                return { point: ray, body: bod };
+            }
+        }
+        return;
+    }
+    shot() {
+        this._shotTime = 0.2;
+        const entities = [];
+        const bodies = [];
+        this.entity.world.entities.map(entity => {
+            if (!(entity instanceof entityVehicle_1.EntityVehicle || entity instanceof entityPlayer_1.EntityPlayer))
+                return;
+            if (!entity.hasComponent(collisionComponent_1.CollisionComponent))
+                return;
+            const body = entity.getComponent(collisionComponent_1.CollisionComponent).body;
+            entities.push(entity);
+            bodies.push(body);
+        });
+        const position = this.getMuzzlePosition();
+        const angle = this.entity.transform.angle;
+        const start = {
+            x: position.x,
+            y: position.y
+        };
+        const r = {
+            x: Math.cos(angle),
+            y: Math.sin(angle)
+        };
+        const result = this.raycast(bodies, start, r, 400);
+        if (result) {
+            this._lastShotHit = true;
+        }
+        //console.log(result)
+        const muzzlePos = this.getMuzzlePosition();
+        render_1.Render.createGunFlash(muzzlePos.x, muzzlePos.y);
+    }
+    getMuzzlePosition() {
+        const collisionComponent = this.entity.getComponent(collisionComponent_1.CollisionComponent);
+        const bodyPart = collisionComponent.getBodyPart("muzzle");
+        const p = bodyPart.Body.position;
+        return new pc.Vec2(p.x, p.y);
+    }
+    drawLine() {
+        var app = render_1.Render.app;
+        if (!app)
+            return;
+        var color = this._lastShotHit ? pc.Color.RED : pc.Color.WHITE;
+        var start = this.getAimStartPoint();
+        var end = this.getAimEndPoint();
+        //var worldLayer = app.scene.layers.getLayerById(pc.LAYERID_WORLD);
+        app.drawLine(start, end, color, false, undefined);
+    }
+    updateWeaponPosition() {
+        if (this.attachedToEntity) {
+            //console.log('attachedToEntity')
+            const position = this.attachedToEntity.transform.getPosition();
+            const angle = this.attachedToEntity.transform.angle;
+            const offset = new pc.Vec2();
+            offset.x += this.offset.x * Math.sin(angle),
+                offset.y += this.offset.x * -Math.cos(angle);
+            offset.x += this.offset.y * Math.cos(angle);
+            offset.y += this.offset.y * Math.sin(angle);
+            this.entity.transform.setPosition(position.x + offset.x, position.y + offset.y);
+            this.entity.transform.setAngle(angle);
+        }
+    }
+    getAimStartPoint() {
+        const muzzlePos = this.getMuzzlePosition();
+        var start = new pc.Vec3(muzzlePos.x * 0.01, 0, muzzlePos.y * 0.01);
+        return start;
+    }
+    getAimEndPoint() {
+        var start = this.getAimStartPoint();
+        var angle = this.entity.transform.angle;
+        var distance = 400;
+        var end = new pc.Vec3(start.x + (Math.cos(angle) * distance * 0.01), 0, start.z + (Math.sin(angle) * distance * 0.01));
+        /*
+        var controllable = false;
+        if(this.attachedToEntity) {
+            if(this.attachedToEntity.hasComponent(InputHandlerComponent)) controllable = this.attachedToEntity.getComponent(InputHandlerComponent).enabled;
+        }
+        if(controllable) {
+            var mousePos = Input.mousePosition;
+            end = Render.camera.camera!.screenToWorld(mousePos.x, mousePos.y, Camera.height);
+        }
+        */
+        return end;
+    }
+    processShotInputs() {
+        if (!this.attachedToEntity)
+            return;
+        if (!this.attachedToEntity.hasComponent(inputHandlerComponent_1.InputHandlerComponent))
+            return;
+        const inputHandler = this.attachedToEntity.getComponent(inputHandlerComponent_1.InputHandlerComponent);
+        if (!inputHandler.enabled)
+            return;
+        if (input_1.Input.mouseDown) {
+            const now = Date.now();
+            if (this._shotTime > 0)
+                return;
+            this.shot();
+        }
     }
     update(dt) {
         super.update(dt);
-        if (!this.entity.hasComponent(inputHandlerComponent_1.InputHandlerComponent))
-            return;
+        if (this._shotTime > 0) {
+            this._shotTime -= dt;
+        }
+        if (this._shotTime <= 0)
+            this._lastShotHit = false;
+        this.processShotInputs();
+    }
+    postupdate(dt) {
+        this.updateWeaponPosition();
+        this.drawLine();
     }
 }
 exports.WeaponComponent = WeaponComponent;
@@ -13729,6 +13905,7 @@ class Entity {
         this.data = new DataManager();
         this.destroyed = false;
         this.syncInterval = 0;
+        this.canSync = true;
         this.lastSync = 0;
         this._id = (0, uuid_1.v4)();
         this._components = [];
@@ -13916,16 +14093,17 @@ exports.EntityBullet = EntityBullet;
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.EntityPlayer = void 0;
+const gameface_1 = __webpack_require__(/*! ../../client/gameface */ "./src/client/gameface.ts");
 const collisionComponent_1 = __webpack_require__(/*! ../component/collisionComponent */ "./src/shared/component/collisionComponent.ts");
-const debugComponent_1 = __webpack_require__(/*! ../component/debugComponent */ "./src/shared/component/debugComponent.ts");
 const inputHandlerComponent_1 = __webpack_require__(/*! ../component/inputHandlerComponent */ "./src/shared/component/inputHandlerComponent.ts");
 const playerComponent_1 = __webpack_require__(/*! ../component/playerComponent */ "./src/shared/component/playerComponent.ts");
 const spriteComponent_1 = __webpack_require__(/*! ../component/spriteComponent */ "./src/shared/component/spriteComponent.ts");
 const entity_1 = __webpack_require__(/*! ./entity */ "./src/shared/entity/entity.ts");
 class EntityPlayer extends entity_1.Entity {
     constructor(world) {
+        var _a;
         super(world);
-        this.addComponent(new debugComponent_1.DebugComponent());
+        //this.addComponent(new DebugComponent());
         this.addComponent(new playerComponent_1.PlayerComponent());
         this.addComponent(new inputHandlerComponent_1.InputHandlerComponent());
         const sprite = this.addComponent(new spriteComponent_1.SpriteComponent());
@@ -13933,6 +14111,7 @@ class EntityPlayer extends entity_1.Entity {
         const collision = this.addComponent(new collisionComponent_1.CollisionComponent());
         collision.options.frictionAir = 0.2;
         collision.addCircle('default', 0, 0, 30);
+        (_a = gameface_1.Gameface.Instance) === null || _a === void 0 ? void 0 : _a.equipGun(this);
         //collision.addRectangle('default', 0, 0, 80, 80);
         /*
         const t = Math.random() * 2000 + 500;
@@ -14000,24 +14179,22 @@ exports.EntityVehicle = EntityVehicle;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.EntityWeapon = void 0;
 const collisionComponent_1 = __webpack_require__(/*! ../component/collisionComponent */ "./src/shared/component/collisionComponent.ts");
-const debugComponent_1 = __webpack_require__(/*! ../component/debugComponent */ "./src/shared/component/debugComponent.ts");
 const spriteComponent_1 = __webpack_require__(/*! ../component/spriteComponent */ "./src/shared/component/spriteComponent.ts");
 const weaponComponent_1 = __webpack_require__(/*! ../component/weaponComponent */ "./src/shared/component/weaponComponent.ts");
 const entity_1 = __webpack_require__(/*! ./entity */ "./src/shared/entity/entity.ts");
 class EntityWeapon extends entity_1.Entity {
     constructor(world) {
         super(world);
-        this.addComponent(new debugComponent_1.DebugComponent());
+        this.canSync = false;
+        //this.addComponent(new DebugComponent());
         this.addComponent(new weaponComponent_1.WeaponComponent());
         const sprite = this.addComponent(new spriteComponent_1.SpriteComponent());
-        sprite.add('default', 'assets/car.png', 1, 70, 10);
+        sprite.add('default', 'assets/car.png', 1, 60, 8);
         const collision = this.addComponent(new collisionComponent_1.CollisionComponent());
         collision.options.frictionAir = 0.1;
         collision.options.mass = 100000;
-        collision.off.x = 0;
-        collision.off.y = 0;
-        collision.addRectangle('default', 0, 0, 70, 10);
-        collision.addRectangle('muzzle', 70, 0, 5, 5, true);
+        collision.addRectangle('default', 0, 0, 70, 10, true);
+        collision.addRectangle('muzzle', 35, 0, 5, 5, true);
     }
 }
 exports.EntityWeapon = EntityWeapon;
@@ -14110,6 +14287,7 @@ exports.Input = void 0;
 const pc = __importStar(__webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs"));
 class Input {
     static get mousePosition() { return this._mousePosition; }
+    static get mouseDown() { return this._mouseDown; }
     static init(app) {
         console.log("[input] init");
         app.keyboard.on(pc.EVENT_KEYDOWN, this.onKeyDown, this);
@@ -14309,6 +14487,7 @@ class World {
     }
     update(dt) {
         this.entities.map(entity => entity.update(dt));
+        this.entities.map(entity => entity.postupdate(dt));
     }
     initMatterWorld() {
         const engine = this.matter.engine = matter_js_1.default.Engine.create();
@@ -14342,10 +14521,14 @@ class World {
             const npc = this.spawnEntity(entityPlayer_1.EntityPlayer);
             npc.addComponent(new npcBehaviourComponent_1.NPCBehaviourComponent());
             //vehicle.transform.setPosition(0, -80)
+            if (i == 0) {
+                const weapon = this.spawnEntity(entityWeapon_1.EntityWeapon);
+                weapon.getComponent(weaponComponent_1.WeaponComponent).attachedToEntity = npc;
+            }
         }
         for (let i = 0; i < 2; i++) {
             const wpn = this.spawnEntity(entityWeapon_1.EntityWeapon);
-            wpn.getComponent(weaponComponent_1.WeaponComponent).enabled = true;
+            //wpn.getComponent(WeaponComponent).enabled = true;
             keepincenter(wpn);
             //vehicle.transform.setPosition(0, -80)
         }

@@ -2,6 +2,7 @@ import * as pc from 'playcanvas'
 
 export class Input {
     public static get mousePosition() { return this._mousePosition; }
+    public static get mouseDown() { return this._mouseDown; }
 
     private static _keys = new Map<number, boolean>();
     private static _mousePosition = new pc.Vec2(0, 0);

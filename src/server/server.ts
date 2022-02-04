@@ -49,6 +49,8 @@ export class Server {
             
             for (const entity of world.entities) {
             
+                if(!entity.canSync) continue;
+
                 if(Date.now() - entity.lastSync < entity.syncInterval) continue;
                 entity.lastSync = Date.now();
 

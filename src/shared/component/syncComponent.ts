@@ -30,7 +30,12 @@ export class SyncComponent extends Component {
         if(this.syncType == SyncType.DONT_SYNC) return;
 
         const now = Date.now();
-        if(now - this._lastUpdated > (this.entity.syncInterval == 0 ? 500 : 1)) return;
+
+        const lerpFactor = (1 - (Math.min(500, now - this._lastUpdated) / 500))
+
+
+
+        //if(now - this._lastUpdated > (this.entity.syncInterval == 0 ? 500 : 1)) return;
 
         
         const transform = this.entity.transform;
@@ -43,9 +48,11 @@ export class SyncComponent extends Component {
             posLerp = 1;
         }
 
-        const x = pc.math.lerp(position.x, this._targetPosition.x, posLerp);
-        const y = pc.math.lerp(position.y, this._targetPosition.y, posLerp);
-        const angle = pc.math.lerpAngle(transform.angle, this._targetAngle, 0.7);
+        const x = pc.math.lerp(position.x, this._targetPosition.x, posLerp * lerpFactor);
+        const y = pc.math.lerp(position.y, this._targetPosition.y, posLerp * lerpFactor);
+
+        let angle = pc.math.lerpAngle(transform.angle, this._targetAngle, 0.7 * lerpFactor);
+        if(Math.abs(angle - this._targetAngle) >= Math.PI/4) angle = this._targetAngle;
 
         const velX = pc.math.lerp(transform.velocity.x, this._targetVelocity.x, 0.5);
         const velY = pc.math.lerp(transform.velocity.y, this._targetVelocity.y, 0.5);
