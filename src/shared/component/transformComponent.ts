@@ -20,8 +20,11 @@ export class TransformComponent extends Component {
         this.entity.data.defineKey("position.y", {minDifference: 0.1});
         this.entity.data.defineKey("angle", {minDifference: 0.01});
  
+        this.entity.data.setKey("position.x", 0);
+        this.entity.data.setKey("position.y", 0);
+        this.entity.data.setKey("angle", 0);
         
-        console.log("data on init", this.entity.data['_data'])
+        //console.log("data on init", this.entity.data['_data'])
 
         //console.log(this.entity.data.getKey("position.x"));
 
@@ -29,7 +32,6 @@ export class TransformComponent extends Component {
 
 
         //const test = this.entity.data.getObject("test");
-
     }
 
     public update(dt: number) {
@@ -46,6 +48,8 @@ export class TransformComponent extends Component {
     }
 
     public setPosition(x: number, y: number) {
+        if(x == undefined || y == undefined) throw "position undefined"
+
         this.entity.data.setKey('position.x', x);
         this.entity.data.setKey('position.y', y);
 
@@ -66,6 +70,8 @@ export class TransformComponent extends Component {
     }
     
     public setAngle(angle: number) {
+        if(angle == undefined) throw "angle undefined"
+
         this.angle = angle;
 
         if(this.entity.hasComponent(CollisionComponent)) {
@@ -85,6 +91,8 @@ export class TransformComponent extends Component {
         if(this.entity.hasComponent(CollisionComponent)) {
             
             const c = this.entity.getComponent(CollisionComponent);
+
+            if(!c.body) return;
 
             const pos = {
                 x: c.body.position.x * 1,

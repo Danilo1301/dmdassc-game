@@ -4,7 +4,7 @@ import { Entity } from '../shared/entity/entity';
 import { MasterServer } from './masterServer';
 import { Server } from './server';
 import { Gamelog } from './gamelog';
-import { IPacketData_ControlEntity, IPacketData_DestroyEntity, IPacketData_EntityData, IPacketData_JoinServer, IPacketData_SpawnEntity, Packet, PacketType } from '../shared/packet';
+import { IPacketData_ComponentEvent, IPacketData_ControlEntity, IPacketData_DestroyEntity, IPacketData_EntityData, IPacketData_JoinServer, IPacketData_SpawnEntity, Packet, PacketType } from '../shared/packet';
 
 export class Client {
     public get id() { return this._id; }
@@ -117,6 +117,21 @@ export class Client {
 
             player.mergeEntityData(data);
             
+
+        }
+
+        if(packet.type == PacketType.COMPONENT_EVENT) {
+            const packetData: IPacketData_ComponentEvent = packet.data;
+
+            console.log(packetData)
+
+            const world = this.player!.world;
+            const entity = world.getEntity(packetData.entity)!;
+
+            const component = entity.getComponent(world.game.entityFactory.getComponentByIndex(packetData.component));
+            //console.log(component)
+
+            component.onReceiveComponentEvent(packetData.event, packetData.data, this);
 
         }
 

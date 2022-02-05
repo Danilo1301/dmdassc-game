@@ -27,6 +27,10 @@ export class EntityFactory {
         return Array.from(this._allEntities.values())[index];
     }
 
+    public getComponentByIndex(index: number) {
+        return Array.from(this._allComponents.values())[index];
+    }
+
     public getIndexOfEntity<T extends Entity>(c: T) {
         let i = 0;
         for (const constr of this._allEntities.values()) {

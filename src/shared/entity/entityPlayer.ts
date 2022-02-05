@@ -2,6 +2,7 @@ import { Gameface } from "../../client/gameface";
 import { Render } from "../../client/render";
 import { CollisionComponent } from "../component/collisionComponent";
 import { DebugComponent } from "../component/debugComponent";
+import { EquipItemComponent } from "../component/equipItemComponent";
 import { InputHandlerComponent } from "../component/inputHandlerComponent";
 import { PlayerComponent } from "../component/playerComponent";
 import { SpriteComponent } from "../component/spriteComponent";
@@ -16,6 +17,7 @@ export class EntityPlayer extends Entity {
         //this.addComponent(new DebugComponent());
         this.addComponent(new PlayerComponent());
         this.addComponent(new InputHandlerComponent());
+        this.addComponent(new EquipItemComponent());
 
         const sprite = this.addComponent(new SpriteComponent());
         sprite.add('default', 'assets/player.png', 3, 80, 80);
@@ -24,7 +26,7 @@ export class EntityPlayer extends Entity {
         collision.options.frictionAir = 0.2;
         collision.addCircle('default', 0, 0, 30);
 
-        Gameface.Instance?.equipGun(this);
+        //Gameface.Instance?.equipGun(this);
 
         //collision.addRectangle('default', 0, 0, 80, 80);
 

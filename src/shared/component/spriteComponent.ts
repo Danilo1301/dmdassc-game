@@ -9,6 +9,7 @@ interface ISpriteOption {
     frames: number
     width: number
     height: number
+    zheight: number
     planeSprite?: PlaneSprite
 }
 
@@ -24,18 +25,19 @@ export class SpriteComponent extends Component {
         super.init();
     }
 
-    public add(id: string, texture: string, frames: number, width: number, height: number) {
+    public add(id: string, texture: string, frames: number, width: number, height: number, zheight: number = 0) {
         const spriteOptions: ISpriteOption = {
             texture: texture,
             frames: frames,
             width: width,
-            height: height
+            height: height,
+            zheight: zheight
         }
         this._spriteOptions.set(id, spriteOptions);
     }
 
-    public update(dt: number) {
-        super.update(dt);
+    public render(dt: number) {
+        super.render(dt);
 
         if(!Render.app) return;
 
@@ -45,13 +47,10 @@ export class SpriteComponent extends Component {
             if(!spriteOptions.planeSprite) {
                 spriteOptions.planeSprite = new PlaneSprite(spriteOptions.texture, spriteOptions.frames,  spriteOptions.width, spriteOptions.height);
                 this.entity.pcEntityRoot.addChild(spriteOptions.planeSprite.pcEntity);
+                spriteOptions.planeSprite.pcEntity.setLocalPosition(0, spriteOptions.zheight * 0.01, 0);
             }
 
             spriteOptions.planeSprite.update(dt);
         })
-    }
-
-    public postupdate(dt: number) {
-        super.postupdate(dt);
     }
 }

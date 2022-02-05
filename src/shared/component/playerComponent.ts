@@ -4,10 +4,11 @@ import { Render } from '../../client/render';
 import { Input } from '../input';
 import { CollisionComponent } from './collisionComponent';
 import { Component } from "./component";
+import { EquipItemComponent } from './equipItemComponent';
 import { InputHandlerComponent } from './inputHandlerComponent';
 
 export class PlayerComponent extends Component {
-    public speed: number = 40;
+    public speed: number = 80;
 
     public init() {
         super.init();
@@ -19,6 +20,18 @@ export class PlayerComponent extends Component {
         if(!this.entity.hasComponent(InputHandlerComponent)) return;
 
         const inputHandler = this.entity.getComponent(InputHandlerComponent);
+
+        if(inputHandler.enabled) {
+
+            if(Input.mouseDown) {
+                
+                this.entity.getComponent(EquipItemComponent).tryUse();
+
+                
+                
+            }
+
+        }
 
         const move = new pc.Vec2(
             inputHandler.horizontal,

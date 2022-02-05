@@ -16,11 +16,11 @@ export class Render {
         this.setupLocalClientScene();
     }
 
-    public static update(dt: number) {
-        this.renderWorld();
+    public static render(dt: number) {
+        this.renderWorld(dt);
     }
 
-    private static renderWorld() {
+    private static renderWorld(dt: number) {
         const world = this.world;
         const app = this.app;
 
@@ -31,7 +31,7 @@ export class Render {
 
             if(!this._renderingEntities.includes(entity)) {
                 this._renderingEntities.push(entity);
-
+                
                 console.log("[render] add pcEntity");
 
                 app.root.addChild(entity.pcEntity);
@@ -70,7 +70,7 @@ export class Render {
             entity.pcEntityRoot.setEulerAngles(0, pc.math.RAD_TO_DEG * -transform.angle, 0);
             
         }
-
+        
         for (const entity of this._renderingEntities) {
             if(!world.entities.includes(entity)) 
             {
@@ -79,6 +79,14 @@ export class Render {
                 console.log("[render] remove pcEntity");
                 app.root.removeChild(entity.pcEntity);
             }
+        }
+
+        for (const entity of this._renderingEntities) {
+            entity.render(dt);
+        }
+        
+        for (const entity of this._renderingEntities) {
+            entity.postrender(dt);
         }
     }
 

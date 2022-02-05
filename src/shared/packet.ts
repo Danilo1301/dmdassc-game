@@ -5,7 +5,16 @@ export enum PacketType {
     JOIN_SERVER,
     SPAWN_ENTITY,
     DESTROY_ENTITY,
-    CONTROL_ENTITY
+    CONTROL_ENTITY,
+    WEAPON_SHOT,
+    COMPONENT_EVENT
+}
+
+export interface IPacketData_ComponentEvent {
+    entity: string
+    component: number
+    event: string
+    data: any
 }
 
 export interface IPacketData_JoinServer {

@@ -167,6 +167,8 @@ export class Entity {
     public syncInterval: number = 0;
     public canSync: boolean = true;
     public lastSync: number = 0;
+
+    public attachedToEntity?: Entity;
     
     public get id() { return this._id; }
     public get world() { return this._world; }
@@ -189,6 +191,7 @@ export class Entity {
     private _components: Component[] = [];
     private _transform: TransformComponent;
     private _hasInitalized: boolean = false;
+    private _hasInitalizedData: boolean = false;
 
     constructor(world: World, pcEntity?: pc.Entity) {
         this._world = world;
@@ -201,6 +204,51 @@ export class Entity {
             //this.transform.setVelocity(0,3)
 
         }, 1500)
+    }
+
+    public attachToEntity(entity: Entity) {
+        this.attachedToEntity = entity;
+
+        this.updateAttachPosition();
+        /*
+        console.log(this._hasInitalized)
+
+        console.log(entity.transform.getPosition())
+
+        this.updateAttachPosition();
+        console.log(entity.transform.getPosition())
+
+        this.update(0.1);
+        console.log(entity.transform.getPosition())
+
+        */
+    }
+
+
+    public updateAttachPosition() {
+        const entity = this;
+        if(entity.attachedToEntity) {
+            
+            if(entity.attachedToEntity.destroyed) {
+                entity.world.removeEntity(this);
+                entity.attachedToEntity = undefined;
+                return;
+            } 
+
+            entity.attachedToEntity.transform.update(0);
+
+            const newPosition = entity.attachedToEntity.transform.getPosition();
+            const angle = entity.attachedToEntity.transform.angle;
+
+            if(angle == undefined) return;
+
+            //console.log(newPosition, angle);
+
+            entity.transform.setPosition(newPosition.x, newPosition.y);
+            entity.transform.setAngle(angle);
+
+            this.transform.update(0);
+        }
     }
 
     public setId(id: string) {
@@ -230,9 +278,23 @@ export class Entity {
         throw new Error(`Component ${constr.name} not found on Entity ${this.constructor.name}`)
     }
 
+    public initData() {
+        if(this._hasInitalizedData) return;
+
+        for (const component of this._components) component.initData();
+        this._hasInitalizedData = true;
+    }
+
     public init() {
+        this.initData();
         for (const component of this._components) component.init();
         this._hasInitalized = true;
+    }
+
+    
+
+    public preupdate(dt: number) {
+        for (const component of this._components) component.preupdate(dt);
     }
 
     public update(dt: number) {
@@ -241,6 +303,14 @@ export class Entity {
 
     public postupdate(dt: number) {
         for (const component of this._components) component.postupdate(dt);
+    }
+
+    public render(dt: number) {
+        for (const component of this._components) component.render(dt);
+    }
+
+    public postrender(dt: number) {
+        for (const component of this._components) component.postrender(dt);
     }
 
     public destroy() {

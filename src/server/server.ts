@@ -3,6 +3,11 @@ import { Client } from './client';
 import { SyncComponent, SyncType } from '../shared/component/syncComponent';
 import { EntityPlayer } from '../shared/entity/entityPlayer';
 import { Game } from '../shared/game';
+import { WeaponComponent } from '../shared/component/weaponComponent';
+import { WorldEvent } from '../shared/worldEvent';
+import { WorldSyncType } from '../shared/world';
+import { Component } from '../shared/component/component';
+import { IPacketData_ComponentEvent, PacketType } from '../shared/packet';
 
 export class Server {
     public get id() { return this._id; }
@@ -25,12 +30,39 @@ export class Server {
         game.start();
         
         const world = game.createWorld('world');
+        world.syncType = WorldSyncType.HOST;
         world.init();
         world.generateWorld();
+
+
+        world.events.on(WorldEvent.COMPONENT_EVENT, (component: Component, event: string, broadcast: boolean, data: any, fromClient?: Client) => {
+            if(!broadcast) return;
+
+            //console.log(`[world] Component BROADCAST event: ${event} (${fromClient ? "has client" : "no client"})`);
+
+
+            for (const client of this.clients) {
+
+   
+                if(client == fromClient) continue;
+                if(!client.isEntityStreamed(component.entity)) continue;
+
+        
+
+                client.sendPacket<IPacketData_ComponentEvent>(PacketType.COMPONENT_EVENT, {
+                    entity: component.entity.id,
+                    component: this.game.entityFactory.getIndexOfComponent(component),
+                    event: event,
+                    data: data
+                });
+            }
+
+        });
+
     }
 
     public update(dt: number) {
-        this.game.update(dt);
+        //this.game.update(dt);
         this.clients.map(client => client.update(dt));
 
 

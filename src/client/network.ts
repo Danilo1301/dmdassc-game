@@ -3,7 +3,7 @@ import { io, Socket } from "socket.io-client";
 import { SyncComponent } from "../shared/component/syncComponent";
 import { Entity } from "../shared/entity/entity";
 import { Gameface } from "./gameface";
-import { IPacketData_ControlEntity, IPacketData_DestroyEntity, IPacketData_EntityData, IPacketData_JoinServer, IPacketData_SpawnEntity, Packet, PacketType } from "../shared/packet";
+import { IPacketData_ComponentEvent, IPacketData_ControlEntity, IPacketData_DestroyEntity, IPacketData_EntityData, IPacketData_JoinServer, IPacketData_SpawnEntity, Packet, PacketType } from "../shared/packet";
 
 
 
@@ -94,10 +94,12 @@ export class Network {
             const entity = world.spawnEntity(world.game.entityFactory.getEntityByIndex(entityType), {id: entityId, dontAdd: true});
             const syncComponent = entity.addComponent(new SyncComponent());
 
+            entity.initData()
             entity.mergeEntityData(packetData.data);
 
             world.addEntity(entity);
 
+            syncComponent.forceLerp();
 
             //FormatPacket.unserializeEntityData(entity, packet);
             
@@ -137,6 +139,23 @@ export class Network {
             if(world.hasEntity(entityId)) {
                 world.removeEntity(world.getEntity(entityId)!);
             }
+        }
+
+        if(packet.type == PacketType.COMPONENT_EVENT) {
+            console.log("received component event packet")
+
+            const packetData: IPacketData_ComponentEvent = packet.data;
+
+            const player = Gameface.Instance.player!;
+
+            const world = player.world;
+            const entity = world.getEntity(packetData.entity)!;
+
+            const component = entity.getComponent(world.game.entityFactory.getComponentByIndex(packetData.component));
+            //console.log(component)
+
+            component.onReceiveComponentEvent(packetData.event, packetData.data);
+
         }
 
         //const packetType: PacketType = packet.readShort();

@@ -9,6 +9,9 @@ import { EntityFactory } from "./entityFactory";
 import { World } from "./world";
 import { EntityWeapon } from "./entity/entityWeapon";
 import { EntityBullet } from "./entity/entityBullet";
+import { EventEmitter } from "./eventEmitter";
+import { InventoryManager } from "./inventoryManager";
+import { EquipItemComponent } from "./component/equipItemComponent";
 
 export class Game {
     public get worlds() { return Array.from(this._worlds.values()); }
@@ -16,6 +19,7 @@ export class Game {
 
     private _worlds = new Map<string, World>();
     private _entityFactory: EntityFactory;
+    private _inventoryManager: InventoryManager;
 
     constructor() {
         this._entityFactory = new EntityFactory();
@@ -23,20 +27,22 @@ export class Game {
         this._entityFactory.registerComponent(InputHandlerComponent);
         this._entityFactory.registerComponent(PlayerComponent);
         this._entityFactory.registerComponent(TransformComponent);
+        this._entityFactory.registerComponent(EquipItemComponent);
 
         this._entityFactory.registerEntity('EntityBuilding', EntityBuilding);
         this._entityFactory.registerEntity('EntityPlayer', EntityPlayer);
         this._entityFactory.registerEntity('EntityVehicle', EntityVehicle);
         this._entityFactory.registerEntity('EntityWeapon', EntityWeapon);
         this._entityFactory.registerEntity('EntityBullet', EntityBullet);
+
+        this._inventoryManager = new InventoryManager();
+
+        const inventory = this._inventoryManager.createInventory('test');
+        inventory.createTab(3, 3);
     }
 
     public start() {
         console.log(`[game] start`);
-    }
-
-    public update(dt: number) {
-        this.worlds.map(world => world.update(dt));
     }
 
     public createWorld(name: string) {

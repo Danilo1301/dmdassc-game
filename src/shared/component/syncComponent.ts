@@ -19,6 +19,7 @@ export class SyncComponent extends Component {
     private _targetVelocity = new pc.Vec2();
     private _targetAngle = 0;
     private _lastUpdated: number = 0;
+    private _firstSync: boolean = true;
 
     public init() {
         super.init();
@@ -54,9 +55,10 @@ export class SyncComponent extends Component {
         let angle = pc.math.lerpAngle(transform.angle, this._targetAngle, 0.7 * lerpFactor);
         if(Math.abs(angle - this._targetAngle) >= Math.PI/4) angle = this._targetAngle;
 
-        const velX = pc.math.lerp(transform.velocity.x, this._targetVelocity.x, 0.5);
-        const velY = pc.math.lerp(transform.velocity.y, this._targetVelocity.y, 0.5);
+        const velX = pc.math.lerp(transform.velocity.x, this._targetVelocity.x, 0.1);
+        const velY = pc.math.lerp(transform.velocity.y, this._targetVelocity.y, 0.1);
 
+        
         
         transform.setPosition(x, y);
         transform.setAngle(angle);
@@ -77,5 +79,14 @@ export class SyncComponent extends Component {
     public setVelocity(x: number, y: number) {
         this._lastUpdated = Date.now();
         this._targetVelocity.set(x, y);
+    }
+    
+    public forceLerp() {
+        const transform = this.entity.transform;
+
+        transform.setPosition(this._targetPosition.x, this._targetPosition.y);
+        transform.setAngle(this._targetAngle);
+        //transform.setVelocity(velX, velY);
+        transform.setAngularVelocity(0);
     }
 }

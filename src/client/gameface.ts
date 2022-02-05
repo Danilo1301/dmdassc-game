@@ -11,6 +11,7 @@ import { Render } from './render';
 import { TextScript } from './playcanvas/scripts/textScript';
 import { EntityWeapon } from '../shared/entity/entityWeapon';
 import { WeaponComponent } from '../shared/component/weaponComponent';
+import { WorldSyncType } from '../shared/world';
 
 export class Gameface {
     public static Instance: Gameface;
@@ -47,12 +48,15 @@ export class Gameface {
 
         this.game.start();
 
+        const isMultiplayer = true;
+
         const world = this.game.createWorld('world');
+        if(isMultiplayer) world.syncType = WorldSyncType.CLIENT;
         world.init();
 
         Render.world = world;
 
-        const isMultiplayer = true;
+        
 
         if(isMultiplayer) {
             this.network.connect();
@@ -66,24 +70,26 @@ export class Gameface {
     }
 
     public equipGun(entity: Entity) {
-
- 
         const weapon = entity.world.spawnEntity(EntityWeapon);
 
-        weapon.getComponent(WeaponComponent).attachedToEntity = entity;
-
+        weapon.getComponent(WeaponComponent).entityOwner = entity;
+        weapon.attachToEntity(entity);
     }
 
+   
     public update(dt: number) {
-        this.game.update(dt);
+        //this.game.update(dt);
         this.network.update(dt);
-
 
         this.checkControllingEntity();
 
         Camera.update(dt);
-        Render.update(dt);
     }
+
+    public render(dt: number) {
+        Render.render(dt);
+    }
+
 
     private initPlaycanvas() {
         const canvas = this._canvas;
@@ -103,6 +109,7 @@ export class Gameface {
         app.scene.ambientLight = new pc.Color(0.2, 0.2, 0.2);
 
         app.on('update', (dt: number) => this.update(dt));
+        app.on('update', (dt: number) => this.render(dt));
         app.start();
 
         window.addEventListener('resize', function(event) {
@@ -124,8 +131,10 @@ export class Gameface {
     public setPlayer(entity: Entity) {
         this.player = entity;
         this.player.getComponent(InputHandlerComponent).enabled = true;
-        this.player.getComponent(SyncComponent).syncType = SyncType.DONT_SYNC;
 
+        if(this.player.hasComponent(SyncComponent)) {
+            this.player.getComponent(SyncComponent).syncType = SyncType.DONT_SYNC;
+        }
         console.warn("SETPLAYER")
     }
 

@@ -11715,7 +11715,7 @@ gameface.start();
 window['gameface'] = gameface;
 window['Render'] = render_1.Render;
 window['Input'] = input_1.Input;
-//createMatterRender();
+createMatterRender();
 function createMatterRender() {
     const width = 800;
     const height = 600;
@@ -11950,6 +11950,7 @@ const render_1 = __webpack_require__(/*! ./render */ "./src/client/render.ts");
 const textScript_1 = __webpack_require__(/*! ./playcanvas/scripts/textScript */ "./src/client/playcanvas/scripts/textScript.ts");
 const entityWeapon_1 = __webpack_require__(/*! ../shared/entity/entityWeapon */ "./src/shared/entity/entityWeapon.ts");
 const weaponComponent_1 = __webpack_require__(/*! ../shared/component/weaponComponent */ "./src/shared/component/weaponComponent.ts");
+const world_1 = __webpack_require__(/*! ../shared/world */ "./src/shared/world.ts");
 class Gameface {
     constructor(canvas) {
         this.controllingEntityId = "";
@@ -11968,10 +11969,12 @@ class Gameface {
         render_1.Render.init(this._app);
         input_1.Input.init(this._app);
         this.game.start();
+        const isMultiplayer = true;
         const world = this.game.createWorld('world');
+        if (isMultiplayer)
+            world.syncType = world_1.WorldSyncType.CLIENT;
         world.init();
         render_1.Render.world = world;
-        const isMultiplayer = true;
         if (isMultiplayer) {
             this.network.connect();
             this.network.sendJoinServer('idk');
@@ -11984,14 +11987,17 @@ class Gameface {
     }
     equipGun(entity) {
         const weapon = entity.world.spawnEntity(entityWeapon_1.EntityWeapon);
-        weapon.getComponent(weaponComponent_1.WeaponComponent).attachedToEntity = entity;
+        weapon.getComponent(weaponComponent_1.WeaponComponent).entityOwner = entity;
+        weapon.attachToEntity(entity);
     }
     update(dt) {
-        this.game.update(dt);
+        //this.game.update(dt);
         this.network.update(dt);
         this.checkControllingEntity();
         camera_1.Camera.update(dt);
-        render_1.Render.update(dt);
+    }
+    render(dt) {
+        render_1.Render.render(dt);
     }
     initPlaycanvas() {
         const canvas = this._canvas;
@@ -12006,6 +12012,7 @@ class Gameface {
         app.setCanvasResolution(pc.RESOLUTION_AUTO);
         app.scene.ambientLight = new pc.Color(0.2, 0.2, 0.2);
         app.on('update', (dt) => this.update(dt));
+        app.on('update', (dt) => this.render(dt));
         app.start();
         window.addEventListener('resize', function (event) {
             app.resizeCanvas();
@@ -12022,7 +12029,9 @@ class Gameface {
     setPlayer(entity) {
         this.player = entity;
         this.player.getComponent(inputHandlerComponent_1.InputHandlerComponent).enabled = true;
-        this.player.getComponent(syncComponent_1.SyncComponent).syncType = syncComponent_1.SyncType.DONT_SYNC;
+        if (this.player.hasComponent(syncComponent_1.SyncComponent)) {
+            this.player.getComponent(syncComponent_1.SyncComponent).syncType = syncComponent_1.SyncType.DONT_SYNC;
+        }
         console.warn("SETPLAYER");
     }
     checkControllingEntity() {
@@ -12124,8 +12133,10 @@ class Network {
                 return;
             const entity = world.spawnEntity(world.game.entityFactory.getEntityByIndex(entityType), { id: entityId, dontAdd: true });
             const syncComponent = entity.addComponent(new syncComponent_1.SyncComponent());
+            entity.initData();
             entity.mergeEntityData(packetData.data);
             world.addEntity(entity);
+            syncComponent.forceLerp();
             //FormatPacket.unserializeEntityData(entity, packet);
             console.log("spsawn entity", packetData);
         }
@@ -12151,6 +12162,16 @@ class Network {
             if (world.hasEntity(entityId)) {
                 world.removeEntity(world.getEntity(entityId));
             }
+        }
+        if (packet.type == packet_1.PacketType.COMPONENT_EVENT) {
+            console.log("received component event packet");
+            const packetData = packet.data;
+            const player = gameface_1.Gameface.Instance.player;
+            const world = player.world;
+            const entity = world.getEntity(packetData.entity);
+            const component = entity.getComponent(world.game.entityFactory.getComponentByIndex(packetData.component));
+            //console.log(component)
+            component.onReceiveComponentEvent(packetData.event, packetData.data);
         }
         //const packetType: PacketType = packet.readShort();
         /*
@@ -12464,10 +12485,10 @@ class Render {
         this.app = app;
         this.setupLocalClientScene();
     }
-    static update(dt) {
-        this.renderWorld();
+    static render(dt) {
+        this.renderWorld(dt);
     }
-    static renderWorld() {
+    static renderWorld(dt) {
         const world = this.world;
         const app = this.app;
         if (!world)
@@ -12508,6 +12529,12 @@ class Render {
                 console.log("[render] remove pcEntity");
                 app.root.removeChild(entity.pcEntity);
             }
+        }
+        for (const entity of this._renderingEntities) {
+            entity.render(dt);
+        }
+        for (const entity of this._renderingEntities) {
+            entity.postrender(dt);
         }
     }
     static setupLocalClientScene() {
@@ -12831,12 +12858,13 @@ xport class CollisionComponent extends Component {
 /*!*******************************************!*\
   !*** ./src/shared/component/component.ts ***!
   \*******************************************/
-/***/ ((__unused_webpack_module, exports) => {
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.Component = void 0;
+const worldEvent_1 = __webpack_require__(/*! ../worldEvent */ "./src/shared/worldEvent.ts");
 class Component {
     constructor() {
         this.priority = 0;
@@ -12844,11 +12872,24 @@ class Component {
     init() {
         //console.log(`[${this.constructor.name}] init`);
     }
+    initData() {
+        //console.log(`[${this.constructor.name}] init`);
+    }
     destroy() {
         //console.log(`[${this.constructor.name}] destroy`);
     }
+    preupdate(dt) { }
     update(dt) { }
     postupdate(dt) { }
+    render(dt) { }
+    postrender(dt) { }
+    sendComponentEvent(event, data, fromClient) {
+        this.entity.world.events.emit(worldEvent_1.WorldEvent.COMPONENT_EVENT, this, event, false, data, fromClient);
+    }
+    broadcastComponentEvent(event, data, fromClient) {
+        this.entity.world.events.emit(worldEvent_1.WorldEvent.COMPONENT_EVENT, this, event, true, data, fromClient);
+    }
+    onReceiveComponentEvent(event, data, fromClient) { }
 }
 exports.Component = Component;
 
@@ -12907,6 +12948,104 @@ class DebugComponent extends component_1.Component {
     }
 }
 exports.DebugComponent = DebugComponent;
+
+
+/***/ }),
+
+/***/ "./src/shared/component/equipItemComponent.ts":
+/*!****************************************************!*\
+  !*** ./src/shared/component/equipItemComponent.ts ***!
+  \****************************************************/
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.EquipItemComponent = void 0;
+const entityWeapon_1 = __webpack_require__(/*! ../entity/entityWeapon */ "./src/shared/entity/entityWeapon.ts");
+const component_1 = __webpack_require__(/*! ./component */ "./src/shared/component/component.ts");
+const weaponComponent_1 = __webpack_require__(/*! ./weaponComponent */ "./src/shared/component/weaponComponent.ts");
+class EquipItemComponent extends component_1.Component {
+    constructor() {
+        super(...arguments);
+        this.speed = 80;
+        //private _hasTriedEquip: boolean = false;
+        this._lastUseTime = 0;
+        this._hasEquipedGun = false;
+    }
+    initData() {
+        this.entity.data.defineKey("equipedItem", { minDifference: 0 });
+        this.entity.data.setKey("equipedItem", -1);
+    }
+    init() {
+        super.init();
+    }
+    update(dt) {
+        super.update(dt);
+        if (this._lastUseTime > 0) {
+            this._lastUseTime -= dt;
+        }
+        if (!this._hasEquipedGun) {
+            if (this.entity.data.getKey("equipedItem") != -1) {
+                this.equipGun();
+            }
+        }
+    }
+    equipGun() {
+        this._hasEquipedGun = true;
+        const entity = this.entity;
+        const weapon = entity.world.spawnEntity(entityWeapon_1.EntityWeapon);
+        weapon.getComponent(weaponComponent_1.WeaponComponent).entityOwner = entity;
+        weapon.attachToEntity(entity);
+        this._weapon = weapon;
+        this.entity.data.setKey("equipedItem", 0);
+        console.log(this.entity.data.getData());
+    }
+    tryUse() {
+        if (this._lastUseTime > 0)
+            return;
+        this._lastUseTime = 0.2;
+        this.sendComponentEvent('TRY_USE', null);
+    }
+    /*
+    public tryEquip() {
+
+        if(this._hasTriedEquip) {
+            console.log("wait")
+            return;
+        }
+
+        this._hasTriedEquip = true;
+       
+        console.log("try equip")
+
+        this.sendComponentEvent('TRY_EQUIP', {id: "test"});
+    }
+    */
+    onReceiveComponentEvent(event, data, fromClient) {
+        super.onReceiveComponentEvent(event, data);
+        //console.log("received ", event, fromClient ? "has client" : "no")
+        if (event == "TRY_USE") {
+            if (!this._hasEquipedGun) {
+                this.broadcastComponentEvent('EQUIP', data, fromClient);
+            }
+            else {
+                this.broadcastComponentEvent('USE', data, fromClient);
+            }
+            //this.broadcastComponentEvent('EQUIP', data, fromClient);
+        }
+        if (event == "EQUIP") {
+            console.log("equip!");
+            this.equipGun();
+        }
+        if (event == "USE") {
+            if (this._weapon) {
+                this._weapon.getComponent(weaponComponent_1.WeaponComponent).shot();
+            }
+        }
+    }
+}
+exports.EquipItemComponent = EquipItemComponent;
 
 
 /***/ }),
@@ -13177,13 +13316,15 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.PlayerComponent = void 0;
 const matter_js_1 = __importDefault(__webpack_require__(/*! matter-js */ "./node_modules/matter-js/build/matter.js"));
 const pc = __importStar(__webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs"));
+const input_1 = __webpack_require__(/*! ../input */ "./src/shared/input.ts");
 const collisionComponent_1 = __webpack_require__(/*! ./collisionComponent */ "./src/shared/component/collisionComponent.ts");
 const component_1 = __webpack_require__(/*! ./component */ "./src/shared/component/component.ts");
+const equipItemComponent_1 = __webpack_require__(/*! ./equipItemComponent */ "./src/shared/component/equipItemComponent.ts");
 const inputHandlerComponent_1 = __webpack_require__(/*! ./inputHandlerComponent */ "./src/shared/component/inputHandlerComponent.ts");
 class PlayerComponent extends component_1.Component {
     constructor() {
         super(...arguments);
-        this.speed = 40;
+        this.speed = 80;
     }
     init() {
         super.init();
@@ -13193,6 +13334,11 @@ class PlayerComponent extends component_1.Component {
         if (!this.entity.hasComponent(inputHandlerComponent_1.InputHandlerComponent))
             return;
         const inputHandler = this.entity.getComponent(inputHandlerComponent_1.InputHandlerComponent);
+        if (inputHandler.enabled) {
+            if (input_1.Input.mouseDown) {
+                this.entity.getComponent(equipItemComponent_1.EquipItemComponent).tryUse();
+            }
+        }
         const move = new pc.Vec2(inputHandler.horizontal, inputHandler.vertical);
         if (move.length() > 0) {
             const collisionComponent = this.entity.getComponent(collisionComponent_1.CollisionComponent);
@@ -13229,17 +13375,18 @@ class SpriteComponent extends component_1.Component {
     init() {
         super.init();
     }
-    add(id, texture, frames, width, height) {
+    add(id, texture, frames, width, height, zheight = 0) {
         const spriteOptions = {
             texture: texture,
             frames: frames,
             width: width,
-            height: height
+            height: height,
+            zheight: zheight
         };
         this._spriteOptions.set(id, spriteOptions);
     }
-    update(dt) {
-        super.update(dt);
+    render(dt) {
+        super.render(dt);
         if (!render_1.Render.app)
             return;
         Array.from(this._spriteOptions.keys()).map(id => {
@@ -13247,12 +13394,10 @@ class SpriteComponent extends component_1.Component {
             if (!spriteOptions.planeSprite) {
                 spriteOptions.planeSprite = new planeSprite_1.PlaneSprite(spriteOptions.texture, spriteOptions.frames, spriteOptions.width, spriteOptions.height);
                 this.entity.pcEntityRoot.addChild(spriteOptions.planeSprite.pcEntity);
+                spriteOptions.planeSprite.pcEntity.setLocalPosition(0, spriteOptions.zheight * 0.01, 0);
             }
             spriteOptions.planeSprite.update(dt);
         });
-    }
-    postupdate(dt) {
-        super.postupdate(dt);
     }
 }
 exports.SpriteComponent = SpriteComponent;
@@ -13307,6 +13452,7 @@ class SyncComponent extends component_1.Component {
         this._targetVelocity = new pc.Vec2();
         this._targetAngle = 0;
         this._lastUpdated = 0;
+        this._firstSync = true;
     }
     init() {
         super.init();
@@ -13330,8 +13476,8 @@ class SyncComponent extends component_1.Component {
         let angle = pc.math.lerpAngle(transform.angle, this._targetAngle, 0.7 * lerpFactor);
         if (Math.abs(angle - this._targetAngle) >= Math.PI / 4)
             angle = this._targetAngle;
-        const velX = pc.math.lerp(transform.velocity.x, this._targetVelocity.x, 0.5);
-        const velY = pc.math.lerp(transform.velocity.y, this._targetVelocity.y, 0.5);
+        const velX = pc.math.lerp(transform.velocity.x, this._targetVelocity.x, 0.1);
+        const velY = pc.math.lerp(transform.velocity.y, this._targetVelocity.y, 0.1);
         transform.setPosition(x, y);
         transform.setAngle(angle);
         transform.setVelocity(velX, velY);
@@ -13348,6 +13494,13 @@ class SyncComponent extends component_1.Component {
     setVelocity(x, y) {
         this._lastUpdated = Date.now();
         this._targetVelocity.set(x, y);
+    }
+    forceLerp() {
+        const transform = this.entity.transform;
+        transform.setPosition(this._targetPosition.x, this._targetPosition.y);
+        transform.setAngle(this._targetAngle);
+        //transform.setVelocity(velX, velY);
+        transform.setAngularVelocity(0);
     }
 }
 exports.SyncComponent = SyncComponent;
@@ -13432,7 +13585,10 @@ class TransformComponent extends component_1.Component {
         this.entity.data.defineKey("position.x", { minDifference: 0.1 });
         this.entity.data.defineKey("position.y", { minDifference: 0.1 });
         this.entity.data.defineKey("angle", { minDifference: 0.01 });
-        console.log("data on init", this.entity.data['_data']);
+        this.entity.data.setKey("position.x", 0);
+        this.entity.data.setKey("position.y", 0);
+        this.entity.data.setKey("angle", 0);
+        //console.log("data on init", this.entity.data['_data'])
         //console.log(this.entity.data.getKey("position.x"));
         //const positionAbc = this.entity.data.getObject("position.abc");
         //const test = this.entity.data.getObject("test");
@@ -13445,6 +13601,8 @@ class TransformComponent extends component_1.Component {
         return new pc.Vec2(this.entity.data.getKey('position.x'), this.entity.data.getKey('position.y'));
     }
     setPosition(x, y) {
+        if (x == undefined || y == undefined)
+            throw "position undefined";
         this.entity.data.setKey('position.x', x);
         this.entity.data.setKey('position.y', y);
         if (this.entity.hasComponent(collisionComponent_1.CollisionComponent)) {
@@ -13461,6 +13619,8 @@ class TransformComponent extends component_1.Component {
         }
     }
     setAngle(angle) {
+        if (angle == undefined)
+            throw "angle undefined";
         this.angle = angle;
         if (this.entity.hasComponent(collisionComponent_1.CollisionComponent)) {
             const c = this.entity.getComponent(collisionComponent_1.CollisionComponent);
@@ -13476,6 +13636,8 @@ class TransformComponent extends component_1.Component {
     handleCollisionComponent() {
         if (this.entity.hasComponent(collisionComponent_1.CollisionComponent)) {
             const c = this.entity.getComponent(collisionComponent_1.CollisionComponent);
+            if (!c.body)
+                return;
             const pos = {
                 x: c.body.position.x * 1,
                 y: c.body.position.y * 1
@@ -13529,6 +13691,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.WeaponComponent = void 0;
 const matter_js_1 = __importDefault(__webpack_require__(/*! matter-js */ "./node_modules/matter-js/build/matter.js"));
 const pc = __importStar(__webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs"));
+const gameface_1 = __webpack_require__(/*! ../../client/gameface */ "./src/client/gameface.ts");
 const render_1 = __webpack_require__(/*! ../../client/render */ "./src/client/render.ts");
 const entityPlayer_1 = __webpack_require__(/*! ../entity/entityPlayer */ "./src/shared/entity/entityPlayer.ts");
 const entityVehicle_1 = __webpack_require__(/*! ../entity/entityVehicle */ "./src/shared/entity/entityVehicle.ts");
@@ -13546,34 +13709,6 @@ class WeaponComponent extends component_1.Component {
     }
     init() {
         super.init();
-        setInterval(() => {
-            //this.shot();
-        }, 500);
-        /*
-        setInterval(() => {
-
-            
-            
-            const collisionComponent = this.entity.getComponent(CollisionComponent);
-            const bodyPart = collisionComponent.getBodyPart("muzzle");
-            
-            const p = bodyPart!.Body!.position
-            
-            //console.log(bodyPart)
-
-            
-                Render.createGunFlash(p.x * 0.01, p.y * 0.01);
-
-                if(this.enabled) {
-                    const bullet = this.entity.world.spawnEntity(EntityBullet);
-
-                    bullet.transform.setPosition(p.x, p.y);
-                    bullet.transform.setAngle(this.entity.transform.angle);
-
-                }
-
-        }, 2000);
-        */
     }
     raycast(bodies, start, r, dist) {
         var normRay = matter_js_1.default.Vector.normalise(r);
@@ -13619,6 +13754,12 @@ class WeaponComponent extends component_1.Component {
         //console.log(result)
         const muzzlePos = this.getMuzzlePosition();
         render_1.Render.createGunFlash(muzzlePos.x, muzzlePos.y);
+        const gameface = gameface_1.Gameface.Instance;
+        /*
+        if(gameface) {
+            gameface.network.sendPacket(PacketType.WEAPON_SHOT, {x: })
+        }
+        */
     }
     getMuzzlePosition() {
         const collisionComponent = this.entity.getComponent(collisionComponent_1.CollisionComponent);
@@ -13637,18 +13778,26 @@ class WeaponComponent extends component_1.Component {
         app.drawLine(start, end, color, false, undefined);
     }
     updateWeaponPosition() {
-        if (this.attachedToEntity) {
+        /*
+        if(this.entityOwner) {
             //console.log('attachedToEntity')
-            const position = this.attachedToEntity.transform.getPosition();
-            const angle = this.attachedToEntity.transform.angle;
+
+            const position = this.entityOwner.transform.getPosition();
+            const angle = this.entityOwner.transform.angle;
+            
             const offset = new pc.Vec2();
+
             offset.x += this.offset.x * Math.sin(angle),
-                offset.y += this.offset.x * -Math.cos(angle);
+            offset.y += this.offset.x * -Math.cos(angle)
+
             offset.x += this.offset.y * Math.cos(angle);
             offset.y += this.offset.y * Math.sin(angle);
-            this.entity.transform.setPosition(position.x + offset.x, position.y + offset.y);
+
+            //this.entity.transform.setPosition(position.x + offset.x, position.y + offset.y);
             this.entity.transform.setAngle(angle);
+
         }
+        */
     }
     getAimStartPoint() {
         const muzzlePos = this.getMuzzlePosition();
@@ -13673,11 +13822,11 @@ class WeaponComponent extends component_1.Component {
         return end;
     }
     processShotInputs() {
-        if (!this.attachedToEntity)
+        if (!this.entityOwner)
             return;
-        if (!this.attachedToEntity.hasComponent(inputHandlerComponent_1.InputHandlerComponent))
+        if (!this.entityOwner.hasComponent(inputHandlerComponent_1.InputHandlerComponent))
             return;
-        const inputHandler = this.attachedToEntity.getComponent(inputHandlerComponent_1.InputHandlerComponent);
+        const inputHandler = this.entityOwner.getComponent(inputHandlerComponent_1.InputHandlerComponent);
         if (!inputHandler.enabled)
             return;
         if (input_1.Input.mouseDown) {
@@ -13687,6 +13836,10 @@ class WeaponComponent extends component_1.Component {
             this.shot();
         }
     }
+    render(dt) {
+        //this.updateWeaponPosition();
+        this.drawLine();
+    }
     update(dt) {
         super.update(dt);
         if (this._shotTime > 0) {
@@ -13694,11 +13847,11 @@ class WeaponComponent extends component_1.Component {
         }
         if (this._shotTime <= 0)
             this._lastShotHit = false;
-        this.processShotInputs();
+        //this.processShotInputs();
+        this.updateWeaponPosition();
     }
     postupdate(dt) {
-        this.updateWeaponPosition();
-        this.drawLine();
+        super.postupdate(dt);
     }
 }
 exports.WeaponComponent = WeaponComponent;
@@ -13738,6 +13891,9 @@ class EntityFactory {
     }
     getEntityByIndex(index) {
         return Array.from(this._allEntities.values())[index];
+    }
+    getComponentByIndex(index) {
+        return Array.from(this._allComponents.values())[index];
     }
     getIndexOfEntity(c) {
         let i = 0;
@@ -13910,6 +14066,7 @@ class Entity {
         this._id = (0, uuid_1.v4)();
         this._components = [];
         this._hasInitalized = false;
+        this._hasInitalizedData = false;
         this._world = world;
         if (pcEntity)
             this._pcEntity = pcEntity;
@@ -13931,6 +14088,41 @@ class Entity {
     }
     get pcEntityRoot() {
         return this.pcEntity.findByName('Root');
+    }
+    attachToEntity(entity) {
+        this.attachedToEntity = entity;
+        this.updateAttachPosition();
+        /*
+        console.log(this._hasInitalized)
+
+        console.log(entity.transform.getPosition())
+
+        this.updateAttachPosition();
+        console.log(entity.transform.getPosition())
+
+        this.update(0.1);
+        console.log(entity.transform.getPosition())
+
+        */
+    }
+    updateAttachPosition() {
+        const entity = this;
+        if (entity.attachedToEntity) {
+            if (entity.attachedToEntity.destroyed) {
+                entity.world.removeEntity(this);
+                entity.attachedToEntity = undefined;
+                return;
+            }
+            entity.attachedToEntity.transform.update(0);
+            const newPosition = entity.attachedToEntity.transform.getPosition();
+            const angle = entity.attachedToEntity.transform.angle;
+            if (angle == undefined)
+                return;
+            //console.log(newPosition, angle);
+            entity.transform.setPosition(newPosition.x, newPosition.y);
+            entity.transform.setAngle(angle);
+            this.transform.update(0);
+        }
     }
     setId(id) {
         this._id = id;
@@ -13959,10 +14151,22 @@ class Entity {
                 return component;
         throw new Error(`Component ${constr.name} not found on Entity ${this.constructor.name}`);
     }
+    initData() {
+        if (this._hasInitalizedData)
+            return;
+        for (const component of this._components)
+            component.initData();
+        this._hasInitalizedData = true;
+    }
     init() {
+        this.initData();
         for (const component of this._components)
             component.init();
         this._hasInitalized = true;
+    }
+    preupdate(dt) {
+        for (const component of this._components)
+            component.preupdate(dt);
     }
     update(dt) {
         for (const component of this._components)
@@ -13971,6 +14175,14 @@ class Entity {
     postupdate(dt) {
         for (const component of this._components)
             component.postupdate(dt);
+    }
+    render(dt) {
+        for (const component of this._components)
+            component.render(dt);
+    }
+    postrender(dt) {
+        for (const component of this._components)
+            component.postrender(dt);
     }
     destroy() {
         if (this.destroyed)
@@ -14093,25 +14305,25 @@ exports.EntityBullet = EntityBullet;
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.EntityPlayer = void 0;
-const gameface_1 = __webpack_require__(/*! ../../client/gameface */ "./src/client/gameface.ts");
 const collisionComponent_1 = __webpack_require__(/*! ../component/collisionComponent */ "./src/shared/component/collisionComponent.ts");
+const equipItemComponent_1 = __webpack_require__(/*! ../component/equipItemComponent */ "./src/shared/component/equipItemComponent.ts");
 const inputHandlerComponent_1 = __webpack_require__(/*! ../component/inputHandlerComponent */ "./src/shared/component/inputHandlerComponent.ts");
 const playerComponent_1 = __webpack_require__(/*! ../component/playerComponent */ "./src/shared/component/playerComponent.ts");
 const spriteComponent_1 = __webpack_require__(/*! ../component/spriteComponent */ "./src/shared/component/spriteComponent.ts");
 const entity_1 = __webpack_require__(/*! ./entity */ "./src/shared/entity/entity.ts");
 class EntityPlayer extends entity_1.Entity {
     constructor(world) {
-        var _a;
         super(world);
         //this.addComponent(new DebugComponent());
         this.addComponent(new playerComponent_1.PlayerComponent());
         this.addComponent(new inputHandlerComponent_1.InputHandlerComponent());
+        this.addComponent(new equipItemComponent_1.EquipItemComponent());
         const sprite = this.addComponent(new spriteComponent_1.SpriteComponent());
         sprite.add('default', 'assets/player.png', 3, 80, 80);
         const collision = this.addComponent(new collisionComponent_1.CollisionComponent());
         collision.options.frictionAir = 0.2;
         collision.addCircle('default', 0, 0, 30);
-        (_a = gameface_1.Gameface.Instance) === null || _a === void 0 ? void 0 : _a.equipGun(this);
+        //Gameface.Instance?.equipGun(this);
         //collision.addRectangle('default', 0, 0, 80, 80);
         /*
         const t = Math.random() * 2000 + 500;
@@ -14202,6 +14414,42 @@ exports.EntityWeapon = EntityWeapon;
 
 /***/ }),
 
+/***/ "./src/shared/eventEmitter.ts":
+/*!************************************!*\
+  !*** ./src/shared/eventEmitter.ts ***!
+  \************************************/
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.EventEmitter = void 0;
+class EventEmitter {
+    constructor() {
+        this._events = new Map();
+    }
+    on(event, fn) {
+        console.log(`added listener for ${event}`);
+        if (!this._events.has(event)) {
+            this._events.set(event, []);
+        }
+        this._events.get(event).push(fn);
+        //console.log(this._events)
+    }
+    emit(event, ...args) {
+        //console.log(event, args)
+        if (!this._events.has(event))
+            return;
+        for (const fn of this._events.get(event)) {
+            fn.apply(null, args);
+        }
+    }
+}
+exports.EventEmitter = EventEmitter;
+
+
+/***/ }),
+
 /***/ "./src/shared/game.ts":
 /*!****************************!*\
   !*** ./src/shared/game.ts ***!
@@ -14222,6 +14470,8 @@ const entityFactory_1 = __webpack_require__(/*! ./entityFactory */ "./src/shared
 const world_1 = __webpack_require__(/*! ./world */ "./src/shared/world.ts");
 const entityWeapon_1 = __webpack_require__(/*! ./entity/entityWeapon */ "./src/shared/entity/entityWeapon.ts");
 const entityBullet_1 = __webpack_require__(/*! ./entity/entityBullet */ "./src/shared/entity/entityBullet.ts");
+const inventoryManager_1 = __webpack_require__(/*! ./inventoryManager */ "./src/shared/inventoryManager.ts");
+const equipItemComponent_1 = __webpack_require__(/*! ./component/equipItemComponent */ "./src/shared/component/equipItemComponent.ts");
 class Game {
     constructor() {
         this._worlds = new Map();
@@ -14229,19 +14479,20 @@ class Game {
         this._entityFactory.registerComponent(inputHandlerComponent_1.InputHandlerComponent);
         this._entityFactory.registerComponent(playerComponent_1.PlayerComponent);
         this._entityFactory.registerComponent(transformComponent_1.TransformComponent);
+        this._entityFactory.registerComponent(equipItemComponent_1.EquipItemComponent);
         this._entityFactory.registerEntity('EntityBuilding', entityBuilding_1.EntityBuilding);
         this._entityFactory.registerEntity('EntityPlayer', entityPlayer_1.EntityPlayer);
         this._entityFactory.registerEntity('EntityVehicle', entityVehicle_1.EntityVehicle);
         this._entityFactory.registerEntity('EntityWeapon', entityWeapon_1.EntityWeapon);
         this._entityFactory.registerEntity('EntityBullet', entityBullet_1.EntityBullet);
+        this._inventoryManager = new inventoryManager_1.InventoryManager();
+        const inventory = this._inventoryManager.createInventory('test');
+        inventory.createTab(3, 3);
     }
     get worlds() { return Array.from(this._worlds.values()); }
     get entityFactory() { return this._entityFactory; }
     start() {
         console.log(`[game] start`);
-    }
-    update(dt) {
-        this.worlds.map(world => world.update(dt));
     }
     createWorld(name) {
         console.log(`[game] create world '${name}'`);
@@ -14345,6 +14596,46 @@ Input._mouseDown = false;
 
 /***/ }),
 
+/***/ "./src/shared/inventoryManager.ts":
+/*!****************************************!*\
+  !*** ./src/shared/inventoryManager.ts ***!
+  \****************************************/
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.InventoryManager = exports.Inventory = exports.Tab = exports.Item = void 0;
+const uuid_1 = __webpack_require__(/*! uuid */ "./node_modules/uuid/dist/esm-browser/index.js");
+class Item {
+    constructor() {
+        this._id = (0, uuid_1.v4)();
+    }
+    get id() { return this._id; }
+}
+exports.Item = Item;
+class Tab {
+}
+exports.Tab = Tab;
+class Inventory {
+    constructor() {
+        this._tabs = [];
+    }
+    createTab(slotsX, slotsY) {
+    }
+}
+exports.Inventory = Inventory;
+class InventoryManager {
+    createInventory(id) {
+        const inventory = new Inventory();
+        return inventory;
+    }
+}
+exports.InventoryManager = InventoryManager;
+
+
+/***/ }),
+
 /***/ "./src/shared/packet.ts":
 /*!******************************!*\
   !*** ./src/shared/packet.ts ***!
@@ -14363,6 +14654,8 @@ var PacketType;
     PacketType[PacketType["SPAWN_ENTITY"] = 2] = "SPAWN_ENTITY";
     PacketType[PacketType["DESTROY_ENTITY"] = 3] = "DESTROY_ENTITY";
     PacketType[PacketType["CONTROL_ENTITY"] = 4] = "CONTROL_ENTITY";
+    PacketType[PacketType["WEAPON_SHOT"] = 5] = "WEAPON_SHOT";
+    PacketType[PacketType["COMPONENT_EVENT"] = 6] = "COMPONENT_EVENT";
 })(PacketType = exports.PacketType || (exports.PacketType = {}));
 /*
 export class Packet {
@@ -14448,7 +14741,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.World = void 0;
+exports.World = exports.WorldSyncType = void 0;
 const matter_js_1 = __importDefault(__webpack_require__(/*! matter-js */ "./node_modules/matter-js/build/matter.js"));
 const pc = __importStar(__webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs"));
 const npcBehaviourComponent_1 = __webpack_require__(/*! ./component/npcBehaviourComponent */ "./src/shared/component/npcBehaviourComponent.ts");
@@ -14456,12 +14749,49 @@ const entityBuilding_1 = __webpack_require__(/*! ./entity/entityBuilding */ "./s
 const entityPlayer_1 = __webpack_require__(/*! ./entity/entityPlayer */ "./src/shared/entity/entityPlayer.ts");
 const entityVehicle_1 = __webpack_require__(/*! ./entity/entityVehicle */ "./src/shared/entity/entityVehicle.ts");
 const entityWeapon_1 = __webpack_require__(/*! ./entity/entityWeapon */ "./src/shared/entity/entityWeapon.ts");
-const weaponComponent_1 = __webpack_require__(/*! ./component/weaponComponent */ "./src/shared/component/weaponComponent.ts");
+const eventEmitter_1 = __webpack_require__(/*! ./eventEmitter */ "./src/shared/eventEmitter.ts");
+const worldEvent_1 = __webpack_require__(/*! ./worldEvent */ "./src/shared/worldEvent.ts");
+const gameface_1 = __webpack_require__(/*! ../client/gameface */ "./src/client/gameface.ts");
+const packet_1 = __webpack_require__(/*! ./packet */ "./src/shared/packet.ts");
+const equipItemComponent_1 = __webpack_require__(/*! ./component/equipItemComponent */ "./src/shared/component/equipItemComponent.ts");
+var WorldSyncType;
+(function (WorldSyncType) {
+    WorldSyncType[WorldSyncType["SINGLEPLAYER"] = 0] = "SINGLEPLAYER";
+    WorldSyncType[WorldSyncType["CLIENT"] = 1] = "CLIENT";
+    WorldSyncType[WorldSyncType["HOST"] = 2] = "HOST";
+})(WorldSyncType = exports.WorldSyncType || (exports.WorldSyncType = {}));
 class World {
     constructor(game) {
+        this.events = new eventEmitter_1.EventEmitter();
+        this.syncType = WorldSyncType.SINGLEPLAYER;
         this.matter = {};
         this._entities = new Map();
         this._game = game;
+        this.events.on(worldEvent_1.WorldEvent.COMPONENT_EVENT, (component, event, broadcast, data, fromClient) => {
+            //console.log(`[world] Component event: ${event} (${fromClient ? "has client" : "no client"})`)
+            if (this.syncType == WorldSyncType.CLIENT) {
+                const packetData = {
+                    entity: component.entity.id,
+                    component: this.game.entityFactory.getIndexOfComponent(component),
+                    event: event,
+                    data: data
+                };
+                gameface_1.Gameface.Instance.network.sendPacket(packet_1.PacketType.COMPONENT_EVENT, packetData);
+                console.log("sent to server");
+            }
+            else {
+                if (fromClient) {
+                    const packetData = {
+                        entity: component.entity.id,
+                        component: this.game.entityFactory.getIndexOfComponent(component),
+                        event: event,
+                        data: data
+                    };
+                    fromClient.sendPacket(packet_1.PacketType.COMPONENT_EVENT, packetData);
+                }
+                component.onReceiveComponentEvent.apply(component, [event, data, fromClient]);
+            }
+        });
     }
     get entities() { return Array.from(this._entities.values()); }
     ;
@@ -14485,8 +14815,21 @@ class World {
         console.log(bb.readString(2)+" from ByteBuffer.js");
         */
     }
+    testAttach(dt) {
+        this.entities.map(entity => {
+            entity.updateAttachPosition();
+        });
+    }
+    preupdate(dt) {
+        //  this.testAttach(dt);
+        this.entities.map(entity => entity.preupdate(dt));
+    }
     update(dt) {
+        this.testAttach(dt);
         this.entities.map(entity => entity.update(dt));
+    }
+    postupdate(dt) {
+        //this.testAttach(dt);
         this.entities.map(entity => entity.postupdate(dt));
     }
     initMatterWorld() {
@@ -14496,9 +14839,15 @@ class World {
         engine.gravity.x = 0;
         engine.gravity.y = 0;
         matter_js_1.default.Runner.run(runner, engine);
+        matter_js_1.default.Events.on(runner, "beforeUpdate", () => {
+            this.preupdate(engine.timing.lastDelta * 0.001);
+        });
+        matter_js_1.default.Events.on(runner, "afterUpdate", () => {
+            this.update(engine.timing.lastDelta * 0.001);
+            this.postupdate(engine.timing.lastDelta * 0.001);
+        });
     }
-    generateWorld() {
-        console.log(`[world] generate world`);
+    spawnEntities() {
         const keepincenter = (entity) => {
             setInterval(() => {
                 if (entity.transform.getPosition().distance(new pc.Vec2()) > 700) {
@@ -14506,12 +14855,6 @@ class World {
                 }
             }, 2000);
         };
-        for (let y = 0; y < 6; y++) {
-            for (let x = 0; x < 6; x++) {
-                const building = this.spawnEntity(entityBuilding_1.EntityBuilding);
-                building.transform.setPosition((x - 3) * 600, (y - 3) * 600);
-            }
-        }
         for (let i = 0; i < 2; i++) {
             const vehicle = this.spawnEntity(entityVehicle_1.EntityVehicle);
             vehicle.transform.setPosition(0, -80);
@@ -14521,9 +14864,12 @@ class World {
             const npc = this.spawnEntity(entityPlayer_1.EntityPlayer);
             npc.addComponent(new npcBehaviourComponent_1.NPCBehaviourComponent());
             //vehicle.transform.setPosition(0, -80)
-            if (i == 0) {
-                const weapon = this.spawnEntity(entityWeapon_1.EntityWeapon);
-                weapon.getComponent(weaponComponent_1.WeaponComponent).attachedToEntity = npc;
+            if (i == 0 || i == 1) {
+                setInterval(() => {
+                    npc.getComponent(equipItemComponent_1.EquipItemComponent).tryUse();
+                }, 500);
+                //const weapon = this.spawnEntity(EntityWeapon);
+                //weapon.attachToEntity(npc);
             }
         }
         for (let i = 0; i < 2; i++) {
@@ -14532,19 +14878,24 @@ class World {
             keepincenter(wpn);
             //vehicle.transform.setPosition(0, -80)
         }
-        //vehicle2.data.mergeData({position: {x: 160, c: {a: 123}}})
-        /*
-        setInterval(() => {
-            vehicle2.transform.setVelocity(0.1, 3)
-            vehicle2.transform.setAngularVelocity(0.2)
-
-            if(vehicle2.transform.getPosition().distance(new pc.Vec2()) > 400) {
-                vehicle2.transform.setPosition(0, 0);
+        //
+        for (let y = 0; y < 6; y++) {
+            for (let x = 0; x < 6; x++) {
+                const building = this.spawnEntity(entityBuilding_1.EntityBuilding);
+                building.transform.setPosition((x - 3) * 600, (y - 3) * 600);
             }
-        }, 500)
-
-        console.log(vehicle2.transform.angle)
-        */
+        }
+    }
+    generateWorld() {
+        console.log(`[world] generate world`);
+        const npc = this.spawnEntity(entityPlayer_1.EntityPlayer);
+        npc.addComponent(new npcBehaviourComponent_1.NPCBehaviourComponent());
+        const weapon = this.spawnEntity(entityWeapon_1.EntityWeapon);
+        weapon.attachToEntity(npc);
+        const car = this.spawnEntity(entityVehicle_1.EntityVehicle);
+        const weapon2 = this.spawnEntity(entityWeapon_1.EntityWeapon);
+        weapon2.attachToEntity(car);
+        this.spawnEntities();
     }
     spawnEntity(c, options) {
         const entity = new c(this);
@@ -14567,13 +14918,31 @@ class World {
         this._entities.delete(entity.id);
     }
     addEntity(entity) {
-        console.log(`[world] add entity ${entity.constructor.name}`);
+        //console.log(`[world] add entity ${entity.constructor.name}`);
         this._entities.set(entity.id, entity);
         entity.init();
         return entity;
     }
 }
 exports.World = World;
+
+
+/***/ }),
+
+/***/ "./src/shared/worldEvent.ts":
+/*!**********************************!*\
+  !*** ./src/shared/worldEvent.ts ***!
+  \**********************************/
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.WorldEvent = void 0;
+var WorldEvent;
+(function (WorldEvent) {
+    WorldEvent["COMPONENT_EVENT"] = "COMPONENT_EVENT";
+})(WorldEvent = exports.WorldEvent || (exports.WorldEvent = {}));
 
 
 /***/ }),

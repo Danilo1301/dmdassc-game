@@ -1,21 +1,26 @@
 import Matter from 'matter-js';
 import * as pc from 'playcanvas';
 import { Camera } from '../../client/camera';
+import { Gameface } from '../../client/gameface';
 import { Render } from '../../client/render';
 import { Entity } from '../entity/entity';
 import { EntityBullet } from '../entity/entityBullet';
 import { EntityPlayer } from '../entity/entityPlayer';
 import { EntityVehicle } from '../entity/entityVehicle';
 import { Input } from '../input';
+import { PacketType } from '../packet';
+import { WorldEvent } from '../worldEvent';
 import { CollisionComponent } from './collisionComponent';
 import { Component } from "./component";
 import { InputHandlerComponent } from './inputHandlerComponent';
+
+
 
 export class WeaponComponent extends Component {
     public speed: number = 40;
     //public enabled: boolean = false;
 
-    public attachedToEntity?: Entity;
+    public entityOwner?: Entity;
 
     private _lastShotHit: boolean = false;
 
@@ -25,38 +30,6 @@ export class WeaponComponent extends Component {
 
     public init() {
         super.init();
-
-        setInterval(() => {
-
-            //this.shot();
-
-        }, 500)
-
-        /*
-        setInterval(() => {
-
-            
-            
-            const collisionComponent = this.entity.getComponent(CollisionComponent);
-            const bodyPart = collisionComponent.getBodyPart("muzzle");
-            
-            const p = bodyPart!.Body!.position
-            
-            //console.log(bodyPart)
-
-            
-                Render.createGunFlash(p.x * 0.01, p.y * 0.01);
-
-                if(this.enabled) {
-                    const bullet = this.entity.world.spawnEntity(EntityBullet);
-
-                    bullet.transform.setPosition(p.x, p.y);
-                    bullet.transform.setAngle(this.entity.transform.angle);
-
-                }
-
-        }, 2000);
-        */
     }
 
     private raycast(bodies, start, r, dist){
@@ -118,6 +91,14 @@ export class WeaponComponent extends Component {
 
         const muzzlePos = this.getMuzzlePosition();
         Render.createGunFlash(muzzlePos.x, muzzlePos.y);
+
+        const gameface = Gameface.Instance;
+
+        /*
+        if(gameface) {
+            gameface.network.sendPacket(PacketType.WEAPON_SHOT, {x: })
+        }
+        */
     }
 
     private getMuzzlePosition() {
@@ -143,11 +124,12 @@ export class WeaponComponent extends Component {
     }
 
     private updateWeaponPosition() {
-        if(this.attachedToEntity) {
+        /*
+        if(this.entityOwner) {
             //console.log('attachedToEntity')
 
-            const position = this.attachedToEntity.transform.getPosition();
-            const angle = this.attachedToEntity.transform.angle;
+            const position = this.entityOwner.transform.getPosition();
+            const angle = this.entityOwner.transform.angle;
             
             const offset = new pc.Vec2();
 
@@ -157,10 +139,11 @@ export class WeaponComponent extends Component {
             offset.x += this.offset.y * Math.cos(angle);
             offset.y += this.offset.y * Math.sin(angle);
 
-            this.entity.transform.setPosition(position.x + offset.x, position.y + offset.y);
+            //this.entity.transform.setPosition(position.x + offset.x, position.y + offset.y);
             this.entity.transform.setAngle(angle);
 
         }
+        */
     }
 
     private getAimStartPoint() {
@@ -194,10 +177,10 @@ export class WeaponComponent extends Component {
     }
     
     private processShotInputs() {
-        if(!this.attachedToEntity) return;
-        if(!this.attachedToEntity.hasComponent(InputHandlerComponent)) return;
+        if(!this.entityOwner) return;
+        if(!this.entityOwner.hasComponent(InputHandlerComponent)) return;
 
-        const inputHandler = this.attachedToEntity.getComponent(InputHandlerComponent);
+        const inputHandler = this.entityOwner.getComponent(InputHandlerComponent);
 
         if(!inputHandler.enabled) return;
 
@@ -210,6 +193,11 @@ export class WeaponComponent extends Component {
         }
     }
 
+    public render(dt: number) {
+        //this.updateWeaponPosition();
+        this.drawLine();
+    }
+
     public update(dt: number) {
         super.update(dt);
 
@@ -219,12 +207,14 @@ export class WeaponComponent extends Component {
 
         if(this._shotTime <= 0) this._lastShotHit = false;
 
-
-        this.processShotInputs();
+        //this.processShotInputs();
+        this.updateWeaponPosition();
+        
     }
 
     public postupdate(dt: number) {
-        this.updateWeaponPosition();
-        this.drawLine();
+        super.postupdate(dt);
+
+        
     }
 }
