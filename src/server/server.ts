@@ -80,6 +80,21 @@ export class Server {
 
     0 player:
     8 - 9 - 7 - 8
+
+    -----
+
+    100 entities
+    sending every 200ms
+    data watch 
+
+    1 player:
+    18 - 16 - 17 - 26? - 19 - 20
+
+    0 player:
+    10 - 11 - 10 - 11
+
+    5 player:
+    50 - 45 - 47
     
     */
     public sendEntitiesData() {

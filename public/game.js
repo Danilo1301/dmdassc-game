@@ -12536,7 +12536,7 @@ class CollisionComponent extends component_1.Component {
     }
     init() {
         super.init();
-        //this.createBody();
+        this.createBody();
     }
     update(dt) {
         super.update(dt);
@@ -12701,8 +12701,8 @@ class NPCBehaviourComponent extends component_1.Component {
             input.vertical = 0;
             input.horizontal = 0;
         }
-        //this.entity.transform.applyForce(input.horizontal * 0.01 * dt, input.vertical * 0.01 * dt);
-        this.entity.transform.setPosition(position.x + input.horizontal, position.y + input.vertical);
+        this.entity.transform.applyForce(input.horizontal * 0.01 * dt, input.vertical * 0.01 * dt);
+        //this.entity.transform.setPosition(position.x + input.horizontal, position.y + input.vertical);
     }
     postupdate(dt) {
         super.postupdate(dt);
@@ -13497,7 +13497,7 @@ class World {
         });
     }
     spawnEntities() {
-        for (let i = 0; i < 100; i++) {
+        for (let i = 0; i < 50; i++) {
             this.spawnNpc();
         }
         console.log(this.entities.length);

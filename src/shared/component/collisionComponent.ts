@@ -22,7 +22,7 @@ export class CollisionComponent extends Component {
     public init() {
         super.init();
 
-        //this.createBody();
+        this.createBody();
     }
 
     public update(dt: number) {
