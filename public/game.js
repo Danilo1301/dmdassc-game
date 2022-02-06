@@ -12563,10 +12563,7 @@ class CollisionComponent extends component_1.Component {
         const matterWorld = this.entity.world.matter.world;
         const body = matter_js_1.default.Bodies.circle(0, 0, 25);
         matter_js_1.default.Composite.add(matterWorld, body);
-        matter_js_1.default.Body.setPosition(body, { x: Math.random() * 100, y: Math.random() * 100 });
-        setInterval(() => {
-            matter_js_1.default.Body.setVelocity(body, { x: Math.random() - 0.5, y: Math.random() });
-        }, Math.random() * 8000);
+        //Matter.Body.setPosition(body, {x: Math.random()*100, y: Math.random()*100})
         this.body = body;
     }
 }
@@ -13501,22 +13498,15 @@ class World {
     update(dt) {
         testu++;
         testd = this.matter.engine.timing.lastDelta;
-        matter_js_1.default.Engine.update(this.matter.engine, dt * 1000, this.game.fixTime);
-        /*
-        
         this.preupdate(dt);
-
         //console.log("dt:", dt * 1000, "or", this.matter.engine!.timing.lastDelta, "coor",(dt * 1000)/32)
         //console.log( dt * 1000, this.game.fixTime)
-
-        
+        matter_js_1.default.Engine.update(this.matter.engine, dt * 1000, this.game.fixTime);
         this.testAttach(dt);
-        for(const entity of this.entities) {
-          entity.update(dt)
+        for (const entity of this.entities) {
+            entity.update(dt);
         }
-
         this.postupdate(dt);
-        */
     }
     postupdate(dt) {
         //this.testAttach(dt);

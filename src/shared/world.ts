@@ -119,14 +119,14 @@ export class World {
         testu++;
         testd = this.matter.engine!.timing.lastDelta;
         
-        Matter.Engine.update(this.matter.engine!, dt * 1000, this.game.fixTime);
-
-        /*
-        
+       
+       
         this.preupdate(dt);
 
         //console.log("dt:", dt * 1000, "or", this.matter.engine!.timing.lastDelta, "coor",(dt * 1000)/32)
         //console.log( dt * 1000, this.game.fixTime)
+
+        Matter.Engine.update(this.matter.engine!, dt * 1000, this.game.fixTime);
 
         
         this.testAttach(dt);
@@ -135,7 +135,7 @@ export class World {
         }
 
         this.postupdate(dt);
-        */
+        
     }
 
     public postupdate(dt: number) {
@@ -162,7 +162,7 @@ export class World {
         }, 1000)
 
         Matter.Events.on(engine, "afterUpdate", function() {
-            console.log("after")
+            //console.log("after")
         });
 
         /*
