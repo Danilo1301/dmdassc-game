@@ -12521,14 +12521,30 @@ const component_1 = __webpack_require__(/*! ./component */ "./src/shared/compone
 class CollisionComponent extends component_1.Component {
     constructor() {
         super(...arguments);
-        this.priority = 0;
+        this.priority = 990;
+    }
+    applyForce(x, y) {
+        const body = this.body;
+        const position = this.body.position;
+        matter_js_1.default.Body.applyForce(body, position, { x: x, y: y });
     }
     init() {
         super.init();
-        //this.createBody();
+        this.createBody();
     }
     update(dt) {
         super.update(dt);
+        const body = this.body;
+        this.entity.transform.data.x = body.position.x;
+        this.entity.transform.data.y = body.position.y;
+        this.entity.transform.data.velX = body.velocity.x;
+        this.entity.transform.data.velY = body.velocity.y;
+    }
+    preupdate(dt) {
+        super.preupdate(dt);
+        const body = this.body;
+        matter_js_1.default.Body.setPosition(body, this.entity.transform.getPosition());
+        matter_js_1.default.Body.setVelocity(body, this.entity.transform.getVelocity());
     }
     postupdate(dt) {
         super.postupdate(dt);
@@ -12562,7 +12578,9 @@ exports.Component = void 0;
 const worldEvent_1 = __webpack_require__(/*! ../worldEvent */ "./src/shared/worldEvent.ts");
 class Component {
     constructor() {
+        this.index = null;
         this.priority = 0;
+        this._a = false;
     }
     init() {
         //console.log(`[${this.constructor.name}] init`);
@@ -12574,7 +12592,12 @@ class Component {
         //console.log(`[${this.constructor.name}] destroy`);
     }
     preupdate(dt) { }
-    update(dt) { }
+    update(dt) {
+        if (!this._a) {
+            this._a = true;
+            //console.log(`[${this.constructor.name}] update`);
+        }
+    }
     postupdate(dt) { }
     render(dt) { }
     postrender(dt) { }
@@ -12668,9 +12691,7 @@ class NPCBehaviourComponent extends component_1.Component {
             input.vertical = 0;
             input.horizontal = 0;
         }
-        const pos = this.entity.transform.getPosition();
-        this.entity.transform.setPosition(pos.x + input.horizontal, pos.y + input.vertical);
-        //console.log(input)
+        this.entity.transform.applyForce(input.horizontal * 0.01 * dt, input.vertical * 0.01 * dt);
     }
     postupdate(dt) {
         super.postupdate(dt);
@@ -12716,12 +12737,14 @@ const component_1 = __webpack_require__(/*! ./component */ "./src/shared/compone
 class TransformComponent extends component_1.Component {
     constructor() {
         super(...arguments);
-        this.priority = 0;
+        this.priority = 1000;
         this.data = {
             angle: 0,
             aimAngle: 0,
             x: 0,
-            y: 0
+            y: 0,
+            velX: 0,
+            velY: 0
         };
     }
     getPosition() {
@@ -12731,9 +12754,23 @@ class TransformComponent extends component_1.Component {
         this.data.x = x;
         this.data.y = y;
     }
+    getVelocity() {
+        return new pc.Vec2(this.data.velX, this.data.velY);
+    }
+    setVelocity(x, y) {
+        this.data.velX = x;
+        this.data.velY = y;
+    }
+    applyForce(x, y) {
+        var _a;
+        (_a = this._collisionComponent) === null || _a === void 0 ? void 0 : _a.applyForce(x, y);
+    }
     init() {
         super.init();
-        this.collisionComponent = this.entity.getComponent(collisionComponent_1.CollisionComponent);
+        this._collisionComponent = this.entity.getComponent(collisionComponent_1.CollisionComponent);
+    }
+    preupdate(dt) {
+        super.preupdate(dt);
     }
     update(dt) {
         super.update(dt);
@@ -12855,6 +12892,7 @@ class Entity {
     addComponent(c) {
         c.entity = this;
         this._components.push(c);
+        this._components = this._components.sort((a, b) => b.priority - a.priority);
         if (this._hasInitalized)
             c.init();
         return c;
@@ -13368,7 +13406,7 @@ class World {
         });
     }
     spawnEntities() {
-        for (let i = 0; i < 100; i++) {
+        for (let i = 0; i < 50; i++) {
             this.spawnNpc();
         }
         console.log(this.entities.length);

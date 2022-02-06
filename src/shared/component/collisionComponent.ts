@@ -5,18 +5,42 @@ import { Component } from "./component";
 
 export class CollisionComponent extends Component {
     public entity: Entity;
-    public priority: number = 0;
+    public priority: number = 990;
 
     public body: Matter.Body;
+
+    public applyForce(x: number, y: number) {
+        const body = this.body;
+
+        const position = this.body.position;
+
+        Matter.Body.applyForce(body, position, {x: x, y: y});
+    }
 
     public init() {
         super.init();
 
-        //this.createBody();
+        this.createBody();
     }
 
     public update(dt: number) {
         super.update(dt);
+
+        const body = this.body;
+
+        this.entity.transform.data.x = body.position.x;
+        this.entity.transform.data.y = body.position.y;
+        this.entity.transform.data.velX = body.velocity.x;
+        this.entity.transform.data.velY = body.velocity.y;
+    }
+
+    public preupdate(dt: number) {
+        super.preupdate(dt);
+        
+        const body = this.body;
+
+        Matter.Body.setPosition(body, this.entity.transform.getPosition());
+        Matter.Body.setVelocity(body, this.entity.transform.getVelocity());
     }
 
     public postupdate(dt: number) {

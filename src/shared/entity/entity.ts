@@ -48,6 +48,9 @@ export class Entity {
     public addComponent<C extends Component>(c: C) {
         c.entity = this;
         this._components.push(c);
+
+        this._components = this._components.sort((a, b) => b.priority - a.priority)
+
         if(this._hasInitalized) c.init();
         return c;
     }

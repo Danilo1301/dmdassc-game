@@ -3,9 +3,13 @@ import { Entity } from "../entity/entity";
 import { WorldEvent } from "../worldEvent";
 
 export class Component {
+    public index: number | null = null;
+
     public entity: Entity;
     public priority: number = 0;
     
+
+    private _a: boolean = false;
 
     public init() {
         //console.log(`[${this.constructor.name}] init`);
@@ -17,7 +21,12 @@ export class Component {
         //console.log(`[${this.constructor.name}] destroy`);
     }
     public preupdate(dt: number) {}
-    public update(dt: number) {}
+    public update(dt: number) {
+        if(!this._a) {
+            this._a = true;
+            //console.log(`[${this.constructor.name}] update`);
+        }
+    }
     public postupdate(dt: number) {}
 
     public render(dt: number) {}
