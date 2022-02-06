@@ -156,7 +156,7 @@ export class World {
 
      
         setInterval(() => {
-            console.log(`${testu} updates, dt=${testd}, ${this.entities.length} entities`);
+            console.log(`${testu} updates, dt=${testd}, ${this.entities.length} entities (interv ${this.game.updateInterval}) (fixd ${this.game.fixTime})`);
             testu = 0;
         }, 1000)
         
@@ -179,7 +179,7 @@ export class World {
         
         for (let i = 0; i < 100; i++) {
 
-            this.spawnNpc()
+            this.spawnNpc(Math.random()*100-50, Math.random()*100-50)
 
         }
 
@@ -204,8 +204,9 @@ export class World {
         //entity.dataWatcher.setData(getFullData());
     }
 
-    public spawnNpc() {
+    public spawnNpc(x: number, y: number) {
         const npc = this.spawnEntity(EntityChar);
+        npc.transform.setPosition(x, y)
         npc.addComponent(new NPCBehaviourComponent());
 
         //npc.transform.data.velX = 10;

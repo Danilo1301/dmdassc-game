@@ -13525,7 +13525,7 @@ class World {
         engine.gravity.y = 0;
         //Matter.Runner.run(runner, engine);
         setInterval(() => {
-            console.log(`${testu} updates, dt=${testd}, ${this.entities.length} entities`);
+            console.log(`${testu} updates, dt=${testd}, ${this.entities.length} entities (interv ${this.game.updateInterval}) (fixd ${this.game.fixTime})`);
             testu = 0;
         }, 1000);
         /*
@@ -13543,7 +13543,7 @@ class World {
     }
     spawnEntities() {
         for (let i = 0; i < 100; i++) {
-            this.spawnNpc();
+            this.spawnNpc(Math.random() * 100 - 50, Math.random() * 100 - 50);
         }
         console.log(this.entities.length);
         const entity = this.entities[0];
@@ -13558,8 +13558,9 @@ class World {
         //entity.getComponent(PlayerComponent)!.data.name = "from server"
         //entity.dataWatcher.setData(getFullData());
     }
-    spawnNpc() {
+    spawnNpc(x, y) {
         const npc = this.spawnEntity(entityChar_1.EntityChar);
+        npc.transform.setPosition(x, y);
         npc.addComponent(new npcBehaviourComponent_1.NPCBehaviourComponent());
         //npc.transform.data.velX = 10;
         setInterval(() => {
