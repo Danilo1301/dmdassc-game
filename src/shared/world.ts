@@ -101,6 +101,21 @@ export class World {
         */
     }
 
+    public tick(dt: number) {
+        this.preupdate(dt)
+
+        console.log("u..")
+        Matter.Engine.update(this.matter.engine!, dt, this.game.fixTime);
+        console.log("finish")
+
+           //console.log("dt:", dt * 1000, "or", this.matter.engine!.timing.lastDelta, "coor",(dt * 1000)/32)
+        //console.log( dt * 1000, this.game.fixTime)
+
+        this.update(dt);
+
+        this.postupdate(dt);
+    }
+
     private testAttach(dt: number) {
         
     }
@@ -118,24 +133,12 @@ export class World {
     public update(dt: number) {
         testu++;
         testd = this.matter.engine!.timing.lastDelta;
-        
-       
-       
-        this.preupdate(dt);
 
-        //console.log("dt:", dt * 1000, "or", this.matter.engine!.timing.lastDelta, "coor",(dt * 1000)/32)
-        //console.log( dt * 1000, this.game.fixTime)
-
-        Matter.Engine.update(this.matter.engine!, dt * 1000, this.game.fixTime);
-
-        
         this.testAttach(dt);
+
         for(const entity of this.entities) {
           entity.update(dt)
         }
-
-        this.postupdate(dt);
-        
     }
 
     public postupdate(dt: number) {
@@ -148,12 +151,12 @@ export class World {
     private initMatterWorld() {
         const engine = this.matter.engine = Matter.Engine.create();
         const world = this.matter.world = engine.world;
-        //const runner = this.matter.runner = Matter.Runner.create();
+        const runner = this.matter.runner = Matter.Runner.create();
         
         engine.gravity.x = 0;
         engine.gravity.y = 0;
 
-        //Matter.Runner.run(runner, engine);
+        Matter.Runner.run(runner, engine);
 
      
         setInterval(() => {
@@ -161,14 +164,10 @@ export class World {
             testu = 0;
         }, 1000)
 
-        Matter.Events.on(engine, "afterUpdate", function() {
-            //console.log("after")
-        });
+   
 
-        /*
+        
         Matter.Events.on(runner, "beforeUpdate", () => {
-            u++;
-            dt = engine.timing.lastDelta;
             this.preupdate(engine.timing.lastDelta * 0.001);
         })
 
@@ -176,7 +175,7 @@ export class World {
             this.update(engine.timing.lastDelta * 0.001);
             this.postupdate(engine.timing.lastDelta * 0.001);
         })
-        */
+        
     }
 
     private spawnEntities() {

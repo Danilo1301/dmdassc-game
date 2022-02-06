@@ -51,9 +51,7 @@ export class Game {
                 }
                 */
     
-    
-
-                this.update(dt);
+                if(dt != 0) this.update(dt);
             }
 
            
@@ -70,9 +68,11 @@ export class Game {
     public update(dt: number) {
         //console.log(`[game] update ${dt}`);
 
+        /*
         for (const world of this.worlds) {
-            world.update(dt);
+            world.tick(dt);   
         }
+        */
     }
 
     public createWorld(name: string) {
