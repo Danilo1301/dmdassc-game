@@ -13172,7 +13172,8 @@ class Game {
                     console.log(dt)
                 }
                 */
-                this.update(dt);
+                if (dt != 0)
+                    this.update(dt);
             }
             //this.update(dt);
         });
@@ -13185,7 +13186,7 @@ class Game {
     update(dt) {
         //console.log(`[game] update ${dt}`);
         for (const world of this.worlds) {
-            world.update(dt);
+            world.tick(dt);
         }
     }
     createWorld(name) {
@@ -13487,6 +13488,16 @@ class World {
         console.log(bb.readString(2)+" from ByteBuffer.js");
         */
     }
+    tick(dt) {
+        this.preupdate(dt);
+        //console.log("u..")
+        matter_js_1.default.Engine.update(this.matter.engine, 16.666666666666668, this.game.fixTime);
+        //console.log("finish")
+        //console.log("dt:", dt * 1000, "or", this.matter.engine!.timing.lastDelta, "coor",(dt * 1000)/32)
+        //console.log( dt * 1000, this.game.fixTime)
+        this.update(dt);
+        this.postupdate(dt);
+    }
     testAttach(dt) {
     }
     preupdate(dt) {
@@ -13498,15 +13509,10 @@ class World {
     update(dt) {
         testu++;
         testd = this.matter.engine.timing.lastDelta;
-        this.preupdate(dt);
-        //console.log("dt:", dt * 1000, "or", this.matter.engine!.timing.lastDelta, "coor",(dt * 1000)/32)
-        //console.log( dt * 1000, this.game.fixTime)
-        matter_js_1.default.Engine.update(this.matter.engine, dt * 1000, this.game.fixTime);
         this.testAttach(dt);
         for (const entity of this.entities) {
             entity.update(dt);
         }
-        this.postupdate(dt);
     }
     postupdate(dt) {
         //this.testAttach(dt);
@@ -13516,22 +13522,15 @@ class World {
     }
     initMatterWorld() {
         const engine = this.matter.engine = matter_js_1.default.Engine.create();
-        const world = this.matter.world = engine.world;
-        //const runner = this.matter.runner = Matter.Runner.create();
         engine.gravity.x = 0;
         engine.gravity.y = 0;
-        //Matter.Runner.run(runner, engine);
-        setInterval(() => {
-            console.log(`${testu} updates, dt=${testd}, ${this.entities.length} entities (interv ${this.game.updateInterval}) (fixd ${this.game.fixTime})`);
-            testu = 0;
-        }, 1000);
-        matter_js_1.default.Events.on(engine, "afterUpdate", function () {
-            console.log("after");
-        });
+        const world = this.matter.world = engine.world;
         /*
+        const runner = this.matter.runner = Matter.Runner.create();
+        
+        Matter.Runner.run(runner, engine);
+        
         Matter.Events.on(runner, "beforeUpdate", () => {
-            u++;
-            dt = engine.timing.lastDelta;
             this.preupdate(engine.timing.lastDelta * 0.001);
         })
 
@@ -13540,6 +13539,10 @@ class World {
             this.postupdate(engine.timing.lastDelta * 0.001);
         })
         */
+        setInterval(() => {
+            console.log(`${testu} updates, dt=${testd}, ${this.entities.length} entities (interv ${this.game.updateInterval}) (fixd ${this.game.fixTime})`);
+            testu = 0;
+        }, 1000);
     }
     spawnEntities() {
         for (let i = 0; i < 100; i++) {

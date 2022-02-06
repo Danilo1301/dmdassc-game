@@ -104,9 +104,9 @@ export class World {
     public tick(dt: number) {
         this.preupdate(dt)
 
-        console.log("u..")
+        //console.log("u..")
         Matter.Engine.update(this.matter.engine!, 16.666666666666668, this.game.fixTime);
-        console.log("finish")
+        //console.log("finish")
 
            //console.log("dt:", dt * 1000, "or", this.matter.engine!.timing.lastDelta, "coor",(dt * 1000)/32)
         //console.log( dt * 1000, this.game.fixTime)

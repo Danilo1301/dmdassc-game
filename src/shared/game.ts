@@ -66,7 +66,7 @@ export class Game {
     }
 
     public update(dt: number) {
-        console.log(`[game] update ${dt}`);
+        //console.log(`[game] update ${dt}`);
 
         
         for (const world of this.worlds) {
