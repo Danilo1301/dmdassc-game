@@ -52,6 +52,13 @@ export class Entity {
         return c;
     }
 
+    public createPcEntity() {
+        if(!this._pcEntity) {
+            this._pcEntity = new pc.Entity('Entity');
+            this._pcEntity.addChild(new pc.Entity('Root'))
+        }
+    }
+
     /*
     public hasComponent<C extends Component>(constr: { new(...args: any[]): C }) {
         for (const component of this._components) if (component instanceof constr) return true;

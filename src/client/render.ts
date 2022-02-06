@@ -29,15 +29,18 @@ export class Render {
 
         for (const entity of world.entities) {
 
+            
             if(!this._renderingEntities.includes(entity)) {
                 this._renderingEntities.push(entity);
-                
+
+                entity.createPcEntity();
+
                 console.log("[render] add pcEntity");
 
                 app.root.addChild(entity.pcEntity);
 
-                console.log(entity.pcEntityRoot.children)
-                console.log("found", entity.pcEntityRoot.findByName('CenterDebug'))
+                //console.log(entity.pcEntityRoot.children)
+                //console.log("found", entity.pcEntityRoot.findByName('CenterDebug'))
 
                 if(!entity.pcEntityRoot.findByName('CenterDebug')) {
                     const material = new pc.StandardMaterial();
@@ -53,7 +56,7 @@ export class Render {
                     centerPcEntity.setLocalScale(new pc.Vec3(0.1, 0.1, 0.1));
                     entity.pcEntityRoot.addChild(centerPcEntity);
 
-                    console.log('CenterDebug', entity)
+                    //console.log('CenterDebug', entity)
                 }
 
                

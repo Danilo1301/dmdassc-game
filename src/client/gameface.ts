@@ -44,7 +44,7 @@ export class Gameface {
 
         this.game.start();
 
-        const isMultiplayer = false;
+        const isMultiplayer = true;
 
         const world = this.game.createWorld('world');
         if(isMultiplayer) world.syncType = WorldSyncType.CLIENT;

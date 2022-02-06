@@ -30,5 +30,13 @@ export class CollisionComponent extends Component {
         Matter.Composite.add(matterWorld, body);
 
         Matter.Body.setPosition(body, {x: Math.random()*100, y: Math.random()*100})
+
+        setInterval(() => {
+
+            Matter.Body.setVelocity(body, {x: Math.random()-0.5, y: Math.random()})
+
+        }, Math.random()*8000)
+
+        this.body = body
     }
 }
