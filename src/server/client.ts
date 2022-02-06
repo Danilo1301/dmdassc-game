@@ -80,7 +80,6 @@ export class Client {
     }
 
     public onReceivePacket(packet: Packet) {
-        /*
         if(packet.type == PacketType.JOIN_SERVER) {
             const packetData: IPacketData_JoinServer = packet.data;
             const id = packetData.id;
@@ -92,6 +91,8 @@ export class Client {
 
             server.onClientJoin(this);
         }
+
+        /*
 
         if(packet.type == PacketType.ENTITY_DATA) {
             const packetData: IPacketData_EntityData = packet.data;

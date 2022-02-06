@@ -17,7 +17,7 @@ export class Server {
     private _clients = new Map<string, Client>();
 
     private _sendEntityDataTime: number = 0;
-    private _sendEntityDataIntervalMs: number = 30;
+    private _sendEntityDataIntervalMs: number = 100;
 
     constructor() {
         this._game = new Game();
@@ -72,6 +72,26 @@ export class Server {
     }
 
     public sendEntitiesData() {
+        for (const world of this.game.worlds) {
+            
+            for (const entity of world.entities) {
+                
+                const col = entity.transform.collisionComponent!;
+                const body = col.body;
+
+                if(!body) return;
+
+                const data = {x: body.position.x, y: body.position.y};
+
+                for (const client of this.clients) {
+                    //console.log("sent")
+
+                    client.sendPacket(PacketType.ENTITY_DATA, data);
+                }
+
+            }
+
+        }
 
         //console.log("sending")
 
