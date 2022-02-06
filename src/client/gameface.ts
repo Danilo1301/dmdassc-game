@@ -1,17 +1,13 @@
 import * as pc from 'playcanvas';
 import { Camera } from './camera';
-import { InputHandlerComponent } from '../shared/component/inputHandlerComponent';
-import { SyncComponent, SyncType } from '../shared/component/syncComponent';
 import { Entity } from '../shared/entity/entity';
-import { EntityPlayer } from '../shared/entity/entityPlayer';
 import { Game } from '../shared/game';
 import { Input } from '../shared/input';
 import { Network } from './network';
 import { Render } from './render';
 import { TextScript } from './playcanvas/scripts/textScript';
-import { EntityWeapon } from '../shared/entity/entityWeapon';
-import { WeaponComponent } from '../shared/component/weaponComponent';
 import { WorldSyncType } from '../shared/world';
+import { EntityPlayer } from '../shared/entity/entityPlayer';
 
 export class Gameface {
     public static Instance: Gameface;
@@ -48,7 +44,7 @@ export class Gameface {
 
         this.game.start();
 
-        const isMultiplayer = true;
+        const isMultiplayer = false;
 
         const world = this.game.createWorld('world');
         if(isMultiplayer) world.syncType = WorldSyncType.CLIENT;
@@ -68,14 +64,6 @@ export class Gameface {
             this.setPlayer(entity);
         }
     }
-
-    public equipGun(entity: Entity) {
-        const weapon = entity.world.spawnEntity(EntityWeapon);
-
-        weapon.getComponent(WeaponComponent).entityOwner = entity;
-        weapon.attachToEntity(entity);
-    }
-
    
     public update(dt: number) {
         //this.game.update(dt);
@@ -129,13 +117,7 @@ export class Gameface {
     }
 
     public setPlayer(entity: Entity) {
-        this.player = entity;
-        this.player.getComponent(InputHandlerComponent).enabled = true;
-
-        if(this.player.hasComponent(SyncComponent)) {
-            this.player.getComponent(SyncComponent).syncType = SyncType.DONT_SYNC;
-        }
-        console.warn("SETPLAYER")
+       
     }
 
     public checkControllingEntity() {

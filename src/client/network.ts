@@ -1,6 +1,5 @@
 
 import { io, Socket } from "socket.io-client";
-import { SyncComponent } from "../shared/component/syncComponent";
 import { Entity } from "../shared/entity/entity";
 import { Gameface } from "./gameface";
 import { IPacketData_ComponentEvent, IPacketData_ControlEntity, IPacketData_DestroyEntity, IPacketData_EntityData, IPacketData_JoinServer, IPacketData_SpawnEntity, Packet, PacketType } from "../shared/packet";
@@ -80,6 +79,7 @@ export class Network {
     }
 
     public onReceivePacket(packet: Packet) {
+        /*
         if(packet.type == PacketType.SPAWN_ENTITY) {
             const packetData: IPacketData_SpawnEntity = packet.data;
             
@@ -158,6 +158,8 @@ export class Network {
 
         }
 
+        */
+       
         //const packetType: PacketType = packet.readShort();
         
         /*
