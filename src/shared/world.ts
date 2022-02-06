@@ -147,7 +147,7 @@ export class World {
 
     private spawnEntities() {
         
-        for (let i = 0; i < 50; i++) {
+        for (let i = 0; i < 100; i++) {
 
             this.spawnNpc()
 

@@ -12525,26 +12525,32 @@ class CollisionComponent extends component_1.Component {
     }
     applyForce(x, y) {
         const body = this.body;
-        const position = this.body.position;
+        if (!body)
+            return;
+        const position = body.position;
         matter_js_1.default.Body.applyForce(body, position, { x: x, y: y });
     }
     init() {
         super.init();
-        this.createBody();
+        //this.createBody();
     }
     update(dt) {
         super.update(dt);
         const body = this.body;
-        this.entity.transform.data.x = body.position.x;
-        this.entity.transform.data.y = body.position.y;
-        this.entity.transform.data.velX = body.velocity.x;
-        this.entity.transform.data.velY = body.velocity.y;
+        if (body) {
+            this.entity.transform.data.x = body.position.x;
+            this.entity.transform.data.y = body.position.y;
+            this.entity.transform.data.velX = body.velocity.x;
+            this.entity.transform.data.velY = body.velocity.y;
+        }
     }
     preupdate(dt) {
         super.preupdate(dt);
         const body = this.body;
-        matter_js_1.default.Body.setPosition(body, this.entity.transform.getPosition());
-        matter_js_1.default.Body.setVelocity(body, this.entity.transform.getVelocity());
+        if (body) {
+            matter_js_1.default.Body.setPosition(body, this.entity.transform.getPosition());
+            matter_js_1.default.Body.setVelocity(body, this.entity.transform.getVelocity());
+        }
     }
     postupdate(dt) {
         super.postupdate(dt);
@@ -12691,13 +12697,46 @@ class NPCBehaviourComponent extends component_1.Component {
             input.vertical = 0;
             input.horizontal = 0;
         }
-        this.entity.transform.applyForce(input.horizontal * 0.01 * dt, input.vertical * 0.01 * dt);
+        //this.entity.transform.applyForce(input.horizontal * 0.01 * dt, input.vertical * 0.01 * dt);
+        this.entity.transform.setPosition(position.x + input.horizontal, position.y + input.vertical);
     }
     postupdate(dt) {
         super.postupdate(dt);
     }
 }
 exports.NPCBehaviourComponent = NPCBehaviourComponent;
+
+
+/***/ }),
+
+/***/ "./src/shared/component/playerComponent.ts":
+/*!*************************************************!*\
+  !*** ./src/shared/component/playerComponent.ts ***!
+  \*************************************************/
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.PlayerComponent = void 0;
+const component_1 = __webpack_require__(/*! ./component */ "./src/shared/component/component.ts");
+class PlayerComponent extends component_1.Component {
+    constructor() {
+        super(...arguments);
+        this.priority = 0;
+        this.data = {
+            name: 'no name',
+            color: 16
+        };
+    }
+    init() {
+        super.init();
+    }
+    update(dt) {
+        super.update(dt);
+    }
+}
+exports.PlayerComponent = PlayerComponent;
 
 
 /***/ }),
@@ -12972,11 +13011,13 @@ exports.Entity = Entity;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.EntityChar = void 0;
 const collisionComponent_1 = __webpack_require__(/*! ../component/collisionComponent */ "./src/shared/component/collisionComponent.ts");
+const playerComponent_1 = __webpack_require__(/*! ../component/playerComponent */ "./src/shared/component/playerComponent.ts");
 const entity_1 = __webpack_require__(/*! ./entity */ "./src/shared/entity/entity.ts");
 class EntityChar extends entity_1.Entity {
     constructor(world) {
         super(world);
         this.addComponent(new collisionComponent_1.CollisionComponent());
+        this.addComponent(new playerComponent_1.PlayerComponent());
     }
 }
 exports.EntityChar = EntityChar;
@@ -13406,7 +13447,7 @@ class World {
         });
     }
     spawnEntities() {
-        for (let i = 0; i < 50; i++) {
+        for (let i = 0; i < 100; i++) {
             this.spawnNpc();
         }
         console.log(this.entities.length);

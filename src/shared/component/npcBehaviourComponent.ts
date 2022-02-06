@@ -60,7 +60,9 @@ export class NPCBehaviourComponent extends Component {
             input.horizontal = 0;
         }
 
-        this.entity.transform.applyForce(input.horizontal * 0.01 * dt, input.vertical * 0.01 * dt);
+        //this.entity.transform.applyForce(input.horizontal * 0.01 * dt, input.vertical * 0.01 * dt);
+
+        this.entity.transform.setPosition(position.x + input.horizontal, position.y + input.vertical);
     }
    
     public postupdate(dt: number) {
