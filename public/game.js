@@ -13501,15 +13501,22 @@ class World {
     update(dt) {
         testu++;
         testd = this.matter.engine.timing.lastDelta;
+        matter_js_1.default.Engine.update(this.matter.engine, dt * 1000, this.game.fixTime);
+        /*
+        
         this.preupdate(dt);
+
         //console.log("dt:", dt * 1000, "or", this.matter.engine!.timing.lastDelta, "coor",(dt * 1000)/32)
         //console.log( dt * 1000, this.game.fixTime)
-        matter_js_1.default.Engine.update(this.matter.engine, dt * 1000, this.game.fixTime);
+
+        
         this.testAttach(dt);
-        for (const entity of this.entities) {
-            entity.update(dt);
+        for(const entity of this.entities) {
+          entity.update(dt)
         }
+
         this.postupdate(dt);
+        */
     }
     postupdate(dt) {
         //this.testAttach(dt);
@@ -13528,6 +13535,9 @@ class World {
             console.log(`${testu} updates, dt=${testd}, ${this.entities.length} entities (interv ${this.game.updateInterval}) (fixd ${this.game.fixTime})`);
             testu = 0;
         }, 1000);
+        matter_js_1.default.Events.on(engine, "afterUpdate", function () {
+            console.log("after");
+        });
         /*
         Matter.Events.on(runner, "beforeUpdate", () => {
             u++;
