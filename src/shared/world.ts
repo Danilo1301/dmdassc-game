@@ -13,6 +13,8 @@ import { EntityChar } from "./entity/entityChar";
 import { NPCBehaviourComponent } from "./component/npcBehaviourComponent";
 import { PlayerComponent } from "./component/playerComponent";
 
+let testu = 0;
+let testd = 0;
 
 interface IWorldMatter {
     engine?: Matter.Engine
@@ -112,11 +114,27 @@ export class World {
         }
     }
 
+
     public update(dt: number) {
+        testu++;
+        testd = this.matter.engine!.timing.lastDelta;
+        
+        this.preupdate(dt);
+
+        //console.log("dt:", dt * 1000, "or", this.matter.engine!.timing.lastDelta, "coor",(dt * 1000)/32)
+
+
+
+        //console.log( dt * 1000, this.game.fixTime)
+
+        Matter.Engine.update(this.matter.engine!, dt * 1000, this.game.fixTime);
+
         this.testAttach(dt);
         for(const entity of this.entities) {
           entity.update(dt)
         }
+
+        this.postupdate(dt);
     }
 
     public postupdate(dt: number) {
@@ -129,14 +147,24 @@ export class World {
     private initMatterWorld() {
         const engine = this.matter.engine = Matter.Engine.create();
         const world = this.matter.world = engine.world;
-        const runner = this.matter.runner = Matter.Runner.create();
+        //const runner = this.matter.runner = Matter.Runner.create();
         
         engine.gravity.x = 0;
         engine.gravity.y = 0;
 
-        Matter.Runner.run(runner, engine);
+        //Matter.Runner.run(runner, engine);
 
+     
+        setInterval(() => {
+            console.log(`${testu} updates, dt=${testd}, ${this.entities.length} entities`);
+            testu = 0;
+        }, 1000)
+        
+
+        /*
         Matter.Events.on(runner, "beforeUpdate", () => {
+            u++;
+            dt = engine.timing.lastDelta;
             this.preupdate(engine.timing.lastDelta * 0.001);
         })
 
@@ -144,11 +172,12 @@ export class World {
             this.update(engine.timing.lastDelta * 0.001);
             this.postupdate(engine.timing.lastDelta * 0.001);
         })
+        */
     }
 
     private spawnEntities() {
         
-        for (let i = 0; i < 50; i++) {
+        for (let i = 0; i < 100; i++) {
 
             this.spawnNpc()
 
@@ -178,6 +207,21 @@ export class World {
     public spawnNpc() {
         const npc = this.spawnEntity(EntityChar);
         npc.addComponent(new NPCBehaviourComponent());
+
+        //npc.transform.data.velX = 10;
+
+        setInterval(() => {
+
+            /*
+            if(npc.transform.data.velX < 3) {
+                npc.transform.setPosition(0, 0)
+                npc.transform.data.velX = 10;
+            }
+            */
+
+        }, 100)
+
+        //npc.addComponent(new NPCBehaviourComponent());
         return npc;
     }
 

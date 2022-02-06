@@ -103,7 +103,7 @@ export class Network {
 
             if(c == undefined) return;
 
-            console.log(c)
+            //console.log(c)
 
             const data: ITransformComponent_Data = c["0"];
 

@@ -22,6 +22,8 @@ server.listen(port, "127.0.0.1", () => console.log(`Express web server started: 
 
 const masterServer = new MasterServer(io);
 const server1 = masterServer.createServer();
+server1.game.updateInterval = 30;
+server1.game.fixTime = 1;
 
 /*
 var os = require('os-utils');

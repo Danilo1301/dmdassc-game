@@ -54,6 +54,7 @@ export class MasterServer {
         const server = new Server();
         this._servers.set(server.id, server);
         server.start();
+        return server;
     }
 
     public update(dt: number) {

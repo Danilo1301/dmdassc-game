@@ -13,6 +13,9 @@ export class Game {
     private _entityFactory: EntityFactory;
     private _inventoryManager: InventoryManager;
 
+    public updateInterval: number = 16;
+    public fixTime: number = 0.94;
+
     constructor() {
         this._entityFactory = new EntityFactory();
 
@@ -26,10 +29,50 @@ export class Game {
 
         const inventory = this._inventoryManager.createInventory('test');
         inventory.createTab(3, 3);
+
+        let f: number = -1;
+
+        let lastTick = 0;
+        setInterval(() => {
+            let now = Date.now();
+
+           
+
+            if(now - lastTick >= this.updateInterval) {
+                //console.log()
+
+                let dt = (now - (lastTick == 0 ? now : lastTick)) / 1000;
+                lastTick = now;
+
+                /*
+                if(f == -1) {
+                    f = 1;
+                    console.log(dt)
+                }
+                */
+    
+    
+
+                this.update(dt);
+            }
+
+           
+
+
+            //this.update(dt);
+        })
     }
 
     public start() {
         console.log(`[game] start`);
+    }
+
+    public update(dt: number) {
+        //console.log(`[game] update ${dt}`);
+
+        for (const world of this.worlds) {
+            world.update(dt);
+        }
     }
 
     public createWorld(name: string) {

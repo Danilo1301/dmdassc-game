@@ -12023,7 +12023,7 @@ class Network {
             const c = packetData.c;
             if (c == undefined)
                 return;
-            console.log(c);
+            //console.log(c)
             const data = c["0"];
             Object.assign(entity.transform.data, data);
             //entity.transform.data = data;
@@ -12702,6 +12702,7 @@ class NPCBehaviourComponent extends component_1.Component {
             input.horizontal = 0;
         }
         this.entity.transform.applyForce(input.horizontal * 0.01 * dt, input.vertical * 0.01 * dt);
+        //this.entity.transform.setVelocity(3, 0);
         //this.entity.transform.setPosition(position.x + input.horizontal, position.y + input.vertical);
     }
     postupdate(dt) {
@@ -13151,6 +13152,8 @@ const entityPlayer_1 = __webpack_require__(/*! ./entity/entityPlayer */ "./src/s
 class Game {
     constructor() {
         this._worlds = new Map();
+        this.updateInterval = 16;
+        this.fixTime = 0.94;
         this._entityFactory = new entityFactory_1.EntityFactory();
         this._entityFactory.registerComponent(transformComponent_1.TransformComponent);
         this._entityFactory.registerEntity('EntityChar', entityChar_1.EntityChar);
@@ -13158,11 +13161,35 @@ class Game {
         this._inventoryManager = new inventoryManager_1.InventoryManager();
         const inventory = this._inventoryManager.createInventory('test');
         inventory.createTab(3, 3);
+        let f = -1;
+        let lastTick = 0;
+        setInterval(() => {
+            let now = Date.now();
+            if (now - lastTick >= this.updateInterval) {
+                //console.log()
+                let dt = (now - (lastTick == 0 ? now : lastTick)) / 1000;
+                lastTick = now;
+                /*
+                if(f == -1) {
+                    f = 1;
+                    console.log(dt)
+                }
+                */
+                this.update(dt);
+            }
+            //this.update(dt);
+        });
     }
     get worlds() { return Array.from(this._worlds.values()); }
     get entityFactory() { return this._entityFactory; }
     start() {
         console.log(`[game] start`);
+    }
+    update(dt) {
+        //console.log(`[game] update ${dt}`);
+        for (const world of this.worlds) {
+            world.update(dt);
+        }
     }
     createWorld(name) {
         console.log(`[game] create world '${name}'`);
@@ -13400,6 +13427,8 @@ const gameface_1 = __webpack_require__(/*! ../client/gameface */ "./src/client/g
 const packet_1 = __webpack_require__(/*! ./packet */ "./src/shared/packet.ts");
 const entityChar_1 = __webpack_require__(/*! ./entity/entityChar */ "./src/shared/entity/entityChar.ts");
 const npcBehaviourComponent_1 = __webpack_require__(/*! ./component/npcBehaviourComponent */ "./src/shared/component/npcBehaviourComponent.ts");
+let testu = 0;
+let testd = 0;
 var WorldSyncType;
 (function (WorldSyncType) {
     WorldSyncType[WorldSyncType["SINGLEPLAYER"] = 0] = "SINGLEPLAYER";
@@ -13470,10 +13499,17 @@ class World {
         }
     }
     update(dt) {
+        testu++;
+        testd = this.matter.engine.timing.lastDelta;
+        this.preupdate(dt);
+        //console.log("dt:", dt * 1000, "or", this.matter.engine!.timing.lastDelta, "coor",(dt * 1000)/32)
+        //console.log( dt * 1000, this.game.fixTime)
+        matter_js_1.default.Engine.update(this.matter.engine, dt * 1000, this.game.fixTime);
         this.testAttach(dt);
         for (const entity of this.entities) {
             entity.update(dt);
         }
+        this.postupdate(dt);
     }
     postupdate(dt) {
         //this.testAttach(dt);
@@ -13484,20 +13520,29 @@ class World {
     initMatterWorld() {
         const engine = this.matter.engine = matter_js_1.default.Engine.create();
         const world = this.matter.world = engine.world;
-        const runner = this.matter.runner = matter_js_1.default.Runner.create();
+        //const runner = this.matter.runner = Matter.Runner.create();
         engine.gravity.x = 0;
         engine.gravity.y = 0;
-        matter_js_1.default.Runner.run(runner, engine);
-        matter_js_1.default.Events.on(runner, "beforeUpdate", () => {
+        //Matter.Runner.run(runner, engine);
+        setInterval(() => {
+            console.log(`${testu} updates, dt=${testd}, ${this.entities.length} entities`);
+            testu = 0;
+        }, 1000);
+        /*
+        Matter.Events.on(runner, "beforeUpdate", () => {
+            u++;
+            dt = engine.timing.lastDelta;
             this.preupdate(engine.timing.lastDelta * 0.001);
-        });
-        matter_js_1.default.Events.on(runner, "afterUpdate", () => {
+        })
+
+        Matter.Events.on(runner, "afterUpdate", () => {
             this.update(engine.timing.lastDelta * 0.001);
             this.postupdate(engine.timing.lastDelta * 0.001);
-        });
+        })
+        */
     }
     spawnEntities() {
-        for (let i = 0; i < 50; i++) {
+        for (let i = 0; i < 100; i++) {
             this.spawnNpc();
         }
         console.log(this.entities.length);
@@ -13516,6 +13561,16 @@ class World {
     spawnNpc() {
         const npc = this.spawnEntity(entityChar_1.EntityChar);
         npc.addComponent(new npcBehaviourComponent_1.NPCBehaviourComponent());
+        //npc.transform.data.velX = 10;
+        setInterval(() => {
+            /*
+            if(npc.transform.data.velX < 3) {
+                npc.transform.setPosition(0, 0)
+                npc.transform.data.velX = 10;
+            }
+            */
+        }, 100);
+        //npc.addComponent(new NPCBehaviourComponent());
         return npc;
     }
     generateWorld() {
