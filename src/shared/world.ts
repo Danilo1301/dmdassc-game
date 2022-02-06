@@ -9,6 +9,8 @@ import { Gameface } from "../client/gameface";
 import { IPacketData_ComponentEvent, PacketType } from "./packet";
 import { Client } from "../server/client";
 import { EntityPlayer } from "./entity/entityPlayer";
+import { EntityChar } from "./entity/entityChar";
+import { NPCBehaviourComponent } from "./component/npcBehaviourComponent";
 
 
 interface IWorldMatter {
@@ -156,7 +158,8 @@ export class World {
     }
 
     public spawnNpc() {
-        const npc = this.spawnEntity(EntityPlayer);
+        const npc = this.spawnEntity(EntityChar);
+        npc.addComponent(new NPCBehaviourComponent());
         return npc;
     }
 
@@ -180,5 +183,11 @@ export class World {
         this._entities.push(entity);
         entity.init();
         return entity;
+    }
+
+    public getEntity(id: string) {
+        for (const entity of this.entities) {
+            if(entity.id == id) return entity;
+        }
     }
 }

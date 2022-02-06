@@ -67,12 +67,12 @@ export class Render {
                 
             }
 
-            /*
+            
             const transform = entity.transform;
             const position = transform.getPosition();
             entity.pcEntity.setPosition(position.x * 0.01, 0, position.y * 0.01);
-            entity.pcEntityRoot.setEulerAngles(0, pc.math.RAD_TO_DEG * -transform.angle, 0);
-            */
+            entity.pcEntityRoot.setEulerAngles(0, pc.math.RAD_TO_DEG * -transform.data.angle, 0);
+            
             
         }
         

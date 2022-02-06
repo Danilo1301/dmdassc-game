@@ -17,7 +17,7 @@ export class Server {
     private _clients = new Map<string, Client>();
 
     private _sendEntityDataTime: number = 0;
-    private _sendEntityDataIntervalMs: number = 100;
+    private _sendEntityDataIntervalMs: number = 200;
 
     constructor() {
         this._game = new Game();
@@ -81,12 +81,17 @@ export class Server {
 
                 //if(!body) return;
 
-                const data = {x: 412.635, y: 1253.323};
+                const data = {
+                    id: entity.id,
+                    c: {
+                        "0": entity.transform.data
+                    }
+                };
 
                 for (const client of this.clients) {
                     //console.log("sent")
 
-                    client.socket.emit("p", [PacketType.ENTITY_DATA, data]);
+                    client.socket.emit("p", PacketType.ENTITY_DATA, data);
 
                     
                 }

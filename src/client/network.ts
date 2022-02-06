@@ -3,6 +3,8 @@ import { io, Socket } from "socket.io-client";
 import { Entity } from "../shared/entity/entity";
 import { Gameface } from "./gameface";
 import { IPacketData_ComponentEvent, IPacketData_ControlEntity, IPacketData_DestroyEntity, IPacketData_EntityData, IPacketData_JoinServer, IPacketData_SpawnEntity, Packet, PacketType } from "../shared/packet";
+import { EntityChar } from "../shared/entity/entityChar";
+import { ITransformComponent_Data } from "../shared/component/transformComponent";
 
 
 
@@ -24,9 +26,11 @@ export class Network {
             reconnection: false
         });
 
-        this._socket.on("p", (packet: Packet) => {
-            //console.log("p", data)
-    
+        this._socket.on("p", (packetType: PacketType, data: any) => {
+            const packet: Packet = {
+                type: packetType,
+                data: data
+            }
 
             this.onReceivePacket(packet);
         })
@@ -79,6 +83,47 @@ export class Network {
     }
 
     public onReceivePacket(packet: Packet) {
+        if(packet.type == PacketType.ENTITY_DATA) {
+            const packetData = packet.data;
+
+            const id: string = packetData.id;
+
+            //console.log(id);
+
+            const world = Gameface.Instance.game.worlds[0];
+            let entity = world.getEntity(id);
+            
+            if(!entity) {
+                entity = new EntityChar(world);
+                entity.setId(id);
+                world.addEntity(entity);
+            }
+
+            const c = packetData.c;
+            const data: ITransformComponent_Data = c["0"];
+
+            entity.transform.data = data;
+
+            //console.log(entity.transform.getPosition())
+
+            //console.log("got data");
+            /*
+            const packetData: IPacketData_SpawnEntity = packet.data;
+            
+            const world = Gameface.Instance.game.worlds[0];
+            const entity = world.getEntity(packetData.id);
+
+            if(!entity) return;
+
+            entity.mergeEntityData(packetData.data);
+
+
+            //console.log(packet)
+
+            
+            */
+        }
+
         /*
         if(packet.type == PacketType.SPAWN_ENTITY) {
             const packetData: IPacketData_SpawnEntity = packet.data;

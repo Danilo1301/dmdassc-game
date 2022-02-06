@@ -11948,6 +11948,7 @@ exports.Network = void 0;
 const socket_io_client_1 = __webpack_require__(/*! socket.io-client */ "./node_modules/socket.io-client/build/cjs/index.js");
 const gameface_1 = __webpack_require__(/*! ./gameface */ "./src/client/gameface.ts");
 const packet_1 = __webpack_require__(/*! ../shared/packet */ "./src/shared/packet.ts");
+const entityChar_1 = __webpack_require__(/*! ../shared/entity/entityChar */ "./src/shared/entity/entityChar.ts");
 class Network {
     constructor() {
         this.sendPacketInterval = 80;
@@ -11964,8 +11965,11 @@ class Network {
             autoConnect: false,
             reconnection: false
         });
-        this._socket.on("p", (packet) => {
-            //console.log("p", data)
+        this._socket.on("p", (packetType, data) => {
+            const packet = {
+                type: packetType,
+                data: data
+            };
             this.onReceivePacket(packet);
         });
         console.log(`[network] Address: (${this.address})`);
@@ -12005,6 +12009,38 @@ class Network {
         this._socket.emit('p', packet);
     }
     onReceivePacket(packet) {
+        if (packet.type == packet_1.PacketType.ENTITY_DATA) {
+            const packetData = packet.data;
+            const id = packetData.id;
+            //console.log(id);
+            const world = gameface_1.Gameface.Instance.game.worlds[0];
+            let entity = world.getEntity(id);
+            if (!entity) {
+                entity = new entityChar_1.EntityChar(world);
+                entity.setId(id);
+                world.addEntity(entity);
+            }
+            const c = packetData.c;
+            const data = c["0"];
+            entity.transform.data = data;
+            //console.log(entity.transform.getPosition())
+            //console.log("got data");
+            /*
+            const packetData: IPacketData_SpawnEntity = packet.data;
+            
+            const world = Gameface.Instance.game.worlds[0];
+            const entity = world.getEntity(packetData.id);
+
+            if(!entity) return;
+
+            entity.mergeEntityData(packetData.data);
+
+
+            //console.log(packet)
+
+            
+            */
+        }
         /*
         if(packet.type == PacketType.SPAWN_ENTITY) {
             const packetData: IPacketData_SpawnEntity = packet.data;
@@ -12345,12 +12381,10 @@ class Render {
                 can't create new pc.Entity every time it streams in..
                 */
             }
-            /*
             const transform = entity.transform;
             const position = transform.getPosition();
             entity.pcEntity.setPosition(position.x * 0.01, 0, position.y * 0.01);
-            entity.pcEntityRoot.setEulerAngles(0, pc.math.RAD_TO_DEG * -transform.angle, 0);
-            */
+            entity.pcEntityRoot.setEulerAngles(0, pc.math.RAD_TO_DEG * -transform.data.angle, 0);
         }
         for (const entity of this._renderingEntities) {
             if (!world.entities.includes(entity)) {
@@ -12557,22 +12591,145 @@ exports.Component = Component;
 
 /***/ }),
 
+/***/ "./src/shared/component/npcBehaviourComponent.ts":
+/*!*******************************************************!*\
+  !*** ./src/shared/component/npcBehaviourComponent.ts ***!
+  \*******************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.NPCBehaviourComponent = void 0;
+const pc = __importStar(__webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs"));
+const component_1 = __webpack_require__(/*! ./component */ "./src/shared/component/component.ts");
+class NPCBehaviourComponent extends component_1.Component {
+    constructor() {
+        super(...arguments);
+        this.priority = 0;
+        this._targetPosition = new pc.Vec2(300, 300);
+        this._newPositionTime = 0;
+    }
+    init() {
+        super.init();
+    }
+    update(dt) {
+        super.update(dt);
+        this.processNewPosition(dt);
+        this.processMovement(dt);
+    }
+    processNewPosition(dt) {
+        this._newPositionTime -= dt;
+        if (this._newPositionTime <= 0) {
+            this._newPositionTime = Math.random() * 5;
+            const range = 1500;
+            this._targetPosition.x = Math.random() * range - (range / 2);
+            this._targetPosition.y = Math.random() * range - (range / 2);
+        }
+    }
+    processMovement(dt) {
+        const input = {
+            horizontal: 0,
+            vertical: 0
+        };
+        const position = this.entity.transform.getPosition();
+        if (position.x < this._targetPosition.x) {
+            input.horizontal = 1;
+        }
+        else {
+            input.horizontal = -1;
+        }
+        if (position.y < this._targetPosition.y) {
+            input.vertical = 1;
+        }
+        else {
+            input.vertical = -1;
+        }
+        if (position.distance(this._targetPosition) < 30) {
+            input.vertical = 0;
+            input.horizontal = 0;
+        }
+        const pos = this.entity.transform.getPosition();
+        this.entity.transform.setPosition(pos.x + input.horizontal, pos.y + input.vertical);
+        //console.log(input)
+    }
+    postupdate(dt) {
+        super.postupdate(dt);
+    }
+}
+exports.NPCBehaviourComponent = NPCBehaviourComponent;
+
+
+/***/ }),
+
 /***/ "./src/shared/component/transformComponent.ts":
 /*!****************************************************!*\
   !*** ./src/shared/component/transformComponent.ts ***!
   \****************************************************/
-/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
 
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.TransformComponent = void 0;
+const pc = __importStar(__webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs"));
 const collisionComponent_1 = __webpack_require__(/*! ./collisionComponent */ "./src/shared/component/collisionComponent.ts");
 const component_1 = __webpack_require__(/*! ./component */ "./src/shared/component/component.ts");
 class TransformComponent extends component_1.Component {
     constructor() {
         super(...arguments);
         this.priority = 0;
+        this.data = {
+            angle: 0,
+            aimAngle: 0,
+            x: 0,
+            y: 0
+        };
+    }
+    getPosition() {
+        return new pc.Vec2(this.data.x, this.data.y);
+    }
+    setPosition(x, y) {
+        this.data.x = x;
+        this.data.y = y;
     }
     init() {
         super.init();
@@ -13112,7 +13269,8 @@ const eventEmitter_1 = __webpack_require__(/*! ./eventEmitter */ "./src/shared/e
 const worldEvent_1 = __webpack_require__(/*! ./worldEvent */ "./src/shared/worldEvent.ts");
 const gameface_1 = __webpack_require__(/*! ../client/gameface */ "./src/client/gameface.ts");
 const packet_1 = __webpack_require__(/*! ./packet */ "./src/shared/packet.ts");
-const entityPlayer_1 = __webpack_require__(/*! ./entity/entityPlayer */ "./src/shared/entity/entityPlayer.ts");
+const entityChar_1 = __webpack_require__(/*! ./entity/entityChar */ "./src/shared/entity/entityChar.ts");
+const npcBehaviourComponent_1 = __webpack_require__(/*! ./component/npcBehaviourComponent */ "./src/shared/component/npcBehaviourComponent.ts");
 var WorldSyncType;
 (function (WorldSyncType) {
     WorldSyncType[WorldSyncType["SINGLEPLAYER"] = 0] = "SINGLEPLAYER";
@@ -13216,7 +13374,8 @@ class World {
         console.log(this.entities.length);
     }
     spawnNpc() {
-        const npc = this.spawnEntity(entityPlayer_1.EntityPlayer);
+        const npc = this.spawnEntity(entityChar_1.EntityChar);
+        npc.addComponent(new npcBehaviourComponent_1.NPCBehaviourComponent());
         return npc;
     }
     generateWorld() {
@@ -13232,6 +13391,12 @@ class World {
         this._entities.push(entity);
         entity.init();
         return entity;
+    }
+    getEntity(id) {
+        for (const entity of this.entities) {
+            if (entity.id == id)
+                return entity;
+        }
     }
 }
 exports.World = World;
