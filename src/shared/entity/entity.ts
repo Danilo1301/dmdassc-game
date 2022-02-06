@@ -13,6 +13,10 @@ export class Entity {
     public get world() { return this._world; }
     public get components() { return this._components; }
     public get transform() { return this._transform; }
+    public get pcEntity() { return this._pcEntity!; }
+    public get pcEntityRoot() { return this.pcEntity.findByName('Root')!; }
+    
+    /*
     public get pcEntity() {
         if(!this._pcEntity) {
             this._pcEntity = new pc.Entity('Entity');
@@ -20,11 +24,10 @@ export class Entity {
         }
         return this._pcEntity;
     }
-    public get pcEntityRoot() {
-        return this.pcEntity.findByName('Root');
-    }
+    */
+    
 
-    private _pcEntity: pc.Entity;
+    private _pcEntity?: pc.Entity;
     private _id: string = uuidv4();
     private _world: World;
     private _components: Component[] = [];

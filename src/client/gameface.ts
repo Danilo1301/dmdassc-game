@@ -121,18 +121,6 @@ export class Gameface {
     }
 
     public checkControllingEntity() {
-        if(this.player) {
-            if(this.player.id == this.controllingEntityId) return;
-        }
-
-        const world = this.game.worlds[0];
-
-        if(!world) return;
-
-        const entity = world.getEntity(this.controllingEntityId);
-
-        if(entity) {
-            this.setPlayer(entity);
-        }
+       
     }
 }

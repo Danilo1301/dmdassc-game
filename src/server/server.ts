@@ -92,9 +92,7 @@ export class Server {
     }
 
     public onClientLeave(client: Client) {
-        if(client.player) {
-            client.player.world.removeEntity(client.player);
-        }
+        
     }
 }
 
