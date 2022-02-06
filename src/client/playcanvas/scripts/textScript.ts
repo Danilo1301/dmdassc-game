@@ -11,7 +11,7 @@ export class TextScript extends pc.ScriptType {
 
     public height: number = 20;
 
-    public initialize() {
+    public initialize = () => {
         this.fire('initialize');
 
         // Create a canvas to do the text rendering
@@ -97,17 +97,19 @@ export class TextScript extends pc.ScriptType {
         }, 200)
     }
 
-    public postInitialize() {
+    public postInitialize = () => {
+      
+
         this.fire('postInitialize');
     }
 
 
     
-    public update(dt) {
+    public update = (dt) => {
         this.fire('update', dt);
     }
 
-    public postUpdate(dt) {
+    public postUpdate = (dt) => {
         this.fire('postUpdate', dt);
 
         //var pos = PlayCanvas.camera.getPosition();
@@ -118,7 +120,7 @@ export class TextScript extends pc.ScriptType {
         //this.updateText();
     }
 
-    public swap() {
+    public swap = () => {
         this.fire('swap');
     }
 }

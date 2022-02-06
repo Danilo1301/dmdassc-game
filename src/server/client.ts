@@ -10,6 +10,7 @@ export class Client {
     public get id() { return this._id; }
     public get addressList() { return this._addressList; }
     public get player() { return this._player; }
+    public get socket() { return this._socket!; }
 
     private _id: string = uuidv4();
 
@@ -92,6 +93,8 @@ export class Client {
             server.onClientJoin(this);
         }
 
+        /*
+
         if(packet.type == PacketType.ENTITY_DATA) {
             const packetData: IPacketData_EntityData = packet.data;
             const entityId = packetData.id;
@@ -115,8 +118,7 @@ export class Client {
 
             //sdconsole.log(data)
 
-            player.mergeEntityData(data);
-            
+  
 
         }
 
@@ -134,6 +136,7 @@ export class Client {
             component.onReceiveComponentEvent(packetData.event, packetData.data, this);
 
         }
+        */
 
         /*
         const packetType: PacketType = packet.readShort();
@@ -162,43 +165,7 @@ export class Client {
     }
 
     public checkStreamedEntities() {
-        const player = this._player;
-
-        if(!player) return;
-
-        const playerPosition = player.transform.getPosition();
-
-        const world = player.world;
-
-        for (const entity of world.entities) {
-
-            if(!entity.canSync) continue;
-            
-            const distance: number = playerPosition.distance(entity.transform.getPosition());
-
-            let canBeStreamed = false;
-            if(distance < 1200) canBeStreamed = true;
-
-            if(canBeStreamed) {
-                if(!this._streamedEntities.includes(entity)) {
-                    console.log(`[client] entity stream in ${entity.id}`);
-    
-                    this._streamedEntities.push(entity);
-    
-                    this.sendEntitySpawn(entity);
-                }
-            } else {
-                if(this._streamedEntities.includes(entity)) {
-                    console.log(`[client] entity stream out ${entity.id}`);
-    
-                    this._streamedEntities.splice(this._streamedEntities.indexOf(entity), 1);
-    
-                    this.sendEntityDestroy(entity);
-                }
-            }
-            
-
-        }
+        
     }
 
     public update(dt: number) {

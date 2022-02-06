@@ -1,22 +1,14 @@
 import Matter from "matter-js";
 import * as pc from "playcanvas";
 import { Component } from "./component/component";
-import { InputHandlerComponent } from "./component/inputHandlerComponent";
-import { NPCBehaviourComponent } from "./component/npcBehaviourComponent";
-import { TestCollisionComponent } from "./component/testCollisionComponent";
-import { EntityBuilding } from "./entity/entityBuilding";
 import { Entity } from "./entity/entity";
-import { EntityPlayer } from "./entity/entityPlayer";
-import { EntityVehicle } from "./entity/entityVehicle";
 import { Game } from "./game";
-import { EntityWeapon } from "./entity/entityWeapon";
-import { WeaponComponent } from "./component/weaponComponent";
 import { EventEmitter } from "./eventEmitter";
 import { WorldEvent } from "./worldEvent";
 import { Gameface } from "../client/gameface";
 import { IPacketData_ComponentEvent, PacketType } from "./packet";
 import { Client } from "../server/client";
-import { EquipItemComponent } from "./component/equipItemComponent";
+import { EntityPlayer } from "./entity/entityPlayer";
 
 
 interface IWorldMatter {
@@ -37,10 +29,10 @@ export class World {
     public syncType: WorldSyncType = WorldSyncType.SINGLEPLAYER;
     
     public matter: IWorldMatter = {}
-    public get entities() { return Array.from(this._entities.values()) };
+    public get entities() { return this._entities };
     public get game() { return this._game; };
     
-    private _entities = new Map<string, Entity>();
+    private _entities: Entity[] = [];
     private _game: Game;
 
     constructor(game: Game) {
@@ -105,25 +97,30 @@ export class World {
     }
 
     private testAttach(dt: number) {
-        this.entities.map(entity => {
-            entity.updateAttachPosition();
-        });
+        
     }
 
 
     public preupdate(dt: number) {
         //  this.testAttach(dt);
-        this.entities.map(entity => entity.preupdate(dt));
+
+        for(const entity of this.entities) {
+          entity.preupdate(dt)
+        }
     }
 
     public update(dt: number) {
         this.testAttach(dt);
-        this.entities.map(entity => entity.update(dt));
+        for(const entity of this.entities) {
+          entity.update(dt)
+        }
     }
 
     public postupdate(dt: number) {
         //this.testAttach(dt);
-        this.entities.map(entity => entity.postupdate(dt));
+        for(const entity of this.entities) {
+          entity.postupdate(dt)
+        }
     }
 
     private initMatterWorld() {
@@ -147,117 +144,40 @@ export class World {
     }
 
     private spawnEntities() {
-        const keepincenter = (entity: Entity) => {
+        
+        for (let i = 0; i < 100; i++) {
 
-            setInterval(() => {
-
-                if(entity.transform.getPosition().distance(new pc.Vec2()) > 700) {
-                    entity.transform.setPosition(0, 0);
-                }
-                
-            }, 2000)
+            this.spawnNpc()
 
         }
-        
-        
-        
 
-        for (let i = 0; i < 2; i++) {
-            const vehicle = this.spawnEntity(EntityVehicle);
-            vehicle.transform.setPosition(0, -80)
-            
-            keepincenter(vehicle);
-        }
-        
-        for (let i = 0; i < 8; i++) {
-            const npc = this.spawnEntity(EntityPlayer);
-            npc.addComponent(new NPCBehaviourComponent())
-            //vehicle.transform.setPosition(0, -80)
+        console.log(this.entities.length)
 
-            if(i == 0 || i == 1) {
+    }
 
-                setInterval(() => {
-                    npc.getComponent(EquipItemComponent).tryUse();
-                }, 500)
-
-                //const weapon = this.spawnEntity(EntityWeapon);
-
-                //weapon.attachToEntity(npc);
-
-            }
-        }
-        
-        for (let i = 0; i < 2; i++) {
-            const wpn = this.spawnEntity(EntityWeapon);
-            //wpn.getComponent(WeaponComponent).enabled = true;
-
-            keepincenter(wpn);
-            //vehicle.transform.setPosition(0, -80)
-        }
-
-
-        //
-        for (let y = 0; y < 6; y++) {
-            for (let x = 0; x < 6; x++) {
-                const building = this.spawnEntity(EntityBuilding);
-                building.transform.setPosition((x-3) * 600, (y-3) * 600)
-            }
-        }
+    public spawnNpc() {
+        const npc = this.spawnEntity(EntityPlayer);
+        return npc;
     }
 
     public generateWorld() {
-        
-        
-
         console.log(`[world] generate world`);
 
-        const npc = this.spawnEntity(EntityPlayer);
-        npc.addComponent(new NPCBehaviourComponent())
-           
-        const weapon = this.spawnEntity(EntityWeapon);
-
-        weapon.attachToEntity(npc);
-
-        const car = this.spawnEntity(EntityVehicle);
-        const weapon2 = this.spawnEntity(EntityWeapon);
-        weapon2.attachToEntity(car);
-
         this.spawnEntities();
-
     }
 
     
     
-    public spawnEntity(c: typeof Entity, options?) {
+    public spawnEntity(c: typeof Entity) {
         const entity = new c(this);
 
-        if(options) {
-            if(options.id) entity.setId(options.id);
-
-            if(options.dontAdd) return entity;
-        }
-        
-        
         return this.addEntity(entity);
-    }
-
-    public hasEntity(id: string) {
-        return this._entities.has(id);
-    }
-
-    public getEntity(id: string) {
-        return this._entities.get(id);
-    }
-
-    public removeEntity(entity: Entity) {
-        entity.destroy();
-        this._entities.delete(entity.id);
     }
 
     public addEntity(entity: Entity) {
         //console.log(`[world] add entity ${entity.constructor.name}`);
         
-        this._entities.set(entity.id, entity);
+        this._entities.push(entity);
         entity.init();
         return entity;
     }

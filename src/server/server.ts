@@ -1,13 +1,11 @@
 import { v4 as uuidv4 } from 'uuid';
 import { Client } from './client';
-import { SyncComponent, SyncType } from '../shared/component/syncComponent';
-import { EntityPlayer } from '../shared/entity/entityPlayer';
 import { Game } from '../shared/game';
-import { WeaponComponent } from '../shared/component/weaponComponent';
 import { WorldEvent } from '../shared/worldEvent';
 import { WorldSyncType } from '../shared/world';
 import { Component } from '../shared/component/component';
 import { IPacketData_ComponentEvent, PacketType } from '../shared/packet';
+import { EntityPlayer } from '../shared/entity/entityPlayer';
 
 export class Server {
     public get id() { return this._id; }
@@ -19,7 +17,7 @@ export class Server {
     private _clients = new Map<string, Client>();
 
     private _sendEntityDataTime: number = 0;
-    private _sendEntityDataIntervalMs: number = 30;
+    private _sendEntityDataIntervalMs: number = 100;
 
     constructor() {
         this._game = new Game();
@@ -74,38 +72,31 @@ export class Server {
     }
 
     public sendEntitiesData() {
-
-        //console.log("sending")
-
         for (const world of this.game.worlds) {
             
             for (const entity of world.entities) {
-            
-                if(!entity.canSync) continue;
+                
+                //const col = entity.transform.collisionComponent!;
+                //const body = col.body;
 
-                if(Date.now() - entity.lastSync < entity.syncInterval) continue;
-                entity.lastSync = Date.now();
+                //if(!body) return;
 
-                const data = entity.data.getChangedData();
-
-                if(data == undefined) continue;
-
-                //console.log(entity.id, data);
-                entity.data.clearChangedData();
+                const data = {x: 412.635, y: 1253.323};
 
                 for (const client of this.clients) {
-                    if(!client.isEntityStreamed(entity)) continue;
+                    //console.log("sent")
 
-                    client.sendEntityData(entity, data);
+                    client.socket.emit("p", [PacketType.ENTITY_DATA, data]);
+
+                    
                 }
 
             }
 
         }
 
-        
+        //console.log("sending")
 
-        
 
     }
 
@@ -117,18 +108,13 @@ export class Server {
         const world = this.game.worlds[0];
 
         const player = world.spawnEntity(EntityPlayer);
-        const syncComponent = player.addComponent(new SyncComponent());
-        syncComponent.syncType = SyncType.SERVER_SYNC;
-        syncComponent.positionLerp = 0.8;
 
         client.checkStreamedEntities();
         client.setPlayer(player);
     }
 
     public onClientLeave(client: Client) {
-        if(client.player) {
-            client.player.world.removeEntity(client.player);
-        }
+        
     }
 }
 

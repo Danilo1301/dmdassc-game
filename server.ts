@@ -23,4 +23,13 @@ server.listen(port, "127.0.0.1", () => console.log(`Express web server started: 
 const masterServer = new MasterServer(io);
 const server1 = masterServer.createServer();
 
+var os = require('os-utils');
+
+
+setInterval(() => {
+  os.cpuUsage(function(v){
+      console.log( 'CPU Usage (%): ' + v );
+  });
+}, 1000)
+
 
