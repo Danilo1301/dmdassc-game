@@ -11990,10 +11990,10 @@ class Network {
         }
     }
     sendPlayerData(entity) {
-        const data = entity.data.getChangedData();
+        //const data = entity.data.getChangedData();
         //console.log(data)
-        entity.data.clearChangedData();
-        this.sendPacket(packet_1.PacketType.ENTITY_DATA, { id: entity.id, data: data });
+        //entity.data.clearChangedData();
+        //this.sendPacket<IPacketData_EntityData>(PacketType.ENTITY_DATA, {id: entity.id, data: data})
         /*
         const components: Component[] = [entity.transform];
         if(entity.hasComponent(InputHandlerComponent)) components.push(entity.getComponent(InputHandlerComponent));
@@ -12021,8 +12021,12 @@ class Network {
                 world.addEntity(entity);
             }
             const c = packetData.c;
+            if (c == undefined)
+                return;
+            console.log(c);
             const data = c["0"];
-            entity.transform.data = data;
+            Object.assign(entity.transform.data, data);
+            //entity.transform.data = data;
             //console.log(entity.transform.getPosition())
             //console.log("got data");
             /*
@@ -12902,14 +12906,60 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.Entity = void 0;
+exports.Entity = exports.DataWatcher = void 0;
 const pc = __importStar(__webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs"));
 const uuid_1 = __webpack_require__(/*! uuid */ "./node_modules/uuid/dist/esm-browser/index.js");
 const transformComponent_1 = __webpack_require__(/*! ../component/transformComponent */ "./src/shared/component/transformComponent.ts");
+class DataWatcher {
+    constructor() {
+        this._data = {};
+    }
+    //private _changedData: any = {};
+    setData(data) {
+        //console.log("\n_data:", JSON.stringify(this._data))
+        //console.log("new data:", JSON.stringify(data))
+        const changedData = this.testObj(data, this._data);
+        //console.log("changedData:", JSON.stringify(changedData))
+        //this._data = Object.assign({}, data);
+        this._data = JSON.parse(JSON.stringify(data));
+        return changedData;
+    }
+    testObj(o, compare) {
+        //console.log("test obj", JSON.stringify(o))
+        let result = undefined;
+        const setResult = (key, value) => {
+            if (result == undefined)
+                result = {};
+            result[key] = value;
+        };
+        for (const k in o) {
+            //console.log("--", k)
+            if (o[k] instanceof Object) {
+                const resultObj = this.testObj(o[k], compare[k]);
+                if (resultObj != undefined) {
+                    setResult(k, resultObj);
+                }
+            }
+            else {
+                if (compare == undefined) {
+                    //console.log("compare not defined")
+                    setResult(k, o[k]);
+                }
+                else {
+                    if (compare[k] != o[k]) {
+                        setResult(k, o[k]);
+                    }
+                }
+            }
+        }
+        return result;
+    }
+}
+exports.DataWatcher = DataWatcher;
 class Entity {
     constructor(world, pcEntity) {
-        this.data = {};
         this.destroyed = false;
+        this.dataWatcher = new DataWatcher();
         this._id = (0, uuid_1.v4)();
         this._components = [];
         this._hasInitalized = false;
@@ -13451,6 +13501,17 @@ class World {
             this.spawnNpc();
         }
         console.log(this.entities.length);
+        const entity = this.entities[0];
+        const getFullData = () => {
+            const fullData = {};
+            fullData["0"] = entity.components[0].data;
+            fullData["1"] = entity.components[2].data;
+            return fullData;
+        };
+        //entity.dataWatcher.setData(getFullData());
+        //entity.transform.data.angle = 0.0001;
+        //entity.getComponent(PlayerComponent)!.data.name = "from server"
+        //entity.dataWatcher.setData(getFullData());
     }
     spawnNpc() {
         const npc = this.spawnEntity(entityChar_1.EntityChar);

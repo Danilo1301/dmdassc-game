@@ -71,6 +71,17 @@ export class Server {
         }
     }
 
+    /*
+    100 entities
+    sending every 200ms
+
+    1 player:
+    18 - 16 - 16 - 17
+
+    0 player:
+    8 - 9 - 7 - 8
+    
+    */
     public sendEntitiesData() {
         for (const world of this.game.worlds) {
             
@@ -81,11 +92,27 @@ export class Server {
 
                 //if(!body) return;
 
+                
+                
+
+                //console.log(fullData)
+
+                const getFullData = () => {
+                    const fullData: any = {};
+        
+                    fullData["0"] = entity.components[0].data;
+                    fullData["1"] = entity.components[2].data;
+                    
+                    return fullData;
+                }
+        
+                const fullData = getFullData();
+
+                const changedData = entity.dataWatcher.setData(fullData);
+
                 const data = {
                     id: entity.id,
-                    c: {
-                        "0": entity.transform.data
-                    }
+                    c: changedData
                 };
 
                 for (const client of this.clients) {

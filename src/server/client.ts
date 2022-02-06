@@ -208,11 +208,13 @@ export class Client {
     }
 
     public sendEntitySpawn(entity: Entity) {
+        /*
         this.sendPacket<IPacketData_SpawnEntity>(PacketType.SPAWN_ENTITY, {
             id: entity.id,
             type: entity.world.game.entityFactory.getIndexOfEntity(entity),
             data: entity.data.getData()
         });
+        */
     }
 
     public sendEntityDestroy(entity: Entity) {

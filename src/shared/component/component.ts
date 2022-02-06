@@ -3,6 +3,7 @@ import { Entity } from "../entity/entity";
 import { WorldEvent } from "../worldEvent";
 
 export class Component {
+    public data: any;
     public index: number | null = null;
 
     public entity: Entity;

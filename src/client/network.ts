@@ -58,13 +58,13 @@ export class Network {
 
     public sendPlayerData(entity: Entity) {
 
-        const data = entity.data.getChangedData();
+        //const data = entity.data.getChangedData();
 
         //console.log(data)
 
-        entity.data.clearChangedData();
+        //entity.data.clearChangedData();
 
-        this.sendPacket<IPacketData_EntityData>(PacketType.ENTITY_DATA, {id: entity.id, data: data})
+        //this.sendPacket<IPacketData_EntityData>(PacketType.ENTITY_DATA, {id: entity.id, data: data})
 
         /*
         const components: Component[] = [entity.transform];
@@ -98,11 +98,18 @@ export class Network {
                 entity.setId(id);
                 world.addEntity(entity);
             }
-
+            
             const c = packetData.c;
+
+            if(c == undefined) return;
+
+            console.log(c)
+
             const data: ITransformComponent_Data = c["0"];
 
-            entity.transform.data = data;
+            Object.assign(entity.transform.data, data);
+
+            //entity.transform.data = data;
 
             //console.log(entity.transform.getPosition())
 

@@ -11,6 +11,7 @@ import { Client } from "../server/client";
 import { EntityPlayer } from "./entity/entityPlayer";
 import { EntityChar } from "./entity/entityChar";
 import { NPCBehaviourComponent } from "./component/npcBehaviourComponent";
+import { PlayerComponent } from "./component/playerComponent";
 
 
 interface IWorldMatter {
@@ -155,6 +156,23 @@ export class World {
 
         console.log(this.entities.length)
 
+        const entity = this.entities[0];
+
+        const getFullData = () => {
+            const fullData: any = {};
+
+            fullData["0"] = entity.components[0].data;
+            fullData["1"] = entity.components[2].data;
+            
+            return fullData;
+        }
+
+        //entity.dataWatcher.setData(getFullData());
+
+        //entity.transform.data.angle = 0.0001;
+        //entity.getComponent(PlayerComponent)!.data.name = "from server"
+
+        //entity.dataWatcher.setData(getFullData());
     }
 
     public spawnNpc() {
