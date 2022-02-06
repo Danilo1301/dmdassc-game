@@ -105,7 +105,7 @@ export class World {
         this.preupdate(dt)
 
         console.log("u..")
-        Matter.Engine.update(this.matter.engine!, dt, this.game.fixTime);
+        Matter.Engine.update(this.matter.engine!, 16.666666666666668, this.game.fixTime);
         console.log("finish")
 
            //console.log("dt:", dt * 1000, "or", this.matter.engine!.timing.lastDelta, "coor",(dt * 1000)/32)
@@ -150,22 +150,15 @@ export class World {
 
     private initMatterWorld() {
         const engine = this.matter.engine = Matter.Engine.create();
-        const world = this.matter.world = engine.world;
-        const runner = this.matter.runner = Matter.Runner.create();
-        
         engine.gravity.x = 0;
         engine.gravity.y = 0;
 
+        const world = this.matter.world = engine.world;
+        
+        /*
+        const runner = this.matter.runner = Matter.Runner.create();
+        
         Matter.Runner.run(runner, engine);
-
-     
-        setInterval(() => {
-            console.log(`${testu} updates, dt=${testd}, ${this.entities.length} entities (interv ${this.game.updateInterval}) (fixd ${this.game.fixTime})`);
-            testu = 0;
-        }, 1000)
-
-   
-
         
         Matter.Events.on(runner, "beforeUpdate", () => {
             this.preupdate(engine.timing.lastDelta * 0.001);
@@ -175,7 +168,12 @@ export class World {
             this.update(engine.timing.lastDelta * 0.001);
             this.postupdate(engine.timing.lastDelta * 0.001);
         })
-        
+        */
+       
+        setInterval(() => {
+            console.log(`${testu} updates, dt=${testd}, ${this.entities.length} entities (interv ${this.game.updateInterval}) (fixd ${this.game.fixTime})`);
+            testu = 0;
+        }, 1000)
     }
 
     private spawnEntities() {
