@@ -10,7 +10,9 @@
     "express": "^4.17.1",
     "matter-js": "^0.17.1",
     "nodemon": "^2.0.15",
-    "playcanvas": "^1.50.2",
+    "os": "^0.1.2",
+    "os-utils": "0.0.14",
+    "playcanvas": "^1.52.1",
     "request": "^2.88.2",
     "socket.io": "^4.3.1",
     "socket.io-client": "^4.3.2",
@@ -25,7 +27,7 @@
     "webpack-cli": "^4.9.1"
   },
   "scripts": {
-    "start": "nodemon server.ts",
+    "start": "ts-node server.ts",
     "dev": "webpack --config webpack.config.js --watch",
     "numtemcomodar_start": "node -r tsconfig-paths/register -r ts-node/register src/main.ts",
     "build": "webpack --config webpack.config.js",
