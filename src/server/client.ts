@@ -118,7 +118,7 @@ export class Client {
 
                 player.getComponent(SyncComponent)!.setPosition(newPosition.x, newPosition.y);
             }
-            console.log(packet)
+            //console.log(packet)
 
         }
 

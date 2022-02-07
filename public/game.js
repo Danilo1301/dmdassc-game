@@ -13291,7 +13291,6 @@ exports.PlayerComponent = PlayerComponent;
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.SpriteComponent = void 0;
-const render_1 = __webpack_require__(/*! ../../client/render */ "./src/client/render.ts");
 const planeSprite_1 = __webpack_require__(/*! ../../client/planeSprite */ "./src/client/planeSprite.ts");
 const component_1 = __webpack_require__(/*! ./component */ "./src/shared/component/component.ts");
 class SpriteComponent extends component_1.Component {
@@ -13313,10 +13312,9 @@ class SpriteComponent extends component_1.Component {
         };
         this._spriteOptions.set(id, spriteOptions);
     }
-    update(dt) {
-        super.update(dt);
-        if (!render_1.Render.app)
-            return;
+    render(dt) {
+        super.render(dt);
+        //if(!Render.app) return;
         Array.from(this._spriteOptions.keys()).map(id => {
             const spriteOptions = this._spriteOptions.get(id);
             if (!spriteOptions.planeSprite) {

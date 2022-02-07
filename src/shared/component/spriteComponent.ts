@@ -34,10 +34,10 @@ export class SpriteComponent extends Component {
         this._spriteOptions.set(id, spriteOptions);
     }
 
-    public update(dt: number) {
-        super.update(dt);
+    public render(dt: number) {
+        super.render(dt);
 
-        if(!Render.app) return;
+        //if(!Render.app) return;
 
         Array.from(this._spriteOptions.keys()).map(id => {
             const spriteOptions = this._spriteOptions.get(id)!;
