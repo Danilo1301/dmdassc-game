@@ -11949,6 +11949,7 @@ const socket_io_client_1 = __webpack_require__(/*! socket.io-client */ "./node_m
 const gameface_1 = __webpack_require__(/*! ./gameface */ "./src/client/gameface.ts");
 const packet_1 = __webpack_require__(/*! ../shared/packet */ "./src/shared/packet.ts");
 const entityChar_1 = __webpack_require__(/*! ../shared/entity/entityChar */ "./src/shared/entity/entityChar.ts");
+const syncComponent_1 = __webpack_require__(/*! ../shared/component/syncComponent */ "./src/shared/component/syncComponent.ts");
 class Network {
     constructor() {
         this.sendPacketInterval = 80;
@@ -12018,6 +12019,7 @@ class Network {
             if (!entity) {
                 entity = new entityChar_1.EntityChar(world);
                 entity.setId(id);
+                entity.addComponent(new syncComponent_1.SyncComponent());
                 world.addEntity(entity);
             }
             const c = packetData.c;
@@ -12025,7 +12027,31 @@ class Network {
                 return;
             //console.log(c)
             const data = c["0"];
+            const angle = entity.transform.getAngle();
+            const toSyncAngle = data.angle != undefined ? data.angle : angle;
+            const position = entity.transform.getPosition();
+            const toSyncPosition = { x: position.x, y: position.y };
+            if (data.x != undefined)
+                toSyncPosition.x = data.x;
+            if (data.y != undefined)
+                toSyncPosition.y = data.y;
+            const velocity = entity.transform.getVelocity();
+            const toSyncVelocity = { x: velocity.x, y: velocity.y };
+            if (data.velX != undefined)
+                toSyncVelocity.x = data.velX;
+            if (data.velY != undefined)
+                toSyncVelocity.y = data.velY;
             Object.assign(entity.transform.data, data);
+            const syncComponent = entity.getComponent(syncComponent_1.SyncComponent);
+            //console.log(toSyncPosition, toSyncVelocity, toSyncAngle)
+            if (syncComponent) {
+                entity.transform.setPosition(position.x, position.y);
+                entity.transform.setVelocity(velocity.x, velocity.y);
+                entity.transform.setAngle(angle);
+                syncComponent.setPosition(toSyncPosition.x, toSyncPosition.y);
+                syncComponent.setVelocity(toSyncVelocity.x, toSyncVelocity.y);
+                syncComponent.setAngle(toSyncAngle);
+            }
             //entity.transform.data = data;
             //console.log(entity.transform.getPosition())
             //console.log("got data");
@@ -12522,11 +12548,31 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.CollisionComponent = void 0;
 const matter_js_1 = __importDefault(__webpack_require__(/*! matter-js */ "./node_modules/matter-js/build/matter.js"));
 const component_1 = __webpack_require__(/*! ./component */ "./src/shared/component/component.ts");
+var BodyType;
+(function (BodyType) {
+    BodyType[BodyType["RECTANGLE"] = 0] = "RECTANGLE";
+    BodyType[BodyType["CIRCLE"] = 1] = "CIRCLE";
+})(BodyType || (BodyType = {}));
+class BodyPart {
+    constructor(key, x, y, type) {
+        this.width = 0;
+        this.height = 0;
+        this.radius = 0;
+        this.sensor = false;
+        this.key = key;
+        this.x = x;
+        this.y = y;
+        this.type = type;
+    }
+}
 class CollisionComponent extends component_1.Component {
     constructor() {
         super(...arguments);
-        this.priority = 990;
+        this.priority = 980;
+        this.options = { mass: 20, friction: 0.001, frictionAir: 0.3 };
+        this._bodyParts = new Map();
     }
+    get body() { return this._body; }
     applyForce(x, y) {
         const body = this.body;
         if (!body)
@@ -12546,14 +12592,22 @@ class CollisionComponent extends component_1.Component {
             this.entity.transform.data.y = body.position.y;
             this.entity.transform.data.velX = body.velocity.x;
             this.entity.transform.data.velY = body.velocity.y;
+            this.entity.transform.data.angle = body.angle;
         }
     }
     preupdate(dt) {
         super.preupdate(dt);
         const body = this.body;
         if (body) {
-            matter_js_1.default.Body.setPosition(body, this.entity.transform.getPosition());
-            matter_js_1.default.Body.setVelocity(body, this.entity.transform.getVelocity());
+            matter_js_1.default.Body.setPosition(body, {
+                x: this.entity.transform.data.x,
+                y: this.entity.transform.data.y
+            });
+            matter_js_1.default.Body.setVelocity(body, {
+                x: this.entity.transform.data.velX,
+                y: this.entity.transform.data.velY
+            });
+            matter_js_1.default.Body.setAngle(body, this.entity.transform.data.angle);
         }
     }
     postupdate(dt) {
@@ -12561,10 +12615,39 @@ class CollisionComponent extends component_1.Component {
     }
     createBody() {
         const matterWorld = this.entity.world.matter.world;
-        const body = matter_js_1.default.Bodies.circle(0, 0, 25);
+        const options = Object.assign({}, this.options);
+        const parts = [];
+        for (const bodyPart of this._bodyParts.values()) {
+            options.isSensor = bodyPart.sensor;
+            if (bodyPart.type == BodyType.RECTANGLE)
+                bodyPart.body = matter_js_1.default.Bodies.rectangle(bodyPart.x, bodyPart.y, bodyPart.width, bodyPart.height, options);
+            if (bodyPart.type == BodyType.CIRCLE)
+                bodyPart.body = matter_js_1.default.Bodies.circle(bodyPart.x, bodyPart.y, bodyPart.radius, options);
+            parts.push(bodyPart.body);
+        }
+        options.isSensor = false;
+        options.parts = parts;
+        const body = matter_js_1.default.Body.create(options);
+        matter_js_1.default.Body.setCentre(body, { x: 0, y: 0 });
         matter_js_1.default.Composite.add(matterWorld, body);
-        //Matter.Body.setPosition(body, {x: Math.random()*100, y: Math.random()*100})
-        this.body = body;
+        this._body = body;
+    }
+    getBodyPart(key) {
+        return this._bodyParts.get(key);
+    }
+    addRectangle(key, x, y, width, height, sensor = false) {
+        var bodyPart = new BodyPart(key, x, y, BodyType.RECTANGLE);
+        bodyPart.width = width;
+        bodyPart.height = height;
+        bodyPart.sensor = sensor;
+        this._bodyParts.set(key, bodyPart);
+        return bodyPart;
+    }
+    addCircle(key, x, y, radius) {
+        var bodyPart = new BodyPart(key, x, y, BodyType.CIRCLE);
+        bodyPart.radius = radius;
+        this._bodyParts.set(key, bodyPart);
+        return bodyPart;
     }
 }
 exports.CollisionComponent = CollisionComponent;
@@ -12671,7 +12754,7 @@ class NPCBehaviourComponent extends component_1.Component {
         this._newPositionTime -= dt;
         if (this._newPositionTime <= 0) {
             this._newPositionTime = Math.random() * 5;
-            const range = 1500;
+            const range = 900;
             this._targetPosition.x = Math.random() * range - (range / 2);
             this._targetPosition.y = Math.random() * range - (range / 2);
         }
@@ -12698,7 +12781,7 @@ class NPCBehaviourComponent extends component_1.Component {
             input.vertical = 0;
             input.horizontal = 0;
         }
-        this.entity.transform.applyForce(input.horizontal * 0.01 * dt, input.vertical * 0.01 * dt);
+        this.entity.transform.applyForce(input.horizontal * 2 * dt, input.vertical * 2 * dt);
         //this.entity.transform.setVelocity(3, 0);
         //this.entity.transform.setPosition(position.x + input.horizontal, position.y + input.vertical);
     }
@@ -12739,6 +12822,107 @@ class PlayerComponent extends component_1.Component {
     }
 }
 exports.PlayerComponent = PlayerComponent;
+
+
+/***/ }),
+
+/***/ "./src/shared/component/syncComponent.ts":
+/*!***********************************************!*\
+  !*** ./src/shared/component/syncComponent.ts ***!
+  \***********************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.SyncComponent = exports.SyncType = void 0;
+const pc = __importStar(__webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs"));
+const component_1 = __webpack_require__(/*! ./component */ "./src/shared/component/component.ts");
+var SyncType;
+(function (SyncType) {
+    SyncType[SyncType["DONT_SYNC"] = 0] = "DONT_SYNC";
+    SyncType[SyncType["CLIENT_SYNC"] = 1] = "CLIENT_SYNC";
+    SyncType[SyncType["SERVER_SYNC"] = 2] = "SERVER_SYNC";
+})(SyncType = exports.SyncType || (exports.SyncType = {}));
+class SyncComponent extends component_1.Component {
+    constructor() {
+        super(...arguments);
+        this.priority = 1010;
+        this.syncType = SyncType.CLIENT_SYNC;
+        this.positionLerp = 0.05;
+        this._targetPosition = new pc.Vec2();
+        this._targetVelocity = new pc.Vec2();
+        this._targetAngle = 0;
+        this._lastUpdated = 0;
+    }
+    init() {
+        super.init();
+    }
+    processSync() {
+        if (this.syncType == SyncType.DONT_SYNC)
+            return;
+        const now = Date.now();
+        let lerpFactor = (1 - (Math.min(500, now - this._lastUpdated) / 500));
+        //lerpFactor = 1;
+        //if(now - this._lastUpdated > (this.entity.syncInterval == 0 ? 500 : 1)) return;
+        const transform = this.entity.transform;
+        const position = transform.getPosition();
+        let posLerp = this.positionLerp;
+        const distance = this._targetPosition.distance(position);
+        if (distance > 60) {
+            posLerp = 1;
+        }
+        const x = pc.math.lerp(position.x, this._targetPosition.x, posLerp * lerpFactor);
+        const y = pc.math.lerp(position.y, this._targetPosition.y, posLerp * lerpFactor);
+        let angle = pc.math.lerpAngle(transform.getAngle(), this._targetAngle, 0.7 * lerpFactor);
+        if (Math.abs(angle - this._targetAngle) >= Math.PI / 4)
+            angle = this._targetAngle;
+        const velocity = transform.getVelocity();
+        const velX = pc.math.lerp(velocity.x, this._targetVelocity.x, 0.8);
+        const velY = pc.math.lerp(velocity.y, this._targetVelocity.y, 0.8);
+        transform.setPosition(x, y);
+        transform.setAngle(angle);
+        transform.setVelocity(velX, velY);
+        //console.log(velX, velY)
+        //transform.setAngularVelocity(0);
+    }
+    preupdate(dt) {
+        super.preupdate(dt);
+        this.processSync();
+    }
+    setPosition(x, y) {
+        this._lastUpdated = Date.now();
+        this._targetPosition.set(x, y);
+    }
+    setAngle(angle) {
+        this._lastUpdated = Date.now();
+        this._targetAngle = angle;
+    }
+    setVelocity(x, y) {
+        this._lastUpdated = Date.now();
+        this._targetVelocity.set(x, y);
+    }
+}
+exports.SyncComponent = SyncComponent;
 
 
 /***/ }),
@@ -12787,6 +12971,18 @@ class TransformComponent extends component_1.Component {
             velX: 0,
             velY: 0
         };
+    }
+    getAngle() {
+        return this.data.angle;
+    }
+    setAngle(angle) {
+        this.data.angle = angle;
+    }
+    getAimAngle() {
+        return this.data.angle;
+    }
+    setAimAngle(angle) {
+        this.data.aimAngle = angle;
     }
     getPosition() {
         return new pc.Vec2(this.data.x, this.data.y);
@@ -13064,7 +13260,8 @@ const entity_1 = __webpack_require__(/*! ./entity */ "./src/shared/entity/entity
 class EntityChar extends entity_1.Entity {
     constructor(world) {
         super(world);
-        this.addComponent(new collisionComponent_1.CollisionComponent());
+        const collision = this.addComponent(new collisionComponent_1.CollisionComponent());
+        collision.addCircle('default', 0, 0, 30);
         this.addComponent(new playerComponent_1.PlayerComponent());
     }
 }
@@ -13545,7 +13742,7 @@ class World {
         }, 1000);
     }
     spawnEntities() {
-        for (let i = 0; i < 100; i++) {
+        for (let i = 0; i < 40; i++) {
             this.spawnNpc(Math.random() * 100 - 50, Math.random() * 100 - 50);
         }
         console.log(this.entities.length);

@@ -7,7 +7,9 @@ export class EntityChar extends Entity {
     constructor(world: World) {
         super(world);
 
-        this.addComponent(new CollisionComponent());
+        const collision = this.addComponent(new CollisionComponent());
+        collision.addCircle('default', 0, 0, 30);
+
         this.addComponent(new PlayerComponent());
     }
 }

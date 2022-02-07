@@ -28,6 +28,22 @@ export class TransformComponent extends Component {
         velY: 0
     }
     
+    public getAngle() {
+        return this.data.angle;
+    }
+
+    public setAngle(angle: number) {
+        this.data.angle = angle;
+    }
+
+    public getAimAngle() {
+        return this.data.angle;
+    }
+
+    public setAimAngle(angle: number) {
+        this.data.aimAngle = angle;
+    }
+
     public getPosition() {
         return new pc.Vec2(this.data.x, this.data.y);
     }

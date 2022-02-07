@@ -5,6 +5,7 @@ import { Gameface } from "./gameface";
 import { IPacketData_ComponentEvent, IPacketData_ControlEntity, IPacketData_DestroyEntity, IPacketData_EntityData, IPacketData_JoinServer, IPacketData_SpawnEntity, Packet, PacketType } from "../shared/packet";
 import { EntityChar } from "../shared/entity/entityChar";
 import { ITransformComponent_Data } from "../shared/component/transformComponent";
+import { SyncComponent } from "../shared/component/syncComponent";
 
 
 
@@ -96,6 +97,7 @@ export class Network {
             if(!entity) {
                 entity = new EntityChar(world);
                 entity.setId(id);
+                entity.addComponent(new SyncComponent());
                 world.addEntity(entity);
             }
             
@@ -107,7 +109,38 @@ export class Network {
 
             const data: ITransformComponent_Data = c["0"];
 
+            const angle = entity.transform.getAngle();
+            const toSyncAngle = data.angle != undefined ? data.angle : angle;
+
+            const position = entity.transform.getPosition();
+            const toSyncPosition = {x: position.x, y: position.y}
+            if(data.x != undefined) toSyncPosition.x = data.x;
+            if(data.y != undefined) toSyncPosition.y = data.y;
+
+            const velocity = entity.transform.getVelocity();
+            const toSyncVelocity = {x: velocity.x, y: velocity.y}
+            if(data.velX != undefined) toSyncVelocity.x = data.velX;
+            if(data.velY != undefined) toSyncVelocity.y = data.velY;
+
             Object.assign(entity.transform.data, data);
+
+            const syncComponent = entity.getComponent(SyncComponent);
+
+            //console.log(toSyncPosition, toSyncVelocity, toSyncAngle)
+
+            if(syncComponent) {
+                entity.transform.setPosition(position.x, position.y);
+                entity.transform.setVelocity(velocity.x, velocity.y);
+                entity.transform.setAngle(angle);
+               
+                syncComponent.setPosition(toSyncPosition.x, toSyncPosition.y);
+                syncComponent.setVelocity(toSyncVelocity.x, toSyncVelocity.y);
+                syncComponent.setAngle(toSyncAngle);
+            }
+
+            
+
+
 
             //entity.transform.data = data;
 

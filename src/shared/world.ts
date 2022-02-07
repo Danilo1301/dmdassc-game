@@ -178,7 +178,7 @@ export class World {
 
     private spawnEntities() {
         
-        for (let i = 0; i < 100; i++) {
+        for (let i = 0; i < 40; i++) {
 
             this.spawnNpc(Math.random()*100-50, Math.random()*100-50)
 

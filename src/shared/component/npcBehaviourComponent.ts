@@ -27,7 +27,7 @@ export class NPCBehaviourComponent extends Component {
         if(this._newPositionTime <= 0) {
             this._newPositionTime = Math.random()*5;
 
-            const range = 1500;
+            const range = 900;
 
             this._targetPosition.x = Math.random()*range-(range/2);
             this._targetPosition.y = Math.random()*range-(range/2);
@@ -61,7 +61,7 @@ export class NPCBehaviourComponent extends Component {
         }
 
 
-        this.entity.transform.applyForce(input.horizontal * 0.01 * dt, input.vertical * 0.01 * dt);
+        this.entity.transform.applyForce(input.horizontal * 2 * dt, input.vertical * 2 * dt);
         //this.entity.transform.setVelocity(3, 0);
         //this.entity.transform.setPosition(position.x + input.horizontal, position.y + input.vertical);
     }
