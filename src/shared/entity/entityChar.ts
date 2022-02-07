@@ -3,6 +3,7 @@ import { DebugComponent } from "../component/debugComponent";
 import { InputHandlerComponent } from "../component/inputHandlerComponent";
 import { MovementComponent } from "../component/movementComponent";
 import { PlayerComponent } from "../component/playerComponent";
+import { SpriteComponent } from "../component/spriteComponent";
 import { World } from "../world";
 import { Entity } from "./entity";
 
@@ -16,8 +17,8 @@ export class EntityChar extends Entity {
         this.addComponent(new DebugComponent());
         //this.addComponent(new InputHandlerComponent());
 
-        //const sprite = this.addComponent(new SpriteComponent());
-        //sprite.add('default', 'assets/player.png', 3, 80, 80);
+        const sprite = this.addComponent(new SpriteComponent());
+        
 
         const collision = this.addComponent(new CollisionComponent());
         //collision.options.frictionAir = 0.2;

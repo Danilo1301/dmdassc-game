@@ -6,6 +6,7 @@ import { Server } from './server';
 import { Gamelog } from './gamelog';
 import { IPacketData_ComponentEvent, IPacketData_ControlEntity, IPacketData_DestroyEntity, IPacketData_EntityData, IPacketData_InputData, IPacketData_JoinServer, IPacketData_SpawnEntity, Packet, PacketType } from '../shared/packet';
 import { InputHandlerComponent } from '../shared/component/inputHandlerComponent';
+import { SyncComponent } from '../shared/component/syncComponent';
 
 export class Client {
     public get id() { return this._id; }
@@ -107,6 +108,15 @@ export class Client {
                     if(packetData.d.h != undefined) inputHandlerComponent.horizontal = packetData.d.h;
                     if(packetData.d.v != undefined) inputHandlerComponent.vertical = packetData.d.v;
                 }
+
+                const currentPos = player.transform.getPosition();
+
+                const newPosition = {
+                    x: packetData.d.x != undefined ? packetData.d.x : currentPos.x,
+                    y: packetData.d.y != undefined ? packetData.d.y : currentPos.y
+                }
+
+                player.getComponent(SyncComponent)!.setPosition(newPosition.x, newPosition.y);
             }
             console.log(packet)
 

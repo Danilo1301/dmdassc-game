@@ -5,9 +5,11 @@ import { WorldSyncType } from '../world';
 import { CollisionComponent } from './collisionComponent';
 import { Component } from "./component";
 import { DebugComponent } from './debugComponent';
+import { SpriteComponent } from './spriteComponent';
 import { SyncType } from './syncComponent';
 
 export interface IPlayerComponent_Data {
+    skin: string
     name: string
     color: number
 }
@@ -18,18 +20,17 @@ export class PlayerComponent extends Component {
 
     public data: IPlayerComponent_Data = {
         name: 'no name',
-        color: 0
+        color: 0,
+        skin: "player_npc"
     }
 
     public initData(): void {
-        if(this.entity.world.syncType != WorldSyncType.CLIENT) {
-            setInterval(() => {
-                this.data.color++
-            }, 1000)
-        }
+        
     }
     
     public init() {
+        this.entity.getComponent(SpriteComponent)?.add('default', 'assets/' + this.data.skin + '.png', 3, 50, 50);
+
         super.init();
 
         
@@ -40,6 +41,7 @@ export class PlayerComponent extends Component {
     public update(dt: number) {
         super.update(dt);
 
-        this.entity.getComponent(DebugComponent)?.setLineText('playername', `${this.data.name}, ${this.data.color}`)
+        this.entity.getComponent(DebugComponent)?.setLineText('playername', `${this.data.name}`)
+        this.entity.getComponent(DebugComponent)?.setLineText('playercolor', `${this.data.color}`)
     }
 }

@@ -11762,6 +11762,82 @@ function createMatterRender() {
 
 /***/ }),
 
+/***/ "./src/client/animatedMaterial.ts":
+/*!****************************************!*\
+  !*** ./src/client/animatedMaterial.ts ***!
+  \****************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.AnimatedMaterial = void 0;
+const pc = __importStar(__webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs"));
+class AnimatedMaterial {
+    constructor(spritesX, spritesY, animTime) {
+        this.material = new pc.StandardMaterial();
+        this._offset = new pc.Vec2();
+        this._numSprites = new pc.Vec2();
+        this._currentSprite = new pc.Vec2(0, 0);
+        this._animTime = 0;
+        this._changeSpriteTime = 0;
+        this._numSprites.x = spritesX;
+        this._numSprites.y = spritesY;
+        this._animTime = animTime;
+    }
+    setAsset(asset) {
+        const material = this.material;
+        material.diffuseMap = asset.resource;
+        material.blendType = pc.BLEND_NORMAL;
+        material.opacityMap = asset.resource;
+        /*
+        */
+        material.update();
+    }
+    update(dt) {
+        this._changeSpriteTime += dt;
+        if (this._changeSpriteTime >= this._animTime / 1000) {
+            this._changeSpriteTime = 0;
+            this._currentSprite.x++;
+            if (this._currentSprite.x >= this._numSprites.x)
+                this._currentSprite.x = 0;
+        }
+        const sx = 1 / this._numSprites.x;
+        const sy = 1 / this._numSprites.y;
+        this._offset.x = this._currentSprite.x * sx;
+        this._offset.y = this._currentSprite.y * sy;
+        const material = this.material;
+        material.diffuseMapOffset.set(this._offset.x, this._offset.y);
+        material.diffuseMapTiling.set(sx, sy);
+        material.opacityMapOffset.set(this._offset.x, this._offset.y);
+        material.opacityMapTiling.set(sx, sy);
+        material.update();
+    }
+}
+exports.AnimatedMaterial = AnimatedMaterial;
+
+
+/***/ }),
+
 /***/ "./src/client/camera.ts":
 /*!******************************!*\
   !*** ./src/client/camera.ts ***!
@@ -12037,16 +12113,11 @@ class Network {
         }
     }
     sendPlayerData(entity) {
-        //const data = entity.data.getChangedData();
-        //console.log(data)
-        //entity.data.clearChangedData();
-        //this.sendPacket<IPacketData_EntityData>(PacketType.ENTITY_DATA, {id: entity.id, data: data})
-        /*
-        const components: Component[] = [entity.transform];
-        if(entity.hasComponent(InputHandlerComponent)) components.push(entity.getComponent(InputHandlerComponent));
-        const packet = FormatPacket.entityData(entity, components);
-        this.sendPacket(packet);
-        */
+        const position = entity.transform.getPosition();
+        this.sendPacket(packet_1.PacketType.INPUT_DATA, { d: {
+                x: position.x,
+                y: position.y
+            } });
     }
     sendPacket(type, packetData) {
         const packet = {
@@ -12214,6 +12285,63 @@ class Network {
     }
 }
 exports.Network = Network;
+
+
+/***/ }),
+
+/***/ "./src/client/planeSprite.ts":
+/*!***********************************!*\
+  !*** ./src/client/planeSprite.ts ***!
+  \***********************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.PlaneSprite = void 0;
+const pc = __importStar(__webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs"));
+const animatedMaterial_1 = __webpack_require__(/*! ./animatedMaterial */ "./src/client/animatedMaterial.ts");
+const render_1 = __webpack_require__(/*! ./render */ "./src/client/render.ts");
+class PlaneSprite {
+    constructor(url, frames, width, height) {
+        const animatedMaterial = this._animatedMaterial = new animatedMaterial_1.AnimatedMaterial(frames, 1, 200);
+        render_1.Render.loadAsset(url, (asset) => {
+            animatedMaterial.setAsset(asset);
+        });
+        const pcEntity = this._pcEntity = new pc.Entity();
+        pcEntity.addComponent("render", {
+            material: animatedMaterial.material,
+            type: "plane",
+        });
+        pcEntity.setLocalScale(new pc.Vec3(width * 0.01, 1, height * 0.01));
+        pcEntity.render.castShadows = false;
+        console.log("pcEntity planesprite", pcEntity);
+    }
+    get pcEntity() { return this._pcEntity; }
+    update(dt) {
+        this._animatedMaterial.update(dt);
+    }
+}
+exports.PlaneSprite = PlaneSprite;
 
 
 /***/ }),
@@ -12851,7 +12979,7 @@ class DebugComponent extends component_1.Component {
     }
     init() {
         super.init();
-        this.setLineText('default', this.entity.constructor.name);
+        //this.setLineText('default', this.entity.constructor.name);
     }
     setLineText(line, text) {
         this._textLines.set(line, text);
@@ -12861,7 +12989,7 @@ class DebugComponent extends component_1.Component {
             return;
         if (!this._uitext) {
             this._uitext = ui_1.UI.addText(0, 0, '');
-            this._uitext.entity.element.fontSize = 8;
+            this._uitext.entity.element.fontSize = 7;
         }
         //const position = this.entity.transform.getPosition();
         var worldPos = this.entity.pcEntity.getPosition();
@@ -13121,35 +13249,88 @@ exports.NPCBehaviourComponent = NPCBehaviourComponent;
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.PlayerComponent = void 0;
-const world_1 = __webpack_require__(/*! ../world */ "./src/shared/world.ts");
 const component_1 = __webpack_require__(/*! ./component */ "./src/shared/component/component.ts");
 const debugComponent_1 = __webpack_require__(/*! ./debugComponent */ "./src/shared/component/debugComponent.ts");
+const spriteComponent_1 = __webpack_require__(/*! ./spriteComponent */ "./src/shared/component/spriteComponent.ts");
 class PlayerComponent extends component_1.Component {
     constructor() {
         super(...arguments);
         this.priority = 0;
         this.data = {
             name: 'no name',
-            color: 0
+            color: 0,
+            skin: "player_npc"
         };
     }
     initData() {
-        if (this.entity.world.syncType != world_1.WorldSyncType.CLIENT) {
-            setInterval(() => {
-                this.data.color++;
-            }, 1000);
-        }
+    }
+    init() {
+        var _a;
+        (_a = this.entity.getComponent(spriteComponent_1.SpriteComponent)) === null || _a === void 0 ? void 0 : _a.add('default', 'assets/' + this.data.skin + '.png', 3, 50, 50);
+        super.init();
+    }
+    update(dt) {
+        var _a, _b;
+        super.update(dt);
+        (_a = this.entity.getComponent(debugComponent_1.DebugComponent)) === null || _a === void 0 ? void 0 : _a.setLineText('playername', `${this.data.name}`);
+        (_b = this.entity.getComponent(debugComponent_1.DebugComponent)) === null || _b === void 0 ? void 0 : _b.setLineText('playercolor', `${this.data.color}`);
+    }
+}
+exports.PlayerComponent = PlayerComponent;
+
+
+/***/ }),
+
+/***/ "./src/shared/component/spriteComponent.ts":
+/*!*************************************************!*\
+  !*** ./src/shared/component/spriteComponent.ts ***!
+  \*************************************************/
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.SpriteComponent = void 0;
+const render_1 = __webpack_require__(/*! ../../client/render */ "./src/client/render.ts");
+const planeSprite_1 = __webpack_require__(/*! ../../client/planeSprite */ "./src/client/planeSprite.ts");
+const component_1 = __webpack_require__(/*! ./component */ "./src/shared/component/component.ts");
+class SpriteComponent extends component_1.Component {
+    constructor() {
+        super(...arguments);
+        this.priority = 0;
+        this.path = "";
+        this._spriteOptions = new Map();
     }
     init() {
         super.init();
     }
+    add(id, texture, frames, width, height) {
+        const spriteOptions = {
+            texture: texture,
+            frames: frames,
+            width: width,
+            height: height
+        };
+        this._spriteOptions.set(id, spriteOptions);
+    }
     update(dt) {
-        var _a;
         super.update(dt);
-        (_a = this.entity.getComponent(debugComponent_1.DebugComponent)) === null || _a === void 0 ? void 0 : _a.setLineText('playername', `${this.data.name}, ${this.data.color}`);
+        if (!render_1.Render.app)
+            return;
+        Array.from(this._spriteOptions.keys()).map(id => {
+            const spriteOptions = this._spriteOptions.get(id);
+            if (!spriteOptions.planeSprite) {
+                spriteOptions.planeSprite = new planeSprite_1.PlaneSprite(spriteOptions.texture, spriteOptions.frames, spriteOptions.width, spriteOptions.height);
+                this.entity.pcEntityRoot.addChild(spriteOptions.planeSprite.pcEntity);
+            }
+            spriteOptions.planeSprite.update(dt);
+        });
+    }
+    postupdate(dt) {
+        super.postupdate(dt);
     }
 }
-exports.PlayerComponent = PlayerComponent;
+exports.SpriteComponent = SpriteComponent;
 
 
 /***/ }),
@@ -13222,7 +13403,7 @@ class SyncComponent extends component_1.Component {
         }
         const x = pc.math.lerp(position.x, this._targetPosition.x, posLerp * lerpFactor);
         const y = pc.math.lerp(position.y, this._targetPosition.y, posLerp * lerpFactor);
-        let angle = pc.math.lerpAngle(transform.getAngle(), this._targetAngle, 0.7 * lerpFactor);
+        let angle = pc.math.lerpAngle(transform.getAngle(), this._targetAngle, 0.1);
         if (Math.abs(angle - this._targetAngle) >= Math.PI / 4)
             angle = this._targetAngle;
         const velocity = transform.getVelocity();
@@ -13666,6 +13847,7 @@ const debugComponent_1 = __webpack_require__(/*! ../component/debugComponent */ 
 const inputHandlerComponent_1 = __webpack_require__(/*! ../component/inputHandlerComponent */ "./src/shared/component/inputHandlerComponent.ts");
 const movementComponent_1 = __webpack_require__(/*! ../component/movementComponent */ "./src/shared/component/movementComponent.ts");
 const playerComponent_1 = __webpack_require__(/*! ../component/playerComponent */ "./src/shared/component/playerComponent.ts");
+const spriteComponent_1 = __webpack_require__(/*! ../component/spriteComponent */ "./src/shared/component/spriteComponent.ts");
 const entity_1 = __webpack_require__(/*! ./entity */ "./src/shared/entity/entity.ts");
 class EntityChar extends entity_1.Entity {
     constructor(world) {
@@ -13675,8 +13857,7 @@ class EntityChar extends entity_1.Entity {
         this.addComponent(new playerComponent_1.PlayerComponent());
         this.addComponent(new debugComponent_1.DebugComponent());
         //this.addComponent(new InputHandlerComponent());
-        //const sprite = this.addComponent(new SpriteComponent());
-        //sprite.add('default', 'assets/player.png', 3, 80, 80);
+        const sprite = this.addComponent(new spriteComponent_1.SpriteComponent());
         const collision = this.addComponent(new collisionComponent_1.CollisionComponent());
         //collision.options.frictionAir = 0.2;
         collision.addCircle('default', 0, 0, 30);
@@ -13699,6 +13880,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.EntityObject = void 0;
 const collisionComponent_1 = __webpack_require__(/*! ../component/collisionComponent */ "./src/shared/component/collisionComponent.ts");
 const debugComponent_1 = __webpack_require__(/*! ../component/debugComponent */ "./src/shared/component/debugComponent.ts");
+const spriteComponent_1 = __webpack_require__(/*! ../component/spriteComponent */ "./src/shared/component/spriteComponent.ts");
 const entity_1 = __webpack_require__(/*! ./entity */ "./src/shared/entity/entity.ts");
 class EntityObject extends entity_1.Entity {
     constructor(world) {
@@ -13707,6 +13889,8 @@ class EntityObject extends entity_1.Entity {
         const collision = this.addComponent(new collisionComponent_1.CollisionComponent());
         //collision.options.frictionAir = 0.2;
         collision.addRectangle('default', 0, 0, 50, 50);
+        const sprite = this.addComponent(new spriteComponent_1.SpriteComponent());
+        sprite.add("default", 'assets/crate.png', 1, 50, 50);
     }
 }
 exports.EntityObject = EntityObject;
@@ -13724,10 +13908,15 @@ exports.EntityObject = EntityObject;
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.EntityPlayer = void 0;
+const playerComponent_1 = __webpack_require__(/*! ../component/playerComponent */ "./src/shared/component/playerComponent.ts");
 const entityChar_1 = __webpack_require__(/*! ./entityChar */ "./src/shared/entity/entityChar.ts");
 class EntityPlayer extends entityChar_1.EntityChar {
     constructor(world) {
         super(world);
+    }
+    initData() {
+        super.initData();
+        this.getComponent(playerComponent_1.PlayerComponent).data.skin = "player";
     }
 }
 exports.EntityPlayer = EntityPlayer;
@@ -13795,6 +13984,7 @@ const syncComponent_1 = __webpack_require__(/*! ./component/syncComponent */ "./
 const debugComponent_1 = __webpack_require__(/*! ./component/debugComponent */ "./src/shared/component/debugComponent.ts");
 const movementComponent_1 = __webpack_require__(/*! ./component/movementComponent */ "./src/shared/component/movementComponent.ts");
 const inputHandlerComponent_1 = __webpack_require__(/*! ./component/inputHandlerComponent */ "./src/shared/component/inputHandlerComponent.ts");
+const spriteComponent_1 = __webpack_require__(/*! ./component/spriteComponent */ "./src/shared/component/spriteComponent.ts");
 class Game {
     constructor() {
         this._worlds = new Map();
@@ -13809,6 +13999,7 @@ class Game {
         this._entityFactory.registerComponent(npcBehaviourComponent_1.NPCBehaviourComponent);
         this._entityFactory.registerComponent(syncComponent_1.SyncComponent);
         this._entityFactory.registerComponent(debugComponent_1.DebugComponent);
+        this._entityFactory.registerComponent(spriteComponent_1.SpriteComponent);
         this._entityFactory.registerEntity(entityChar_1.EntityChar);
         this._entityFactory.registerEntity(entityPlayer_1.EntityPlayer);
         this._entityFactory.registerEntity(entityObject_1.EntityObject);
@@ -14115,6 +14306,7 @@ const packet_1 = __webpack_require__(/*! ./packet */ "./src/shared/packet.ts");
 const entityPlayer_1 = __webpack_require__(/*! ./entity/entityPlayer */ "./src/shared/entity/entityPlayer.ts");
 const entityChar_1 = __webpack_require__(/*! ./entity/entityChar */ "./src/shared/entity/entityChar.ts");
 const npcBehaviourComponent_1 = __webpack_require__(/*! ./component/npcBehaviourComponent */ "./src/shared/component/npcBehaviourComponent.ts");
+const playerComponent_1 = __webpack_require__(/*! ./component/playerComponent */ "./src/shared/component/playerComponent.ts");
 const entityObject_1 = __webpack_require__(/*! ./entity/entityObject */ "./src/shared/entity/entityObject.ts");
 const eventHandler_1 = __webpack_require__(/*! ./eventHandler */ "./src/shared/eventHandler.ts");
 let testu = 0;
@@ -14241,7 +14433,11 @@ class World {
             this.spawnObject();
         }
         for (let i = 0; i < 40; i++) {
-            this.spawnNpc(Math.random() * 100 - 50, Math.random() * 100 - 50);
+            const npc = this.spawnNpc(Math.random() * 100 - 50, Math.random() * 100 - 50);
+            setInterval(() => {
+                npc.getComponent(playerComponent_1.PlayerComponent).data.name = "NPC " + i;
+                npc.getComponent(playerComponent_1.PlayerComponent).data.color++;
+            }, 1000);
         }
     }
     spawnObject() {

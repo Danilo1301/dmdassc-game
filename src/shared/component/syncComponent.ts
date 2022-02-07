@@ -54,7 +54,7 @@ export class SyncComponent extends Component {
         const x = pc.math.lerp(position.x, this._targetPosition.x, posLerp * lerpFactor);
         const y = pc.math.lerp(position.y, this._targetPosition.y, posLerp * lerpFactor);
 
-        let angle = pc.math.lerpAngle(transform.getAngle(), this._targetAngle, 0.7 * lerpFactor);
+        let angle = pc.math.lerpAngle(transform.getAngle(), this._targetAngle, 0.1);
         if(Math.abs(angle - this._targetAngle) >= Math.PI/4) angle = this._targetAngle;
 
         const velocity = transform.getVelocity();

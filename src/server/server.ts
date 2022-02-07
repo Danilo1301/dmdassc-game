@@ -6,6 +6,7 @@ import { WorldSyncType } from '../shared/world';
 import { Component } from '../shared/component/component';
 import { IPacketData_ComponentEvent, IPacketData_EntityData, PacketType } from '../shared/packet';
 import { EntityPlayer } from '../shared/entity/entityPlayer';
+import { SyncComponent, SyncType } from '../shared/component/syncComponent';
 
 export class Server {
     public get id() { return this._id; }
@@ -136,6 +137,9 @@ export class Server {
         const world = this.game.worlds[0];
 
         const player = world.spawnEntity(EntityPlayer);
+        const syncComponent = player.addComponent(new SyncComponent());
+        syncComponent.positionLerp = 0.3;
+        syncComponent.syncType = SyncType.SERVER_SYNC;
 
         client.checkStreamedEntities();
         client.setPlayer(player);

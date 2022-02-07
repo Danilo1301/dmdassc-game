@@ -67,20 +67,12 @@ export class Network {
 
     public sendPlayerData(entity: Entity) {
 
-        //const data = entity.data.getChangedData();
+        const position = entity.transform.getPosition();
 
-        //console.log(data)
-
-        //entity.data.clearChangedData();
-
-        //this.sendPacket<IPacketData_EntityData>(PacketType.ENTITY_DATA, {id: entity.id, data: data})
-
-        /*
-        const components: Component[] = [entity.transform];
-        if(entity.hasComponent(InputHandlerComponent)) components.push(entity.getComponent(InputHandlerComponent));
-        const packet = FormatPacket.entityData(entity, components);
-        this.sendPacket(packet);
-        */
+        this.sendPacket<IPacketData_InputData>(PacketType.INPUT_DATA, {d: {
+            x: position.x,
+            y: position.y
+        }});
     }
 
     public sendPacket<T>(type: PacketType, packetData: T) {

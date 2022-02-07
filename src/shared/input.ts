@@ -7,6 +7,8 @@ export interface InputData {
     v?: number
     mx?: number
     my?: number
+    x?: number
+    y?: number
 }
 
 export class Input {

@@ -23,7 +23,7 @@ export class DebugComponent extends Component {
     public init() {
         super.init();
 
-        this.setLineText('default', this.entity.constructor.name);
+        //this.setLineText('default', this.entity.constructor.name);
     }
 
     public setLineText(line: string, text: string) {
@@ -37,7 +37,7 @@ export class DebugComponent extends Component {
         if(!this._uitext) {
 
             this._uitext = UI.addText(0, 0, '');
-            this._uitext.entity.element.fontSize = 8;
+            this._uitext.entity.element.fontSize = 7;
         }
 
 

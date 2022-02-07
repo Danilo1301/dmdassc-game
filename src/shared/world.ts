@@ -184,7 +184,14 @@ export class World {
         }
 
         for (let i = 0; i < 40; i++) {
-            this.spawnNpc(Math.random()*100-50, Math.random()*100-50)
+            const npc = this.spawnNpc(Math.random()*100-50, Math.random()*100-50);
+
+           
+            setInterval(() => {
+                npc.getComponent(PlayerComponent)!.data.name = "NPC " + i;
+                npc.getComponent(PlayerComponent)!.data.color++
+            }, 1000)
+            
         }
 
     }
