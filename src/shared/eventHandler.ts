@@ -1,4 +1,4 @@
-export class EventEmitter {
+export class EventHandler {
     private _events = new Map<string, ((...args: any) => void)[]>();
 
     public on(event: string, fn: (...args: any) => void) {

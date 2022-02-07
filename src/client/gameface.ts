@@ -9,6 +9,7 @@ import { TextScript } from './playcanvas/scripts/textScript';
 import { WorldSyncType } from '../shared/world';
 import { EntityPlayer } from '../shared/entity/entityPlayer';
 import { SyncComponent, SyncType } from '../shared/component/syncComponent';
+import { InputHandlerComponent } from '../shared/component/inputHandlerComponent';
 
 export class Gameface {
     public static Instance: Gameface;
@@ -119,13 +120,26 @@ export class Gameface {
 
     public setPlayer(entity: Entity) {
         this.player = entity;
-        //this.player.getComponent(InputHandlerComponent)!.enabled = true;
-        //this.player.getComponent(SyncComponent)!.syncType = SyncType.DONT_SYNC;
+
+        this.player.getComponent(InputHandlerComponent)?.setEnabled(true);
+        this.player.getComponent(SyncComponent)?.dontSync();
 
         console.warn("SETPLAYER")
     }
 
     public checkControllingEntity() {
-       
+        if(this.player) {
+            if(this.player.id == this.controllingEntityId) return;
+        }
+
+        const world = this.game.worlds[0];
+
+        if(!world) return;
+
+        const entity = world.getEntity(this.controllingEntityId);
+
+        if(entity) {
+            this.setPlayer(entity);
+        }
     }
 }

@@ -1,5 +1,7 @@
 //import ByteBuffer from "bytebuffer";
 
+import { InputData } from "./input";
+
 export enum PacketType {
     ENTITY_DATA,
     JOIN_SERVER,
@@ -7,7 +9,8 @@ export enum PacketType {
     DESTROY_ENTITY,
     CONTROL_ENTITY,
     WEAPON_SHOT,
-    COMPONENT_EVENT
+    COMPONENT_EVENT,
+    INPUT_DATA
 }
 
 export interface IPacketData_ComponentEvent {
@@ -23,6 +26,10 @@ export interface IPacketData_JoinServer {
 
 export interface IPacketData_ControlEntity {
     id: string
+}
+
+export interface IPacketData_InputData {
+    d: InputData
 }
 
 export interface IPacketData_SpawnEntity {

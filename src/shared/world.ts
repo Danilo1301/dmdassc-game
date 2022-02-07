@@ -3,7 +3,6 @@ import * as pc from "playcanvas";
 import { Component } from "./component/component";
 import { Entity } from "./entity/entity";
 import { Game } from "./game";
-import { EventEmitter } from "./eventEmitter";
 import { WorldEvent } from "./worldEvent";
 import { Gameface } from "../client/gameface";
 import { IPacketData_ComponentEvent, PacketType } from "./packet";
@@ -13,6 +12,7 @@ import { EntityChar } from "./entity/entityChar";
 import { NPCBehaviourComponent } from "./component/npcBehaviourComponent";
 import { PlayerComponent } from "./component/playerComponent";
 import { EntityObject } from "./entity/entityObject";
+import { EventHandler } from "./eventHandler";
 
 let testu = 0;
 let testd = 0;
@@ -30,7 +30,7 @@ export enum WorldSyncType {
 }
 
 export class World {
-    public events: EventEmitter = new EventEmitter();
+    public events: EventHandler = new EventHandler();
 
     public syncType: WorldSyncType = WorldSyncType.SINGLEPLAYER;
     

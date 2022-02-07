@@ -4,7 +4,8 @@ import { Entity } from '../shared/entity/entity';
 import { MasterServer } from './masterServer';
 import { Server } from './server';
 import { Gamelog } from './gamelog';
-import { IPacketData_ComponentEvent, IPacketData_ControlEntity, IPacketData_DestroyEntity, IPacketData_EntityData, IPacketData_JoinServer, IPacketData_SpawnEntity, Packet, PacketType } from '../shared/packet';
+import { IPacketData_ComponentEvent, IPacketData_ControlEntity, IPacketData_DestroyEntity, IPacketData_EntityData, IPacketData_InputData, IPacketData_JoinServer, IPacketData_SpawnEntity, Packet, PacketType } from '../shared/packet';
+import { InputHandlerComponent } from '../shared/component/inputHandlerComponent';
 
 export class Client {
     public get id() { return this._id; }
@@ -92,6 +93,25 @@ export class Client {
 
             server.onClientJoin(this);
         }
+
+        if(packet.type == PacketType.INPUT_DATA) {
+            const packetData: IPacketData_InputData = packet.data;
+
+            const player = this.player;
+
+            if(player) {
+                
+                const inputHandlerComponent = player.getComponent(InputHandlerComponent);
+
+                if(inputHandlerComponent) {
+                    if(packetData.d.h != undefined) inputHandlerComponent.horizontal = packetData.d.h;
+                    if(packetData.d.v != undefined) inputHandlerComponent.vertical = packetData.d.v;
+                }
+            }
+            console.log(packet)
+
+        }
+
 
         /*
 

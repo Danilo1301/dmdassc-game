@@ -15,7 +15,7 @@ export class SyncComponent extends Component {
     public priority: number = 1010;
     
     public syncType: SyncType = SyncType.CLIENT_SYNC;
-    public positionLerp: number = 0.05;
+    public positionLerp: number = 0.08;
 
     private _targetPosition = new pc.Vec2();
     private _targetVelocity = new pc.Vec2();
@@ -98,5 +98,9 @@ export class SyncComponent extends Component {
         transform.setPosition(this._targetPosition.x, this._targetPosition.y);
         transform.setAngle(this._targetAngle);
         transform.setVelocity(this._targetVelocity.x, this._targetVelocity.y);
+    }
+
+    public dontSync() {
+        this.syncType = SyncType.DONT_SYNC;
     }
 }

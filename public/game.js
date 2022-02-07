@@ -11801,6 +11801,13 @@ class Camera {
     }
     static update(dt) {
         var _a;
+        if (this.followPlayer) {
+            const player = gameface_1.Gameface.Instance.player;
+            if (!player)
+                return;
+            const position = player.transform.getPosition();
+            this.setPosition(position.x, position.y);
+        }
         this._position.z = this.height;
         (_a = render_1.Render.camera) === null || _a === void 0 ? void 0 : _a.setPosition(this._position.x * 0.01, this._position.z * 0.01, this._position.y * 0.01);
         this.processTestMode();
@@ -11870,6 +11877,8 @@ const render_1 = __webpack_require__(/*! ./render */ "./src/client/render.ts");
 const textScript_1 = __webpack_require__(/*! ./playcanvas/scripts/textScript */ "./src/client/playcanvas/scripts/textScript.ts");
 const world_1 = __webpack_require__(/*! ../shared/world */ "./src/shared/world.ts");
 const entityPlayer_1 = __webpack_require__(/*! ../shared/entity/entityPlayer */ "./src/shared/entity/entityPlayer.ts");
+const syncComponent_1 = __webpack_require__(/*! ../shared/component/syncComponent */ "./src/shared/component/syncComponent.ts");
+const inputHandlerComponent_1 = __webpack_require__(/*! ../shared/component/inputHandlerComponent */ "./src/shared/component/inputHandlerComponent.ts");
 class Gameface {
     constructor(canvas) {
         this.controllingEntityId = "";
@@ -11941,12 +11950,24 @@ class Gameface {
         */
     }
     setPlayer(entity) {
+        var _a, _b;
         this.player = entity;
-        //this.player.getComponent(InputHandlerComponent)!.enabled = true;
-        //this.player.getComponent(SyncComponent)!.syncType = SyncType.DONT_SYNC;
+        (_a = this.player.getComponent(inputHandlerComponent_1.InputHandlerComponent)) === null || _a === void 0 ? void 0 : _a.setEnabled(true);
+        (_b = this.player.getComponent(syncComponent_1.SyncComponent)) === null || _b === void 0 ? void 0 : _b.dontSync();
         console.warn("SETPLAYER");
     }
     checkControllingEntity() {
+        if (this.player) {
+            if (this.player.id == this.controllingEntityId)
+                return;
+        }
+        const world = this.game.worlds[0];
+        if (!world)
+            return;
+        const entity = world.getEntity(this.controllingEntityId);
+        if (entity) {
+            this.setPlayer(entity);
+        }
     }
 }
 exports.Gameface = Gameface;
@@ -11969,6 +11990,7 @@ const gameface_1 = __webpack_require__(/*! ./gameface */ "./src/client/gameface.
 const packet_1 = __webpack_require__(/*! ../shared/packet */ "./src/shared/packet.ts");
 const entityChar_1 = __webpack_require__(/*! ../shared/entity/entityChar */ "./src/shared/entity/entityChar.ts");
 const syncComponent_1 = __webpack_require__(/*! ../shared/component/syncComponent */ "./src/shared/component/syncComponent.ts");
+const input_1 = __webpack_require__(/*! ../shared/input */ "./src/shared/input.ts");
 class Network {
     constructor() {
         this.sendPacketInterval = 80;
@@ -11991,6 +12013,11 @@ class Network {
                 data: data
             };
             this.onReceivePacket(packet);
+        });
+        input_1.Input.events.on("changed", (changed) => {
+            if (changed == undefined)
+                return;
+            this.sendPacket(packet_1.PacketType.INPUT_DATA, { d: changed });
         });
         console.log(`[network] Address: (${this.address})`);
     }
@@ -12045,6 +12072,7 @@ class Network {
         }
         if (packet.type == packet_1.PacketType.SPAWN_ENTITY) {
             const packetData = packet.data;
+            console.log("spawn entity", JSON.stringify(packetData));
             const entityId = packetData.id;
             const entityType = packetData.type;
             const world = gameface_1.Gameface.Instance.game.worlds[0];
@@ -12059,7 +12087,21 @@ class Network {
             entity.mergeData(packetData.data);
             world.addEntity(entity);
             syncComponent.forceLerp();
-            console.log("spawn entity", packetData);
+        }
+        if (packet.type == packet_1.PacketType.CONTROL_ENTITY) {
+            const packetData = packet.data;
+            gameface_1.Gameface.Instance.controllingEntityId = packetData.id;
+            gameface_1.Gameface.Instance.checkControllingEntity();
+        }
+        if (packet.type == packet_1.PacketType.DESTROY_ENTITY) {
+            const packetData = packet.data;
+            const entityId = packetData.id;
+            const world = gameface_1.Gameface.Instance.game.worlds[0];
+            const entity = world.getEntity(entityId);
+            if (entity) {
+                console.warn("remove entity");
+                //world.removeEntity(entity);
+            }
         }
         /*
         if(packet.type == PacketType.SPAWN_ENTITY) {
@@ -12088,40 +12130,7 @@ class Network {
             console.log("spsawn entity", packetData)
         }
 
-        if(packet.type == PacketType.ENTITY_DATA) {
-            const packetData: IPacketData_SpawnEntity = packet.data;
-            
-            const world = Gameface.Instance.game.worlds[0];
-            const entity = world.getEntity(packetData.id);
-
-            if(!entity) return;
-
-            entity.mergeEntityData(packetData.data);
-
-
-            //console.log(packet)
-
-            //console.log("got data");
-        }
-
-        if(packet.type == PacketType.CONTROL_ENTITY) {
-            const packetData: IPacketData_ControlEntity = packet.data;
-            
-
-            Gameface.Instance.controllingEntityId = packetData.id;
-            Gameface.Instance.checkControllingEntity();
-        }
-
-        if(packet.type == PacketType.DESTROY_ENTITY) {
-            const packetData: IPacketData_DestroyEntity = packet.data;
-            const entityId = packetData.id;
-            
-            const world = Gameface.Instance.game.worlds[0];
-
-            if(world.hasEntity(entityId)) {
-                world.removeEntity(world.getEntity(entityId)!);
-            }
-        }
+      
 
         if(packet.type == PacketType.COMPONENT_EVENT) {
             console.log("received component event packet")
@@ -12882,6 +12891,132 @@ exports.DebugComponent = DebugComponent;
 
 /***/ }),
 
+/***/ "./src/shared/component/inputHandlerComponent.ts":
+/*!*******************************************************!*\
+  !*** ./src/shared/component/inputHandlerComponent.ts ***!
+  \*******************************************************/
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.InputHandlerComponent = void 0;
+const input_1 = __webpack_require__(/*! ../input */ "./src/shared/input.ts");
+const component_1 = __webpack_require__(/*! ./component */ "./src/shared/component/component.ts");
+class InputHandlerComponent extends component_1.Component {
+    constructor() {
+        super(...arguments);
+        this.priority = 0;
+        this.data = {
+            h: 0,
+            v: 0
+        };
+        this.enabled = false;
+        /*
+        public serialize(packet: Packet): any {
+            packet.writeDouble(this.horizontal);
+            packet.writeDouble(this.vertical);
+            return packet;
+        }
+    
+        public unserialize(packet: Packet): any {
+            const horizontal = packet.readDouble();
+            const vertical = packet.readDouble();
+            
+            let sync = true;
+    
+            if(this.entity.hasComponent(SyncComponent)) {
+                if(this.entity.getComponent(SyncComponent).syncType == SyncType.DONT_SYNC) sync = false;
+            }
+            
+            if(sync) {
+                this.horizontal = horizontal;
+                this.vertical = vertical;
+            }
+            
+    
+            return packet;
+        }
+        */
+    }
+    get horizontal() { return this.data.h; }
+    get vertical() { return this.data.v; }
+    set horizontal(value) { this.data.h = value; }
+    set vertical(value) { this.data.v = value; }
+    setEnabled(value) {
+        this.enabled = value;
+    }
+    init() {
+        super.init();
+    }
+    update(dt) {
+        super.update(dt);
+        if (this.enabled) {
+            const KEY_LEFT = 65;
+            const KEY_RIGHT = 68;
+            const KEY_UP = 87;
+            const KEY_DOWN = 83;
+            this.horizontal = (input_1.Input.getKeyDown(KEY_RIGHT) ? 1 : 0) + ((input_1.Input.getKeyDown(KEY_LEFT) ? -1 : 0));
+            this.vertical = (input_1.Input.getKeyDown(KEY_DOWN) ? 1 : 0) + ((input_1.Input.getKeyDown(KEY_UP) ? -1 : 0));
+            /*
+            if(Render.app) {
+                var graphicsDevice = Render.app.graphicsDevice;
+                var screenCenter = new pc.Vec2(graphicsDevice.width / 2, graphicsDevice.height / 2)
+        
+                var direction = new pc.Vec2();
+                direction.sub2(Input.mousePosition, screenCenter);
+                direction.normalize();
+        
+                var angle = Math.atan2(direction.y, direction.x);
+    
+                this.entity.transform.setAngle(angle)
+            }
+            */
+            //console.log(this.horizontal, this.vertical)
+        }
+    }
+}
+exports.InputHandlerComponent = InputHandlerComponent;
+
+
+/***/ }),
+
+/***/ "./src/shared/component/movementComponent.ts":
+/*!***************************************************!*\
+  !*** ./src/shared/component/movementComponent.ts ***!
+  \***************************************************/
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.MovementComponent = void 0;
+const component_1 = __webpack_require__(/*! ./component */ "./src/shared/component/component.ts");
+const inputHandlerComponent_1 = __webpack_require__(/*! ./inputHandlerComponent */ "./src/shared/component/inputHandlerComponent.ts");
+class MovementComponent extends component_1.Component {
+    constructor() {
+        super(...arguments);
+        this.priority = 0;
+        this.speed = 4;
+    }
+    init() {
+        super.init();
+        this._inputHandlerComponent = this.entity.getComponent(inputHandlerComponent_1.InputHandlerComponent);
+    }
+    update(dt) {
+        super.update(dt);
+        const inputHandlerComponent = this._inputHandlerComponent;
+        if (!inputHandlerComponent)
+            return;
+        const speed = this.speed;
+        this.entity.transform.applyForce(inputHandlerComponent.horizontal * speed * dt, inputHandlerComponent.vertical * speed * dt);
+    }
+}
+exports.MovementComponent = MovementComponent;
+
+
+/***/ }),
+
 /***/ "./src/shared/component/npcBehaviourComponent.ts":
 /*!*******************************************************!*\
   !*** ./src/shared/component/npcBehaviourComponent.ts ***!
@@ -12913,6 +13048,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.NPCBehaviourComponent = void 0;
 const pc = __importStar(__webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs"));
 const component_1 = __webpack_require__(/*! ./component */ "./src/shared/component/component.ts");
+const inputHandlerComponent_1 = __webpack_require__(/*! ./inputHandlerComponent */ "./src/shared/component/inputHandlerComponent.ts");
 class NPCBehaviourComponent extends component_1.Component {
     constructor() {
         super(...arguments);
@@ -12922,6 +13058,7 @@ class NPCBehaviourComponent extends component_1.Component {
     }
     init() {
         super.init();
+        this._inputHandlerComponent = this.entity.getComponent(inputHandlerComponent_1.InputHandlerComponent);
     }
     update(dt) {
         super.update(dt);
@@ -12938,6 +13075,9 @@ class NPCBehaviourComponent extends component_1.Component {
         }
     }
     processMovement(dt) {
+        const inputHandlerComponent = this._inputHandlerComponent;
+        if (!inputHandlerComponent)
+            return;
         const input = {
             horizontal: 0,
             vertical: 0
@@ -12959,9 +13099,8 @@ class NPCBehaviourComponent extends component_1.Component {
             input.vertical = 0;
             input.horizontal = 0;
         }
-        this.entity.transform.applyForce(input.horizontal * 2 * dt, input.vertical * 2 * dt);
-        //this.entity.transform.setVelocity(3, 0);
-        //this.entity.transform.setPosition(position.x + input.horizontal, position.y + input.vertical);
+        inputHandlerComponent.horizontal = input.horizontal;
+        inputHandlerComponent.vertical = input.vertical;
     }
     postupdate(dt) {
         super.postupdate(dt);
@@ -13057,7 +13196,7 @@ class SyncComponent extends component_1.Component {
         super(...arguments);
         this.priority = 1010;
         this.syncType = SyncType.CLIENT_SYNC;
-        this.positionLerp = 0.05;
+        this.positionLerp = 0.08;
         this._targetPosition = new pc.Vec2();
         this._targetVelocity = new pc.Vec2();
         this._targetAngle = 0;
@@ -13116,6 +13255,9 @@ class SyncComponent extends component_1.Component {
         transform.setPosition(this._targetPosition.x, this._targetPosition.y);
         transform.setAngle(this._targetAngle);
         transform.setVelocity(this._targetVelocity.x, this._targetVelocity.y);
+    }
+    dontSync() {
+        this.syncType = SyncType.DONT_SYNC;
     }
 }
 exports.SyncComponent = SyncComponent;
@@ -13521,11 +13663,15 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.EntityChar = void 0;
 const collisionComponent_1 = __webpack_require__(/*! ../component/collisionComponent */ "./src/shared/component/collisionComponent.ts");
 const debugComponent_1 = __webpack_require__(/*! ../component/debugComponent */ "./src/shared/component/debugComponent.ts");
+const inputHandlerComponent_1 = __webpack_require__(/*! ../component/inputHandlerComponent */ "./src/shared/component/inputHandlerComponent.ts");
+const movementComponent_1 = __webpack_require__(/*! ../component/movementComponent */ "./src/shared/component/movementComponent.ts");
 const playerComponent_1 = __webpack_require__(/*! ../component/playerComponent */ "./src/shared/component/playerComponent.ts");
 const entity_1 = __webpack_require__(/*! ./entity */ "./src/shared/entity/entity.ts");
 class EntityChar extends entity_1.Entity {
     constructor(world) {
         super(world);
+        this.addComponent(new movementComponent_1.MovementComponent());
+        this.addComponent(new inputHandlerComponent_1.InputHandlerComponent());
         this.addComponent(new playerComponent_1.PlayerComponent());
         this.addComponent(new debugComponent_1.DebugComponent());
         //this.addComponent(new InputHandlerComponent());
@@ -13589,17 +13735,17 @@ exports.EntityPlayer = EntityPlayer;
 
 /***/ }),
 
-/***/ "./src/shared/eventEmitter.ts":
+/***/ "./src/shared/eventHandler.ts":
 /*!************************************!*\
-  !*** ./src/shared/eventEmitter.ts ***!
+  !*** ./src/shared/eventHandler.ts ***!
   \************************************/
 /***/ ((__unused_webpack_module, exports) => {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.EventEmitter = void 0;
-class EventEmitter {
+exports.EventHandler = void 0;
+class EventHandler {
     constructor() {
         this._events = new Map();
     }
@@ -13620,7 +13766,7 @@ class EventEmitter {
         }
     }
 }
-exports.EventEmitter = EventEmitter;
+exports.EventHandler = EventHandler;
 
 
 /***/ }),
@@ -13647,6 +13793,8 @@ const npcBehaviourComponent_1 = __webpack_require__(/*! ./component/npcBehaviour
 const entityObject_1 = __webpack_require__(/*! ./entity/entityObject */ "./src/shared/entity/entityObject.ts");
 const syncComponent_1 = __webpack_require__(/*! ./component/syncComponent */ "./src/shared/component/syncComponent.ts");
 const debugComponent_1 = __webpack_require__(/*! ./component/debugComponent */ "./src/shared/component/debugComponent.ts");
+const movementComponent_1 = __webpack_require__(/*! ./component/movementComponent */ "./src/shared/component/movementComponent.ts");
+const inputHandlerComponent_1 = __webpack_require__(/*! ./component/inputHandlerComponent */ "./src/shared/component/inputHandlerComponent.ts");
 class Game {
     constructor() {
         this._worlds = new Map();
@@ -13655,6 +13803,8 @@ class Game {
         this._entityFactory = new entityFactory_1.EntityFactory();
         this._entityFactory.registerComponent(transformComponent_1.TransformComponent);
         this._entityFactory.registerComponent(collisionComponent_1.CollisionComponent);
+        this._entityFactory.registerComponent(movementComponent_1.MovementComponent);
+        this._entityFactory.registerComponent(inputHandlerComponent_1.InputHandlerComponent);
         this._entityFactory.registerComponent(playerComponent_1.PlayerComponent);
         this._entityFactory.registerComponent(npcBehaviourComponent_1.NPCBehaviourComponent);
         this._entityFactory.registerComponent(syncComponent_1.SyncComponent);
@@ -13738,6 +13888,8 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.Input = void 0;
 const pc = __importStar(__webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs"));
+const entity_1 = __webpack_require__(/*! ./entity/entity */ "./src/shared/entity/entity.ts");
+const eventHandler_1 = __webpack_require__(/*! ./eventHandler */ "./src/shared/eventHandler.ts");
 class Input {
     static get mousePosition() { return this._mousePosition; }
     static get mouseDown() { return this._mouseDown; }
@@ -13748,20 +13900,46 @@ class Input {
         app.mouse.on(pc.EVENT_MOUSEMOVE, this.onMouseMove, this);
         app.mouse.on(pc.EVENT_MOUSEDOWN, this.onMouseDown, this);
         app.mouse.on(pc.EVENT_MOUSEUP, this.onMouseUp, this);
+        this.events.on("changed", (input) => {
+            console.log("tested", input);
+        });
     }
     static updateMousePosition(event) {
         this._mousePosition.set(event.x, event.y);
     }
     static onMouseMove(event) {
         this.updateMousePosition(event);
+        this.emitInputChanged();
     }
     static onMouseDown(event) {
         this._mouseDown = true;
         this.updateMousePosition(event);
+        this.emitInputChanged();
+    }
+    static getHorizontal() {
+        const KEY_LEFT = 65;
+        const KEY_RIGHT = 68;
+        return (Input.getKeyDown(KEY_RIGHT) ? 1 : 0) + ((Input.getKeyDown(KEY_LEFT) ? -1 : 0));
+    }
+    static getVertical() {
+        const KEY_UP = 87;
+        const KEY_DOWN = 83;
+        return (Input.getKeyDown(KEY_DOWN) ? 1 : 0) + ((Input.getKeyDown(KEY_UP) ? -1 : 0));
+    }
+    static emitInputChanged() {
+        let inputData = {
+            h: this.getHorizontal(),
+            v: this.getVertical(),
+            //mx: this.mousePosition.x,
+            //my: this.mousePosition.y
+        };
+        const changed = this._dataWatcher.setData(inputData);
+        this.events.emit("changed", changed);
     }
     static onMouseUp(event) {
         this._mouseDown = false;
         this.updateMousePosition(event);
+        this.emitInputChanged();
     }
     static update(dt) {
     }
@@ -13784,16 +13962,20 @@ class Input {
     static onKeyDown(e) {
         const keyCode = parseInt(e.key);
         this._keys.set(keyCode, true);
+        this.emitInputChanged();
     }
     static onKeyUp(e) {
         const keyCode = parseInt(e.key);
         this._keys.set(keyCode, false);
+        this.emitInputChanged();
     }
 }
 exports.Input = Input;
+Input.events = new eventHandler_1.EventHandler();
 Input._keys = new Map();
 Input._mousePosition = new pc.Vec2(0, 0);
 Input._mouseDown = false;
+Input._dataWatcher = new entity_1.DataWatcher();
 
 
 /***/ }),
@@ -13858,6 +14040,7 @@ var PacketType;
     PacketType[PacketType["CONTROL_ENTITY"] = 4] = "CONTROL_ENTITY";
     PacketType[PacketType["WEAPON_SHOT"] = 5] = "WEAPON_SHOT";
     PacketType[PacketType["COMPONENT_EVENT"] = 6] = "COMPONENT_EVENT";
+    PacketType[PacketType["INPUT_DATA"] = 7] = "INPUT_DATA";
 })(PacketType = exports.PacketType || (exports.PacketType = {}));
 /*
 export class Packet {
@@ -13926,7 +14109,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.World = exports.WorldSyncType = void 0;
 const matter_js_1 = __importDefault(__webpack_require__(/*! matter-js */ "./node_modules/matter-js/build/matter.js"));
-const eventEmitter_1 = __webpack_require__(/*! ./eventEmitter */ "./src/shared/eventEmitter.ts");
 const worldEvent_1 = __webpack_require__(/*! ./worldEvent */ "./src/shared/worldEvent.ts");
 const gameface_1 = __webpack_require__(/*! ../client/gameface */ "./src/client/gameface.ts");
 const packet_1 = __webpack_require__(/*! ./packet */ "./src/shared/packet.ts");
@@ -13934,6 +14116,7 @@ const entityPlayer_1 = __webpack_require__(/*! ./entity/entityPlayer */ "./src/s
 const entityChar_1 = __webpack_require__(/*! ./entity/entityChar */ "./src/shared/entity/entityChar.ts");
 const npcBehaviourComponent_1 = __webpack_require__(/*! ./component/npcBehaviourComponent */ "./src/shared/component/npcBehaviourComponent.ts");
 const entityObject_1 = __webpack_require__(/*! ./entity/entityObject */ "./src/shared/entity/entityObject.ts");
+const eventHandler_1 = __webpack_require__(/*! ./eventHandler */ "./src/shared/eventHandler.ts");
 let testu = 0;
 let testd = 0;
 var WorldSyncType;
@@ -13944,7 +14127,7 @@ var WorldSyncType;
 })(WorldSyncType = exports.WorldSyncType || (exports.WorldSyncType = {}));
 class World {
     constructor(game) {
-        this.events = new eventEmitter_1.EventEmitter();
+        this.events = new eventHandler_1.EventHandler();
         this.syncType = WorldSyncType.SINGLEPLAYER;
         this.matter = {};
         this._entities = [];

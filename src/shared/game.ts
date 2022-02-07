@@ -10,6 +10,8 @@ import { NPCBehaviourComponent } from "./component/npcBehaviourComponent";
 import { EntityObject } from "./entity/entityObject";
 import { SyncComponent } from "./component/syncComponent";
 import { DebugComponent } from "./component/debugComponent";
+import { MovementComponent } from "./component/movementComponent";
+import { InputHandlerComponent } from "./component/inputHandlerComponent";
 
 export class Game {
     public get worlds() { return Array.from(this._worlds.values()); }
@@ -27,6 +29,8 @@ export class Game {
 
         this._entityFactory.registerComponent(TransformComponent);
         this._entityFactory.registerComponent(CollisionComponent);
+        this._entityFactory.registerComponent(MovementComponent);
+        this._entityFactory.registerComponent(InputHandlerComponent);
         this._entityFactory.registerComponent(PlayerComponent);
         this._entityFactory.registerComponent(NPCBehaviourComponent);
         this._entityFactory.registerComponent(SyncComponent);

@@ -1,5 +1,7 @@
 import { CollisionComponent } from "../component/collisionComponent";
 import { DebugComponent } from "../component/debugComponent";
+import { InputHandlerComponent } from "../component/inputHandlerComponent";
+import { MovementComponent } from "../component/movementComponent";
 import { PlayerComponent } from "../component/playerComponent";
 import { World } from "../world";
 import { Entity } from "./entity";
@@ -8,6 +10,8 @@ export class EntityChar extends Entity {
     constructor(world: World) {
         super(world);
 
+        this.addComponent(new MovementComponent());
+        this.addComponent(new InputHandlerComponent());
         this.addComponent(new PlayerComponent());
         this.addComponent(new DebugComponent());
         //this.addComponent(new InputHandlerComponent());

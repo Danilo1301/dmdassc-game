@@ -17,6 +17,16 @@ export class Camera {
     }
 
     public static update(dt: number) {
+        if(this.followPlayer) {
+            const player = Gameface.Instance.player;
+
+            if(!player) return;
+
+            const position = player.transform.getPosition();
+
+            this.setPosition(position.x, position.y);
+        }
+        
         this._position.z = this.height;
 
         Render.camera?.setPosition(this._position.x * 0.01, this._position.z * 0.01, this._position.y * 0.01);

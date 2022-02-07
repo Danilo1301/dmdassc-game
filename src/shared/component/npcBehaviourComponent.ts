@@ -3,6 +3,7 @@ import * as pc from 'playcanvas';
 import { Entity } from "../entity/entity";
 import { CollisionComponent } from './collisionComponent';
 import { Component } from "./component";
+import { InputHandlerComponent } from './inputHandlerComponent';
 
 export class NPCBehaviourComponent extends Component {
     public entity: Entity;
@@ -10,9 +11,13 @@ export class NPCBehaviourComponent extends Component {
 
     private _targetPosition = new pc.Vec2(300, 300);
     private _newPositionTime = 0;
+    
+    private _inputHandlerComponent?: InputHandlerComponent;
 
     public init() {
         super.init();
+
+        this._inputHandlerComponent = this.entity.getComponent(InputHandlerComponent);
     }
 
     public update(dt: number) {
@@ -35,6 +40,10 @@ export class NPCBehaviourComponent extends Component {
     }
 
     private processMovement(dt: number) {
+
+        const inputHandlerComponent = this._inputHandlerComponent;
+
+        if(!inputHandlerComponent) return;
 
         const input = {
             horizontal: 0,
@@ -60,10 +69,8 @@ export class NPCBehaviourComponent extends Component {
             input.horizontal = 0;
         }
 
-
-        this.entity.transform.applyForce(input.horizontal * 2 * dt, input.vertical * 2 * dt);
-        //this.entity.transform.setVelocity(3, 0);
-        //this.entity.transform.setPosition(position.x + input.horizontal, position.y + input.vertical);
+        inputHandlerComponent.horizontal = input.horizontal;
+        inputHandlerComponent.vertical = input.vertical;
     }
    
     public postupdate(dt: number) {
