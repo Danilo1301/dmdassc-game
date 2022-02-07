@@ -4,12 +4,11 @@ import { WorldEvent } from "../worldEvent";
 
 export class Component {
     public data: any;
-    public index: number | null = null;
-
+    
     public entity: Entity;
     public priority: number = 0;
     
-
+    private _index: number | null = null;
     private _a: boolean = false;
 
     public init() {
@@ -42,4 +41,11 @@ export class Component {
     }
 
     public onReceiveComponentEvent(event: string, data, fromClient?: Client) {}
+
+    public getIndex() {
+        if(this._index == null) {
+            this._index = this.entity.world.game.entityFactory.getIndexOfComponent(this);
+        }
+        return this._index;
+    }
 }

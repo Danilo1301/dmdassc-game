@@ -165,7 +165,43 @@ export class Client {
     }
 
     public checkStreamedEntities() {
-        
+        const player = this._player;
+
+        if(!player) return;
+
+        const playerPosition = player.transform.getPosition();
+
+        const world = player.world;
+
+        for (const entity of world.entities) {
+
+            if(!entity.canSync) continue;
+            
+            const distance: number = playerPosition.distance(entity.transform.getPosition());
+
+            let canBeStreamed = false;
+            if(distance < 1200) canBeStreamed = true;
+
+            if(canBeStreamed) {
+                if(!this._streamedEntities.includes(entity)) {
+                    console.log(`[client] entity stream in ${entity.id}`);
+    
+                    this._streamedEntities.push(entity);
+    
+                    this.sendEntitySpawn(entity);
+                }
+            } else {
+                if(this._streamedEntities.includes(entity)) {
+                    console.log(`[client] entity stream out ${entity.id}`);
+    
+                    this._streamedEntities.splice(this._streamedEntities.indexOf(entity), 1);
+    
+                    this.sendEntityDestroy(entity);
+                }
+            }
+            
+
+        }
     }
 
     public update(dt: number) {
@@ -181,17 +217,13 @@ export class Client {
     */
 
     public sendPacket<T>(type: PacketType, packetData: T) {
-        const packet: Packet = {
-            type: type,
-            data: packetData
-        }
-        this._socket?.emit('p', packet);
+        this._socket?.emit('p', type, packetData);
     }
 
 
     public sendEntityData(entity: Entity, data: any) {
 
-        this.sendPacket<IPacketData_EntityData>(PacketType.ENTITY_DATA, {id: entity.id, data: data});
+        this.sendPacket<IPacketData_EntityData>(PacketType.ENTITY_DATA, {id: entity.id, d: data});
 
         /*
         const components: Component[] = [];
@@ -208,13 +240,15 @@ export class Client {
     }
 
     public sendEntitySpawn(entity: Entity) {
-        /*
+        console.log('entity:',entity.getIndex())
+        
+        console.log(entity.constructor.name, entity.getIndex())
+
         this.sendPacket<IPacketData_SpawnEntity>(PacketType.SPAWN_ENTITY, {
             id: entity.id,
-            type: entity.world.game.entityFactory.getIndexOfEntity(entity),
-            data: entity.data.getData()
+            type: entity.getIndex(),
+            data: entity.getFullData()
         });
-        */
     }
 
     public sendEntityDestroy(entity: Entity) {

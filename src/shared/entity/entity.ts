@@ -1,7 +1,8 @@
 import * as pc from 'playcanvas';
 import { v4 as uuidv4 } from 'uuid';
 import { Component } from '../component/component';
-import { TransformComponent } from '../component/transformComponent';
+import { SyncComponent } from '../component/syncComponent';
+import { ITransformComponent_Data, TransformComponent } from '../component/transformComponent';
 import { World } from '../world';
 
 export class DataWatcher {
@@ -77,6 +78,8 @@ export class Entity {
     
     public dataWatcher: DataWatcher = new DataWatcher();
     
+    public canSync: boolean = true;
+
     public get id() { return this._id; }
     public get world() { return this._world; }
     public get components() { return this._components; }
@@ -95,6 +98,7 @@ export class Entity {
     */
     
 
+    private _index: number | null = null;
     private _pcEntity?: pc.Entity;
     private _id: string = uuidv4();
     private _world: World;
@@ -107,6 +111,78 @@ export class Entity {
         this._world = world;
         if(pcEntity) this._pcEntity = pcEntity;
         this._transform = this.addComponent(new TransformComponent());
+    }
+
+    public getFullData() {
+        let fullData: any = undefined;
+
+        for (const component of this.components) {
+            const data = component.data;
+
+            if(data == undefined) continue;
+
+            if(fullData == undefined) fullData = {};
+
+            fullData[component.getIndex()] = data;
+
+        }
+        return fullData;
+    }
+
+    public mergeData(data: any) {
+        if(data == undefined) return;
+
+        //
+        const transformData = data[this.transform.getIndex()];
+
+        if(transformData != undefined) {
+            const transform = this.transform;
+
+            const angle = transform.getAngle();
+            const toSyncAngle = transformData.angle != undefined ? transformData.angle : angle;
+    
+            const position = transform.getPosition();
+            const toSyncPosition = {
+                x: transformData.x != undefined ? transformData.x : position.x,
+                y: transformData.y != undefined ? transformData.y : position.y
+            }
+
+            const velocity = transform.getVelocity();
+            const toSyncVelocity = {
+                x: transformData.velX != undefined ? transformData.velX : velocity.x,
+                y: transformData.velY != undefined ? transformData.velY : velocity.y
+            }
+    
+            Object.assign(transform.data, transformData);
+
+            delete data[transform.getIndex()];
+
+            const syncComponent = this.getComponent(SyncComponent);
+    
+            if(syncComponent) {
+                transform.setPosition(position.x, position.y);
+                transform.setVelocity(velocity.x, velocity.y);
+                transform.setAngle(angle);
+                
+                syncComponent.setPosition(toSyncPosition.x, toSyncPosition.y);
+                syncComponent.setVelocity(toSyncVelocity.x, toSyncVelocity.y);
+                syncComponent.setAngle(toSyncAngle);
+            }
+        }
+
+        //
+
+        for (const component of this._components) {
+            const cdata = data[component.getIndex()];
+            if(cdata == undefined) continue;
+            Object.assign(component.data, cdata);
+        }
+
+
+
+     
+        
+        
     }
 
     public setId(id: string) {
@@ -180,5 +256,13 @@ export class Entity {
         this.destroyed = true;
 
         for (const component of this._components) component.destroy();
+    }
+
+    public getIndex() {
+        
+        if(this._index == null) {
+            this._index = this.world.game.entityFactory.getIndexOfEntity(this);
+        }
+        return this._index;
     }
 }

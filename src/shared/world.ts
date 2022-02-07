@@ -12,6 +12,7 @@ import { EntityPlayer } from "./entity/entityPlayer";
 import { EntityChar } from "./entity/entityChar";
 import { NPCBehaviourComponent } from "./component/npcBehaviourComponent";
 import { PlayerComponent } from "./component/playerComponent";
+import { EntityObject } from "./entity/entityObject";
 
 let testu = 0;
 let testd = 0;
@@ -178,36 +179,31 @@ export class World {
 
     private spawnEntities() {
         
+        for (let i = 0; i < 10; i++) {
+            this.spawnObject()
+        }
+
         for (let i = 0; i < 40; i++) {
-
             this.spawnNpc(Math.random()*100-50, Math.random()*100-50)
-
         }
 
-        console.log(this.entities.length)
+    }
 
-        const entity = this.entities[0];
+    public spawnObject() {
+        const npc = this.spawnEntity(EntityObject);
+    
+    }
 
-        const getFullData = () => {
-            const fullData: any = {};
-
-            fullData["0"] = entity.components[0].data;
-            fullData["1"] = entity.components[2].data;
-            
-            return fullData;
-        }
-
-        //entity.dataWatcher.setData(getFullData());
-
-        //entity.transform.data.angle = 0.0001;
-        //entity.getComponent(PlayerComponent)!.data.name = "from server"
-
-        //entity.dataWatcher.setData(getFullData());
+    public spawnPlayer() {
+        const player = this.spawnEntity(EntityPlayer);
     }
 
     public spawnNpc(x: number, y: number) {
+        let px = x != undefined ? x : 0;
+        let py = y != undefined ? y : 0;
+
         const npc = this.spawnEntity(EntityChar);
-        npc.transform.setPosition(x, y)
+        npc.transform.setPosition(px, py)
         npc.addComponent(new NPCBehaviourComponent());
 
         //npc.transform.data.velX = 10;

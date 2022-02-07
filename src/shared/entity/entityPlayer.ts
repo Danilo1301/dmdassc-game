@@ -1,3 +1,4 @@
+import { PlayerComponent } from "../component/playerComponent";
 import { World } from "../world";
 import { EntityChar } from "./entityChar";
 

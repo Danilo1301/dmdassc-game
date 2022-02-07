@@ -27,7 +27,7 @@ export class NPCBehaviourComponent extends Component {
         if(this._newPositionTime <= 0) {
             this._newPositionTime = Math.random()*5;
 
-            const range = 900;
+            const range = 1300;
 
             this._targetPosition.x = Math.random()*range-(range/2);
             this._targetPosition.y = Math.random()*range-(range/2);

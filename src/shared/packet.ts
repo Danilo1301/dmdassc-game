@@ -37,7 +37,7 @@ export interface IPacketData_DestroyEntity {
 
 export interface IPacketData_EntityData {
     id: string
-    data: any
+    d: any
 }
 
 export interface Packet {

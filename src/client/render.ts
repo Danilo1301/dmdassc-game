@@ -1,6 +1,7 @@
 import * as pc from 'playcanvas'
 import { Entity } from '../shared/entity/entity';
 import { World } from "../shared/world";
+import { UI } from './ui/ui';
 
 export class Render {
     public static app: pc.Application;
@@ -107,9 +108,10 @@ export class Render {
         camera.setEulerAngles(-90, 0, 0);
         (camera.addComponent('script') as pc.ScriptComponent).create('cameraFollow');
         
-        console.log('camera', camera);
+        
+        UI.init(app);
 
-        app.scene.ambientLight.set(0, 0, 0)
+        //app.scene.ambientLight.set(0, 0, 0)
 
         //
 
@@ -138,12 +140,14 @@ export class Render {
 
         //
 
+
+        /*
         const text = new pc.Entity('text');
         app.root.addChild(text);
         (text.addComponent('script') as pc.ScriptComponent).create('textScript');
+        */
    
         this.test();
-
     }
 
     private static test() {

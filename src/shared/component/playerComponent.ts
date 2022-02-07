@@ -1,8 +1,11 @@
 import Matter from 'matter-js';
 import * as pc from 'playcanvas';
 import { Entity } from "../entity/entity";
+import { WorldSyncType } from '../world';
 import { CollisionComponent } from './collisionComponent';
 import { Component } from "./component";
+import { DebugComponent } from './debugComponent';
+import { SyncType } from './syncComponent';
 
 export interface IPlayerComponent_Data {
     name: string
@@ -15,14 +18,28 @@ export class PlayerComponent extends Component {
 
     public data: IPlayerComponent_Data = {
         name: 'no name',
-        color: 16
+        color: 0
+    }
+
+    public initData(): void {
+        if(this.entity.world.syncType != WorldSyncType.CLIENT) {
+            setInterval(() => {
+                this.data.color++
+            }, 1000)
+        }
     }
     
     public init() {
         super.init();
+
+        
     }
+
+
 
     public update(dt: number) {
         super.update(dt);
+
+        this.entity.getComponent(DebugComponent)?.setLineText('playername', `${this.data.name}, ${this.data.color}`)
     }
 }

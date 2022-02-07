@@ -4,6 +4,12 @@ import { World } from "./world";
 import { InventoryManager } from "./inventoryManager";
 import { EntityChar } from "./entity/entityChar";
 import { EntityPlayer } from "./entity/entityPlayer";
+import { CollisionComponent } from "./component/collisionComponent";
+import { PlayerComponent } from "./component/playerComponent";
+import { NPCBehaviourComponent } from "./component/npcBehaviourComponent";
+import { EntityObject } from "./entity/entityObject";
+import { SyncComponent } from "./component/syncComponent";
+import { DebugComponent } from "./component/debugComponent";
 
 export class Game {
     public get worlds() { return Array.from(this._worlds.values()); }
@@ -20,10 +26,16 @@ export class Game {
         this._entityFactory = new EntityFactory();
 
         this._entityFactory.registerComponent(TransformComponent);
+        this._entityFactory.registerComponent(CollisionComponent);
+        this._entityFactory.registerComponent(PlayerComponent);
+        this._entityFactory.registerComponent(NPCBehaviourComponent);
+        this._entityFactory.registerComponent(SyncComponent);
+        this._entityFactory.registerComponent(DebugComponent);
 
 
-        this._entityFactory.registerEntity('EntityChar', EntityChar);
-        this._entityFactory.registerEntity('EntityPlayer', EntityPlayer);
+        this._entityFactory.registerEntity(EntityChar);
+        this._entityFactory.registerEntity(EntityPlayer);
+        this._entityFactory.registerEntity(EntityObject);
 
         this._inventoryManager = new InventoryManager();
 

@@ -8,6 +8,7 @@ import { Render } from './render';
 import { TextScript } from './playcanvas/scripts/textScript';
 import { WorldSyncType } from '../shared/world';
 import { EntityPlayer } from '../shared/entity/entityPlayer';
+import { SyncComponent, SyncType } from '../shared/component/syncComponent';
 
 export class Gameface {
     public static Instance: Gameface;
@@ -117,7 +118,11 @@ export class Gameface {
     }
 
     public setPlayer(entity: Entity) {
-       
+        this.player = entity;
+        //this.player.getComponent(InputHandlerComponent)!.enabled = true;
+        //this.player.getComponent(SyncComponent)!.syncType = SyncType.DONT_SYNC;
+
+        console.warn("SETPLAYER")
     }
 
     public checkControllingEntity() {

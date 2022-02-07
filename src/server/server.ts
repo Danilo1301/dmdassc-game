@@ -4,7 +4,7 @@ import { Game } from '../shared/game';
 import { WorldEvent } from '../shared/worldEvent';
 import { WorldSyncType } from '../shared/world';
 import { Component } from '../shared/component/component';
-import { IPacketData_ComponentEvent, PacketType } from '../shared/packet';
+import { IPacketData_ComponentEvent, IPacketData_EntityData, PacketType } from '../shared/packet';
 import { EntityPlayer } from '../shared/entity/entityPlayer';
 
 export class Server {
@@ -100,40 +100,21 @@ export class Server {
     public sendEntitiesData() {
         for (const world of this.game.worlds) {
             
+            
             for (const entity of world.entities) {
                 
-                //const col = entity.transform.collisionComponent!;
-                //const body = col.body;
-
-                //if(!body) return;
-
-                
-                
-
-                //console.log(fullData)
-
-                const getFullData = () => {
-                    const fullData: any = {};
-        
-                    fullData["0"] = entity.components[0].data;
-                    fullData["1"] = entity.components[2].data;
-                    
-                    return fullData;
-                }
-        
-                const fullData = getFullData();
-
+                const fullData = entity.getFullData();
                 const changedData = entity.dataWatcher.setData(fullData);
 
-                const data = {
-                    id: entity.id,
-                    c: changedData
-                };
-
+                if(changedData == undefined) continue;
+       
                 for (const client of this.clients) {
                     //console.log("sent")
 
-                    client.socket.emit("p", PacketType.ENTITY_DATA, data);
+                    client.sendPacket<IPacketData_EntityData>(PacketType.ENTITY_DATA, {
+                        id: entity.id,
+                        d: changedData
+                    });
 
                     
                 }

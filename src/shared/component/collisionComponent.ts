@@ -97,9 +97,11 @@ export class CollisionComponent extends Component {
     }
 
     private createBody() {
+
         const matterWorld = this.entity.world.matter.world!;
         const options = Object.assign({}, this.options);
         const parts: Matter.Body[] = [];
+
 
         for (const bodyPart of this._bodyParts.values()) {
             

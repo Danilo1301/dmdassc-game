@@ -32,7 +32,8 @@ export class SyncComponent extends Component {
 
         const now = Date.now();
 
-        let lerpFactor = (1 - (Math.min(500, now - this._lastUpdated) / 500))
+        let tl = 800;
+        let lerpFactor = (1 - (Math.min(tl, now - this._lastUpdated) / tl))
 
         //lerpFactor = 1;
 
@@ -58,8 +59,8 @@ export class SyncComponent extends Component {
 
         const velocity = transform.getVelocity();
 
-        const velX = pc.math.lerp(velocity.x, this._targetVelocity.x, 0.8);
-        const velY = pc.math.lerp(velocity.y, this._targetVelocity.y, 0.8);
+        const velX = pc.math.lerp(velocity.x, this._targetVelocity.x, 0.8 );
+        const velY = pc.math.lerp(velocity.y, this._targetVelocity.y, 0.8 );
 
         
         transform.setPosition(x, y);
@@ -89,5 +90,13 @@ export class SyncComponent extends Component {
     public setVelocity(x: number, y: number) {
         this._lastUpdated = Date.now();
         this._targetVelocity.set(x, y);
+    }
+
+    public forceLerp() {
+        const transform = this.entity.transform;
+
+        transform.setPosition(this._targetPosition.x, this._targetPosition.y);
+        transform.setAngle(this._targetAngle);
+        transform.setVelocity(this._targetVelocity.x, this._targetVelocity.y);
     }
 }

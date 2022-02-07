@@ -4,19 +4,15 @@ import { PlayerComponent } from "../component/playerComponent";
 import { World } from "../world";
 import { Entity } from "./entity";
 
-export class EntityChar extends Entity {
+export class EntityObject extends Entity {
     constructor(world: World) {
         super(world);
 
-        this.addComponent(new PlayerComponent());
         this.addComponent(new DebugComponent());
-        //this.addComponent(new InputHandlerComponent());
-
-        //const sprite = this.addComponent(new SpriteComponent());
-        //sprite.add('default', 'assets/player.png', 3, 80, 80);
+        
 
         const collision = this.addComponent(new CollisionComponent());
         //collision.options.frictionAir = 0.2;
-        collision.addCircle('default', 0, 0, 30);
+        collision.addRectangle('default', 0, 0, 50, 50);
     }
 }

@@ -85,7 +85,7 @@ export class Network {
 
     public onReceivePacket(packet: Packet) {
         if(packet.type == PacketType.ENTITY_DATA) {
-            const packetData = packet.data;
+            const packetData: IPacketData_EntityData = packet.data;
 
             const id: string = packetData.id;
 
@@ -101,67 +101,38 @@ export class Network {
                 world.addEntity(entity);
             }
             
-            const c = packetData.c;
+            entity.mergeData(packetData.d);
+        }
 
-            if(c == undefined) return;
-
-            //console.log(c)
-
-            const data: ITransformComponent_Data = c["0"];
-
-            const angle = entity.transform.getAngle();
-            const toSyncAngle = data.angle != undefined ? data.angle : angle;
-
-            const position = entity.transform.getPosition();
-            const toSyncPosition = {x: position.x, y: position.y}
-            if(data.x != undefined) toSyncPosition.x = data.x;
-            if(data.y != undefined) toSyncPosition.y = data.y;
-
-            const velocity = entity.transform.getVelocity();
-            const toSyncVelocity = {x: velocity.x, y: velocity.y}
-            if(data.velX != undefined) toSyncVelocity.x = data.velX;
-            if(data.velY != undefined) toSyncVelocity.y = data.velY;
-
-            Object.assign(entity.transform.data, data);
-
-            const syncComponent = entity.getComponent(SyncComponent);
-
-            //console.log(toSyncPosition, toSyncVelocity, toSyncAngle)
-
-            if(syncComponent) {
-                entity.transform.setPosition(position.x, position.y);
-                entity.transform.setVelocity(velocity.x, velocity.y);
-                entity.transform.setAngle(angle);
-               
-                syncComponent.setPosition(toSyncPosition.x, toSyncPosition.y);
-                syncComponent.setVelocity(toSyncVelocity.x, toSyncVelocity.y);
-                syncComponent.setAngle(toSyncAngle);
-            }
-
-            
-
-
-
-            //entity.transform.data = data;
-
-            //console.log(entity.transform.getPosition())
-
-            //console.log("got data");
-            /*
+        if(packet.type == PacketType.SPAWN_ENTITY) {
             const packetData: IPacketData_SpawnEntity = packet.data;
             
+            const entityId = packetData.id;
+            const entityType = packetData.type;
+
+
             const world = Gameface.Instance.game.worlds[0];
-            const entity = world.getEntity(packetData.id);
 
-            if(!entity) return;
+            let entity = world.getEntity(entityId);
 
-            entity.mergeEntityData(packetData.data);
+            if(entity) return;
 
-
-            //console.log(packet)
-
+            const c = world.game.entityFactory.getEntityByIndex(entityType);
             
-            */
+            entity = new c(world);
+            entity.setId(entityId);
+        
+            const syncComponent = entity.addComponent(new SyncComponent());
+
+            entity.initData()
+            entity.mergeData(packetData.data);
+
+            world.addEntity(entity);
+
+            syncComponent.forceLerp();
+
+
+            console.log("spawn entity", packetData)
         }
 
         /*
