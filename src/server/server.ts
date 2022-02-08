@@ -18,7 +18,7 @@ export class Server {
     private _clients = new Map<string, Client>();
 
     private _sendEntityDataTime: number = 0;
-    private _sendEntityDataIntervalMs: number = 200;
+    private _sendEntityDataIntervalMs: number = 100;
 
     constructor() {
         this._game = new Game();
@@ -46,7 +46,7 @@ export class Server {
                 if(client == fromClient) continue;
                 if(!client.isEntityStreamed(component.entity)) continue;
 
-        
+                
 
                 client.sendPacket<IPacketData_ComponentEvent>(PacketType.COMPONENT_EVENT, {
                     entity: component.entity.id,
@@ -101,7 +101,6 @@ export class Server {
     public sendEntitiesData() {
         for (const world of this.game.worlds) {
             
-            
             for (const entity of world.entities) {
                 
                 const fullData = entity.getFullData();
@@ -110,12 +109,19 @@ export class Server {
                 if(changedData == undefined) continue;
        
                 for (const client of this.clients) {
-                    //console.log("sent")
+
+                    if(!client.isEntityStreamed(entity)) continue;
+
+                    client.trySendEntityData(entity, changedData);
+
+                    /*
+                    console.log(`Sent ${entity.id} to ${client.id}`)
 
                     client.sendPacket<IPacketData_EntityData>(PacketType.ENTITY_DATA, {
                         id: entity.id,
                         d: changedData
                     });
+                    */
 
                     
                 }
@@ -146,7 +152,7 @@ export class Server {
     }
 
     public onClientLeave(client: Client) {
-        
+        this._clients.delete(client.id);
     }
 }
 

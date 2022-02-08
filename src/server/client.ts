@@ -194,6 +194,25 @@ export class Client {
         return this._streamedEntities.includes(entity);
     }
 
+    private _entityDataToSend: any[] = [];
+    private _entityToSend: Entity[] = []
+    private _lastSentEntityData = new Map<string, number>();
+
+    public trySendEntityData(entity: Entity, data: any) {
+        //console.log(`added data from ${entity.id} to list`)
+
+        if(!this._entityToSend.includes(entity)) {
+            this._entityToSend.push(entity);
+            this._entityDataToSend.push(data);
+        } else {
+            const index = this._entityToSend.indexOf(entity);
+
+            this._entityDataToSend[index] = Object.assign(this._entityDataToSend[index], data);
+
+            //console.log("data merged")
+        }
+    }
+
     public checkStreamedEntities() {
         const player = this._player;
 
@@ -210,7 +229,7 @@ export class Client {
             const distance: number = playerPosition.distance(entity.transform.getPosition());
 
             let canBeStreamed = false;
-            if(distance < 1200) canBeStreamed = true;
+            if(distance < 1000) canBeStreamed = true;
 
             if(canBeStreamed) {
                 if(!this._streamedEntities.includes(entity)) {
@@ -236,6 +255,35 @@ export class Client {
 
     public update(dt: number) {
         this.checkStreamedEntities();
+
+        for (const entity of this._entityToSend) {
+            
+            const index = this._entityToSend.indexOf(entity);
+            const data = this._entityDataToSend[index];
+            
+            const lastSentData = this._lastSentEntityData.has(entity.id) ? this._lastSentEntityData.get(entity.id)! : 0;
+            
+            //console.log(Date.now() - lastSentData   )
+            
+            let distance = this.player ? this.player.transform.getPosition().distance(entity.transform.getPosition()) : 0;
+
+            distance = Math.max(100, distance * 0.3);
+
+            if(Date.now() - lastSentData <= distance) continue;
+            
+            //console.log(`actually sending data from ${entity.id}`)
+
+            this.sendPacket<IPacketData_EntityData>(PacketType.ENTITY_DATA, {
+                id: entity.id,
+                d: data
+            });
+
+            this._entityToSend.splice(index, 1);
+            this._entityDataToSend.splice(index, 1);
+
+            this._lastSentEntityData.set(entity.id, Date.now());
+
+        }
     }
 
     /*
@@ -270,9 +318,9 @@ export class Client {
     }
 
     public sendEntitySpawn(entity: Entity) {
-        console.log('entity:',entity.getIndex())
+        //console.log('entity:',entity.getIndex())
         
-        console.log(entity.constructor.name, entity.getIndex())
+        //console.log(entity.constructor.name, entity.getIndex())
 
         this.sendPacket<IPacketData_SpawnEntity>(PacketType.SPAWN_ENTITY, {
             id: entity.id,

@@ -12064,7 +12064,6 @@ exports.Network = void 0;
 const socket_io_client_1 = __webpack_require__(/*! socket.io-client */ "./node_modules/socket.io-client/build/cjs/index.js");
 const gameface_1 = __webpack_require__(/*! ./gameface */ "./src/client/gameface.ts");
 const packet_1 = __webpack_require__(/*! ../shared/packet */ "./src/shared/packet.ts");
-const entityChar_1 = __webpack_require__(/*! ../shared/entity/entityChar */ "./src/shared/entity/entityChar.ts");
 const syncComponent_1 = __webpack_require__(/*! ../shared/component/syncComponent */ "./src/shared/component/syncComponent.ts");
 const input_1 = __webpack_require__(/*! ../shared/input */ "./src/shared/input.ts");
 class Network {
@@ -12133,13 +12132,20 @@ class Network {
             //console.log(id);
             const world = gameface_1.Gameface.Instance.game.worlds[0];
             let entity = world.getEntity(id);
-            if (!entity) {
-                entity = new entityChar_1.EntityChar(world);
+            if (entity) {
+                entity.mergeData(packetData.d);
+            }
+            else {
+                console.log("no entity");
+            }
+            /*
+            if(!entity) {
+                entity = new EntityChar(world);
                 entity.setId(id);
-                entity.addComponent(new syncComponent_1.SyncComponent());
+                entity.addComponent(new SyncComponent());
                 world.addEntity(entity);
             }
-            entity.mergeData(packetData.d);
+            */
         }
         if (packet.type == packet_1.PacketType.SPAWN_ENTITY) {
             const packetData = packet.data;
@@ -12171,7 +12177,8 @@ class Network {
             const entity = world.getEntity(entityId);
             if (entity) {
                 console.warn("remove entity");
-                //world.removeEntity(entity);
+                world.removeEntity(entity);
+                console.log(entity);
             }
         }
         /*
@@ -13012,6 +13019,11 @@ class DebugComponent extends component_1.Component {
     }
     update(dt) {
         super.update(dt);
+    }
+    destroy() {
+        var _a;
+        super.destroy();
+        (_a = this._uitext) === null || _a === void 0 ? void 0 : _a.setPosition(100, 0);
     }
 }
 exports.DebugComponent = DebugComponent;
@@ -14475,6 +14487,10 @@ class World {
         this._entities.push(entity);
         entity.init();
         return entity;
+    }
+    removeEntity(entity) {
+        entity.destroy();
+        this._entities.splice(this._entities.indexOf(entity), 1);
     }
     getEntity(id) {
         for (const entity of this.entities) {

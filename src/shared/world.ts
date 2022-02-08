@@ -252,6 +252,11 @@ export class World {
         return entity;
     }
 
+    public removeEntity(entity: Entity) {
+        entity.destroy();
+        this._entities.splice(this._entities.indexOf(entity), 1);
+    }
+
     public getEntity(id: string) {
         for (const entity of this.entities) {
             if(entity.id == id) return entity;

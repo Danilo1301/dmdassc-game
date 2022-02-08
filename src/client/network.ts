@@ -94,14 +94,23 @@ export class Network {
             const world = Gameface.Instance.game.worlds[0];
             let entity = world.getEntity(id);
             
+            if(entity) {
+                entity.mergeData(packetData.d);
+            } else {
+                
+                console.log("no entity")
+            }
+
+            /*
             if(!entity) {
                 entity = new EntityChar(world);
                 entity.setId(id);
                 entity.addComponent(new SyncComponent());
                 world.addEntity(entity);
             }
+            */
             
-            entity.mergeData(packetData.d);
+            
         }
 
         if(packet.type == PacketType.SPAWN_ENTITY) {
@@ -151,7 +160,9 @@ export class Network {
 
             if(entity) {
                 console.warn("remove entity")
-                //world.removeEntity(entity);
+                world.removeEntity(entity);
+
+                console.log(entity)
             }
         }
 

@@ -73,4 +73,10 @@ export class DebugComponent extends Component {
     public update(dt: number) {
         super.update(dt);
     }
+
+    public destroy(): void {
+        super.destroy();
+
+        this._uitext?.setPosition(100, 0)
+    }
 }
