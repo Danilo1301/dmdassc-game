@@ -214,6 +214,17 @@ export class Client {
 
         const instaSend = true;
 
+        if(instaSend) {
+
+            this.sendPacket<IPacketData_EntityData>(PacketType.ENTITY_DATA, {
+                id: entity.id,
+                d: data
+            });
+
+
+            return;
+        }
+
         if(!this._entityToSend.includes(entity)) {
             this._entityToSend.push(entity);
             this._entityDataToSend.push(data);
