@@ -13,6 +13,7 @@ import { DebugComponent } from "./component/debugComponent";
 import { MovementComponent } from "./component/movementComponent";
 import { InputHandlerComponent } from "./component/inputHandlerComponent";
 import { SpriteComponent } from "./component/spriteComponent";
+import { EquipItemComponent } from "./component/equipItemComponent";
 
 export class Game {
     public get worlds() { return Array.from(this._worlds.values()); }
@@ -37,7 +38,8 @@ export class Game {
         this._entityFactory.registerComponent(SyncComponent);
         this._entityFactory.registerComponent(DebugComponent);
         this._entityFactory.registerComponent(SpriteComponent);
-
+        this._entityFactory.registerComponent(EquipItemComponent);
+        
         
 
 

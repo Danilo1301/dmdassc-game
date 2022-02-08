@@ -12185,6 +12185,20 @@ class Network {
                 console.log(entity);
             }
         }
+        if (packet.type == packet_1.PacketType.COMPONENT_EVENT) {
+            console.log("received component event packet");
+            const packetData = packet.data;
+            const player = gameface_1.Gameface.Instance.player;
+            const world = player.world;
+            const entity = world.getEntity(packetData.entity);
+            if (!entity) {
+                console.log("no entity");
+                return;
+            }
+            const component = entity.getComponent(world.game.entityFactory.getComponentByIndex(packetData.component));
+            //console.log(component)
+            component === null || component === void 0 ? void 0 : component.onReceiveComponentEvent(packetData.event, packetData.data);
+        }
         /*
         if(packet.type == PacketType.SPAWN_ENTITY) {
             const packetData: IPacketData_SpawnEntity = packet.data;
@@ -12214,22 +12228,7 @@ class Network {
 
       
 
-        if(packet.type == PacketType.COMPONENT_EVENT) {
-            console.log("received component event packet")
-
-            const packetData: IPacketData_ComponentEvent = packet.data;
-
-            const player = Gameface.Instance.player!;
-
-            const world = player.world;
-            const entity = world.getEntity(packetData.entity)!;
-
-            const component = entity.getComponent(world.game.entityFactory.getComponentByIndex(packetData.component));
-            //console.log(component)
-
-            component.onReceiveComponentEvent(packetData.event, packetData.data);
-
-        }
+       
 
         */
         //const packetType: PacketType = packet.readShort();
@@ -12604,12 +12603,13 @@ class Render {
 
         window['light'] = light;
         */
-        //
-        /*
-        const text = new pc.Entity('text');
-        app.root.addChild(text);
-        (text.addComponent('script') as pc.ScriptComponent).create('textScript');
-        */
+        const floorEntity = new pc.Entity();
+        floorEntity.addComponent("render", {
+            type: "plane",
+        });
+        floorEntity.setLocalScale(new pc.Vec3(100, 1, 100));
+        floorEntity.render.castShadows = false;
+        app.root.addChild(floorEntity);
         this.test();
     }
     static test() {
@@ -13102,6 +13102,102 @@ exports.DebugComponent = DebugComponent;
 
 /***/ }),
 
+/***/ "./src/shared/component/equipItemComponent.ts":
+/*!****************************************************!*\
+  !*** ./src/shared/component/equipItemComponent.ts ***!
+  \****************************************************/
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.EquipItemComponent = void 0;
+const render_1 = __webpack_require__(/*! ../../client/render */ "./src/client/render.ts");
+const component_1 = __webpack_require__(/*! ./component */ "./src/shared/component/component.ts");
+const debugComponent_1 = __webpack_require__(/*! ./debugComponent */ "./src/shared/component/debugComponent.ts");
+class EquipItemComponent extends component_1.Component {
+    constructor() {
+        super(...arguments);
+        this.priority = 0;
+        this.data = {
+            equipedItem: -1
+        };
+        this._lastUseTime = 0;
+        this._hasEquipedGun = false;
+    }
+    initData() {
+    }
+    init() {
+        super.init();
+    }
+    update(dt) {
+        var _a;
+        super.update(dt);
+        if (this._lastUseTime > 0) {
+            this._lastUseTime -= dt;
+        }
+        if (!this._hasEquipedGun) {
+            if (this.data.equipedItem != -1) {
+                this.equipGun();
+            }
+        }
+        (_a = this.entity.getComponent(debugComponent_1.DebugComponent)) === null || _a === void 0 ? void 0 : _a.setLineText('equipedItem', `${this.data.equipedItem}`);
+    }
+    equipGun() {
+        this._hasEquipedGun = true;
+        this.data.equipedItem = 0;
+    }
+    tryUse() {
+        if (this._lastUseTime > 0)
+            return;
+        this._lastUseTime = 0.2;
+        this.sendComponentEvent('TRY_USE', null);
+    }
+    /*
+    public tryEquip() {
+
+        if(this._hasTriedEquip) {
+            console.log("wait")
+            return;
+        }
+
+        this._hasTriedEquip = true;
+       
+        console.log("try equip")
+
+        this.sendComponentEvent('TRY_EQUIP', {id: "test"});
+    }
+    */
+    onReceiveComponentEvent(event, data, fromClient) {
+        super.onReceiveComponentEvent(event, data);
+        //console.log("received ", event, fromClient ? "has client" : "no")
+        if (event == "TRY_USE") {
+            if (!this._hasEquipedGun) {
+                this.broadcastComponentEvent('EQUIP', data, fromClient);
+            }
+            else {
+                this.broadcastComponentEvent('USE', data, fromClient);
+            }
+            //this.broadcastComponentEvent('EQUIP', data, fromClient);
+        }
+        if (event == "EQUIP") {
+            console.log("equip!");
+            this.equipGun();
+        }
+        if (event == "USE") {
+            console.log("use lol");
+            if (render_1.Render.app) {
+                const position = this.entity.transform.getPosition();
+                render_1.Render.createGunFlash(position.x, position.y);
+            }
+        }
+    }
+}
+exports.EquipItemComponent = EquipItemComponent;
+
+
+/***/ }),
+
 /***/ "./src/shared/component/inputHandlerComponent.ts":
 /*!*******************************************************!*\
   !*** ./src/shared/component/inputHandlerComponent.ts ***!
@@ -13292,8 +13388,11 @@ exports.NPCBehaviourComponent = NPCBehaviourComponent;
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.PlayerComponent = void 0;
+const input_1 = __webpack_require__(/*! ../input */ "./src/shared/input.ts");
 const component_1 = __webpack_require__(/*! ./component */ "./src/shared/component/component.ts");
 const debugComponent_1 = __webpack_require__(/*! ./debugComponent */ "./src/shared/component/debugComponent.ts");
+const equipItemComponent_1 = __webpack_require__(/*! ./equipItemComponent */ "./src/shared/component/equipItemComponent.ts");
+const inputHandlerComponent_1 = __webpack_require__(/*! ./inputHandlerComponent */ "./src/shared/component/inputHandlerComponent.ts");
 const spriteComponent_1 = __webpack_require__(/*! ./spriteComponent */ "./src/shared/component/spriteComponent.ts");
 class PlayerComponent extends component_1.Component {
     constructor() {
@@ -13313,10 +13412,18 @@ class PlayerComponent extends component_1.Component {
         super.init();
     }
     update(dt) {
-        var _a;
+        var _a, _b;
         super.update(dt);
         (_a = this.entity.getComponent(debugComponent_1.DebugComponent)) === null || _a === void 0 ? void 0 : _a.setLineText('playername', `${this.data.name}`);
         this.entity.transform.setAngle(this.entity.transform.getAimAngle());
+        const inputHandlerComponent = this.entity.getComponent(inputHandlerComponent_1.InputHandlerComponent);
+        if (inputHandlerComponent) {
+            if (inputHandlerComponent.enabled) {
+                if (input_1.Input.mouseDown) {
+                    (_b = this.entity.getComponent(equipItemComponent_1.EquipItemComponent)) === null || _b === void 0 ? void 0 : _b.tryUse();
+                }
+            }
+        }
         //this.entity.getComponent(DebugComponent)?.setLineText('playercolor', `${this.data.color}`)
     }
 }
@@ -13919,6 +14026,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.EntityChar = void 0;
 const collisionComponent_1 = __webpack_require__(/*! ../component/collisionComponent */ "./src/shared/component/collisionComponent.ts");
 const debugComponent_1 = __webpack_require__(/*! ../component/debugComponent */ "./src/shared/component/debugComponent.ts");
+const equipItemComponent_1 = __webpack_require__(/*! ../component/equipItemComponent */ "./src/shared/component/equipItemComponent.ts");
 const inputHandlerComponent_1 = __webpack_require__(/*! ../component/inputHandlerComponent */ "./src/shared/component/inputHandlerComponent.ts");
 const movementComponent_1 = __webpack_require__(/*! ../component/movementComponent */ "./src/shared/component/movementComponent.ts");
 const playerComponent_1 = __webpack_require__(/*! ../component/playerComponent */ "./src/shared/component/playerComponent.ts");
@@ -13931,6 +14039,7 @@ class EntityChar extends entity_1.Entity {
         this.addComponent(new inputHandlerComponent_1.InputHandlerComponent());
         this.addComponent(new playerComponent_1.PlayerComponent());
         this.addComponent(new debugComponent_1.DebugComponent());
+        this.addComponent(new equipItemComponent_1.EquipItemComponent());
         //this.addComponent(new InputHandlerComponent());
         const sprite = this.addComponent(new spriteComponent_1.SpriteComponent());
         const collision = this.addComponent(new collisionComponent_1.CollisionComponent());
@@ -14060,6 +14169,7 @@ const debugComponent_1 = __webpack_require__(/*! ./component/debugComponent */ "
 const movementComponent_1 = __webpack_require__(/*! ./component/movementComponent */ "./src/shared/component/movementComponent.ts");
 const inputHandlerComponent_1 = __webpack_require__(/*! ./component/inputHandlerComponent */ "./src/shared/component/inputHandlerComponent.ts");
 const spriteComponent_1 = __webpack_require__(/*! ./component/spriteComponent */ "./src/shared/component/spriteComponent.ts");
+const equipItemComponent_1 = __webpack_require__(/*! ./component/equipItemComponent */ "./src/shared/component/equipItemComponent.ts");
 class Game {
     constructor() {
         this._worlds = new Map();
@@ -14075,6 +14185,7 @@ class Game {
         this._entityFactory.registerComponent(syncComponent_1.SyncComponent);
         this._entityFactory.registerComponent(debugComponent_1.DebugComponent);
         this._entityFactory.registerComponent(spriteComponent_1.SpriteComponent);
+        this._entityFactory.registerComponent(equipItemComponent_1.EquipItemComponent);
         this._entityFactory.registerEntity(entityChar_1.EntityChar);
         this._entityFactory.registerEntity(entityPlayer_1.EntityPlayer);
         this._entityFactory.registerEntity(entityObject_1.EntityObject);

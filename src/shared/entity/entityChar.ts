@@ -1,5 +1,6 @@
 import { CollisionComponent } from "../component/collisionComponent";
 import { DebugComponent } from "../component/debugComponent";
+import { EquipItemComponent } from "../component/equipItemComponent";
 import { InputHandlerComponent } from "../component/inputHandlerComponent";
 import { MovementComponent } from "../component/movementComponent";
 import { PlayerComponent } from "../component/playerComponent";
@@ -15,6 +16,7 @@ export class EntityChar extends Entity {
         this.addComponent(new InputHandlerComponent());
         this.addComponent(new PlayerComponent());
         this.addComponent(new DebugComponent());
+        this.addComponent(new EquipItemComponent());
         //this.addComponent(new InputHandlerComponent());
 
         const sprite = this.addComponent(new SpriteComponent());

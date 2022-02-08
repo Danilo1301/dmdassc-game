@@ -7,6 +7,8 @@ import { WorldSyncType } from '../world';
 import { CollisionComponent } from './collisionComponent';
 import { Component } from "./component";
 import { DebugComponent } from './debugComponent';
+import { EquipItemComponent } from './equipItemComponent';
+import { InputHandlerComponent } from './inputHandlerComponent';
 import { SpriteComponent } from './spriteComponent';
 import { SyncType } from './syncComponent';
 
@@ -47,6 +49,18 @@ export class PlayerComponent extends Component {
 
         this.entity.transform.setAngle(this.entity.transform.getAimAngle())
 
+        const inputHandlerComponent = this.entity.getComponent(InputHandlerComponent);
+
+        if(inputHandlerComponent) {
+            if(inputHandlerComponent.enabled) {
+
+                if(Input.mouseDown) {
+                    this.entity.getComponent(EquipItemComponent)?.tryUse();
+                }
+
+            }
+        }
+        
         //this.entity.getComponent(DebugComponent)?.setLineText('playercolor', `${this.data.color}`)
     }
 }

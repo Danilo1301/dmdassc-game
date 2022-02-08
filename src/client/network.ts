@@ -165,6 +165,28 @@ export class Network {
             }
         }
 
+        if(packet.type == PacketType.COMPONENT_EVENT) {
+            console.log("received component event packet")
+
+            const packetData: IPacketData_ComponentEvent = packet.data;
+
+            const player = Gameface.Instance.player!;
+
+            const world = player.world;
+            const entity = world.getEntity(packetData.entity);
+
+            if(!entity) {
+                console.log("no entity")
+                return;
+            }
+
+            const component = entity.getComponent(world.game.entityFactory.getComponentByIndex(packetData.component));
+            //console.log(component)
+
+            component?.onReceiveComponentEvent(packetData.event, packetData.data);
+
+        }
+
         /*
         if(packet.type == PacketType.SPAWN_ENTITY) {
             const packetData: IPacketData_SpawnEntity = packet.data;
@@ -194,22 +216,7 @@ export class Network {
 
       
 
-        if(packet.type == PacketType.COMPONENT_EVENT) {
-            console.log("received component event packet")
-
-            const packetData: IPacketData_ComponentEvent = packet.data;
-
-            const player = Gameface.Instance.player!;
-
-            const world = player.world;
-            const entity = world.getEntity(packetData.entity)!;
-
-            const component = entity.getComponent(world.game.entityFactory.getComponentByIndex(packetData.component));
-            //console.log(component)
-
-            component.onReceiveComponentEvent(packetData.event, packetData.data);
-
-        }
+       
 
         */
        

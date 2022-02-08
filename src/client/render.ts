@@ -138,14 +138,16 @@ export class Render {
         */
         
 
-        //
+       
+        const floorEntity = new pc.Entity();
+        
+        floorEntity.addComponent("render", {
+            type: "plane",
+        });
+        floorEntity.setLocalScale(new pc.Vec3(100, 1, 100));
+        floorEntity.render!.castShadows = false
 
-
-        /*
-        const text = new pc.Entity('text');
-        app.root.addChild(text);
-        (text.addComponent('script') as pc.ScriptComponent).create('textScript');
-        */
+        app.root.addChild(floorEntity);
    
         this.test();
     }

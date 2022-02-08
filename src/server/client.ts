@@ -133,6 +133,26 @@ export class Client {
 
         }
 
+        if(packet.type == PacketType.COMPONENT_EVENT) {
+            const packetData: IPacketData_ComponentEvent = packet.data;
+
+            console.log(packetData)
+
+            const world = this.player!.world;
+            const entity = world.getEntity(packetData.entity);
+
+            if(!entity) {
+                console.log("no entity")
+                return;
+            }
+
+            const component = entity.getComponent(world.game.entityFactory.getComponentByIndex(packetData.component));
+            //console.log(component)
+
+            component?.onReceiveComponentEvent(packetData.event, packetData.data, this);
+
+        }
+
 
         /*
 
@@ -163,20 +183,7 @@ export class Client {
 
         }
 
-        if(packet.type == PacketType.COMPONENT_EVENT) {
-            const packetData: IPacketData_ComponentEvent = packet.data;
-
-            console.log(packetData)
-
-            const world = this.player!.world;
-            const entity = world.getEntity(packetData.entity)!;
-
-            const component = entity.getComponent(world.game.entityFactory.getComponentByIndex(packetData.component));
-            //console.log(component)
-
-            component.onReceiveComponentEvent(packetData.event, packetData.data, this);
-
-        }
+        
         */
 
         /*
