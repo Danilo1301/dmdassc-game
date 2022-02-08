@@ -141,11 +141,14 @@ export class Render {
        
         const floorEntity = new pc.Entity();
         
+        /*
         floorEntity.addComponent("render", {
             type: "plane",
         });
-        floorEntity.setLocalScale(new pc.Vec3(100, 1, 100));
-        floorEntity.render!.castShadows = false
+
+        */
+        //floorEntity.setLocalScale(new pc.Vec3(100, 1, 100));
+        //floorEntity.render!.castShadows = false
 
         app.root.addChild(floorEntity);
    
