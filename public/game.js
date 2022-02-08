@@ -12026,10 +12026,14 @@ class Gameface {
         */
     }
     setPlayer(entity) {
-        var _a, _b;
+        var _a;
         this.player = entity;
         (_a = this.player.getComponent(inputHandlerComponent_1.InputHandlerComponent)) === null || _a === void 0 ? void 0 : _a.setEnabled(true);
-        (_b = this.player.getComponent(syncComponent_1.SyncComponent)) === null || _b === void 0 ? void 0 : _b.dontSync();
+        //this.player.getComponent(SyncComponent)?.dontSync();
+        const syncComponent = this.player.getComponent(syncComponent_1.SyncComponent);
+        if (syncComponent) {
+            syncComponent.syncType = syncComponent_1.SyncType.DONT_SYNC;
+        }
         console.warn("SETPLAYER");
     }
     checkControllingEntity() {
@@ -12698,28 +12702,10 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.UI = exports.UIText = void 0;
+exports.UI = void 0;
 const pc = __importStar(__webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs"));
 const render_1 = __webpack_require__(/*! ../render */ "./src/client/render.ts");
-class UIText {
-    constructor(x, y, text, fontAsset) {
-        const entity = new pc.Entity('ui-text');
-        entity.addComponent("element", {
-            //anchor: new pc.Vec4(0.5, 0.5, 0.5, 0.5), // centered anchor
-            fontAsset: fontAsset,
-            fontSize: 10,
-            //pivot: new pc.Vec2(0.5, 0.5),            // centered pivot
-            text: text,
-            type: pc.ELEMENTTYPE_TEXT
-        });
-        this._entity = entity;
-    }
-    get entity() { return this._entity; }
-    setPosition(x, y) {
-        this.entity.setLocalPosition(x, y, 0);
-    }
-}
-exports.UIText = UIText;
+const uiText_1 = __webpack_require__(/*! ./uiText */ "./src/client/ui/uiText.ts");
 class UI {
     static get screen() { return this._screen; }
     static init(app) {
@@ -12736,7 +12722,7 @@ class UI {
         window['UI'] = UI;
     }
     static addText(x, y, text) {
-        const uiText = new UIText(x, y, text, this.getFontAsset());
+        const uiText = new uiText_1.UIText(x, y, text, this.getFontAsset());
         uiText.setPosition(x, y);
         this._screen.entity.addChild(uiText.entity);
         return uiText;
@@ -12762,6 +12748,62 @@ class UI {
     }
 }
 exports.UI = UI;
+
+
+/***/ }),
+
+/***/ "./src/client/ui/uiText.ts":
+/*!*********************************!*\
+  !*** ./src/client/ui/uiText.ts ***!
+  \*********************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.UIText = void 0;
+const pc = __importStar(__webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs"));
+class UIText {
+    constructor(x, y, text, fontAsset) {
+        const entity = new pc.Entity('ui-text');
+        entity.addComponent("element", {
+            //anchor: new pc.Vec4(0.5, 0.5, 0.5, 0.5), // centered anchor
+            fontAsset: fontAsset,
+            fontSize: 10,
+            pivot: new pc.Vec2(0.5, 1),
+            text: text,
+            type: pc.ELEMENTTYPE_TEXT
+        });
+        this._entity = entity;
+    }
+    get entity() { return this._entity; }
+    setPosition(x, y) {
+        this.entity.setLocalPosition(x, y, 0);
+    }
+    destroy() {
+        this.entity.destroy();
+    }
+}
+exports.UIText = UIText;
 
 
 /***/ }),
@@ -12991,12 +13033,39 @@ class DebugComponent extends component_1.Component {
     setLineText(line, text) {
         this._textLines.set(line, text);
     }
+    getLineEndPoint(start, angle, distance) {
+        return new pc.Vec3(start.x + (Math.cos(angle) * distance), 0, start.z + (Math.sin(angle) * distance));
+    }
+    drawAimDirLine() {
+        var app = render_1.Render.app;
+        var position = this.entity.pcEntity.getPosition();
+        var distance = 30;
+        var angle = this.entity.transform.getAimAngle();
+        var color = pc.Color.BLUE;
+        var start = new pc.Vec3(position.x, 0, position.z);
+        var end = this.getLineEndPoint(start, angle, distance * 0.01);
+        //var worldLayer = app.scene.layers.getLayerById(pc.LAYERID_WORLD);
+        app.drawLine(start, end, color, false, undefined);
+    }
+    drawDirLine() {
+        var app = render_1.Render.app;
+        var position = this.entity.pcEntity.getPosition();
+        var distance = 30;
+        var angle = this.entity.transform.getAngle();
+        var color = pc.Color.RED;
+        var start = new pc.Vec3(position.x, 0, position.z);
+        var end = this.getLineEndPoint(start, angle, distance * 0.01);
+        //var worldLayer = app.scene.layers.getLayerById(pc.LAYERID_WORLD);
+        app.drawLine(start, end, color, false, undefined);
+    }
     render(dt) {
         if (!render_1.Render.app)
             return;
+        this.drawDirLine();
+        this.drawAimDirLine();
         if (!this._uitext) {
             this._uitext = ui_1.UI.addText(0, 0, '');
-            this._uitext.entity.element.fontSize = 7;
+            this._uitext.entity.element.fontSize = 10;
         }
         //const position = this.entity.transform.getPosition();
         var worldPos = this.entity.pcEntity.getPosition();
@@ -13023,7 +13092,9 @@ class DebugComponent extends component_1.Component {
     destroy() {
         var _a;
         super.destroy();
-        (_a = this._uitext) === null || _a === void 0 ? void 0 : _a.setPosition(100, 0);
+        //this._uitext?.setPosition(100, 0);
+        (_a = this._uitext) === null || _a === void 0 ? void 0 : _a.destroy();
+        this._uitext = undefined;
     }
 }
 exports.DebugComponent = DebugComponent;
@@ -13052,32 +13123,6 @@ class InputHandlerComponent extends component_1.Component {
             v: 0
         };
         this.enabled = false;
-        /*
-        public serialize(packet: Packet): any {
-            packet.writeDouble(this.horizontal);
-            packet.writeDouble(this.vertical);
-            return packet;
-        }
-    
-        public unserialize(packet: Packet): any {
-            const horizontal = packet.readDouble();
-            const vertical = packet.readDouble();
-            
-            let sync = true;
-    
-            if(this.entity.hasComponent(SyncComponent)) {
-                if(this.entity.getComponent(SyncComponent).syncType == SyncType.DONT_SYNC) sync = false;
-            }
-            
-            if(sync) {
-                this.horizontal = horizontal;
-                this.vertical = vertical;
-            }
-            
-    
-            return packet;
-        }
-        */
     }
     get horizontal() { return this.data.h; }
     get vertical() { return this.data.v; }
@@ -13098,21 +13143,7 @@ class InputHandlerComponent extends component_1.Component {
             const KEY_DOWN = 83;
             this.horizontal = (input_1.Input.getKeyDown(KEY_RIGHT) ? 1 : 0) + ((input_1.Input.getKeyDown(KEY_LEFT) ? -1 : 0));
             this.vertical = (input_1.Input.getKeyDown(KEY_DOWN) ? 1 : 0) + ((input_1.Input.getKeyDown(KEY_UP) ? -1 : 0));
-            /*
-            if(Render.app) {
-                var graphicsDevice = Render.app.graphicsDevice;
-                var screenCenter = new pc.Vec2(graphicsDevice.width / 2, graphicsDevice.height / 2)
-        
-                var direction = new pc.Vec2();
-                direction.sub2(Input.mousePosition, screenCenter);
-                direction.normalize();
-        
-                var angle = Math.atan2(direction.y, direction.x);
-    
-                this.entity.transform.setAngle(angle)
-            }
-            */
-            //console.log(this.horizontal, this.vertical)
+            this.entity.transform.setAimAngle(input_1.Input.getAimAngle());
         }
     }
 }
@@ -13208,7 +13239,7 @@ class NPCBehaviourComponent extends component_1.Component {
     processNewPosition(dt) {
         this._newPositionTime -= dt;
         if (this._newPositionTime <= 0) {
-            this._newPositionTime = Math.random() * 5;
+            this._newPositionTime = Math.random() * 10;
             const range = 2000;
             this._targetPosition.x = Math.random() * range - (range / 2);
             this._targetPosition.y = Math.random() * range - (range / 2);
@@ -13282,10 +13313,11 @@ class PlayerComponent extends component_1.Component {
         super.init();
     }
     update(dt) {
-        var _a, _b;
+        var _a;
         super.update(dt);
         (_a = this.entity.getComponent(debugComponent_1.DebugComponent)) === null || _a === void 0 ? void 0 : _a.setLineText('playername', `${this.data.name}`);
-        (_b = this.entity.getComponent(debugComponent_1.DebugComponent)) === null || _b === void 0 ? void 0 : _b.setLineText('playercolor', `${this.data.color}`);
+        this.entity.transform.setAngle(this.entity.transform.getAimAngle());
+        //this.entity.getComponent(DebugComponent)?.setLineText('playercolor', `${this.data.color}`)
     }
 }
 exports.PlayerComponent = PlayerComponent;
@@ -13391,6 +13423,7 @@ class SyncComponent extends component_1.Component {
         this._targetPosition = new pc.Vec2();
         this._targetVelocity = new pc.Vec2();
         this._targetAngle = 0;
+        this._targetAimAngle = 0;
         this._lastUpdated = 0;
     }
     init() {
@@ -13399,6 +13432,16 @@ class SyncComponent extends component_1.Component {
     processSync() {
         if (this.syncType == SyncType.DONT_SYNC)
             return;
+        if (this.syncType == SyncType.CLIENT_SYNC) {
+            this.syncClient();
+        }
+        if (this.syncType == SyncType.SERVER_SYNC) {
+            this.syncHost();
+        }
+        //console.log(velX, velY)
+        //transform.setAngularVelocity(0);
+    }
+    syncClient() {
         const now = Date.now();
         let tl = 800;
         let lerpFactor = (1 - (Math.min(tl, now - this._lastUpdated) / tl));
@@ -13416,14 +13459,28 @@ class SyncComponent extends component_1.Component {
         let angle = pc.math.lerpAngle(transform.getAngle(), this._targetAngle, 0.1);
         if (Math.abs(angle - this._targetAngle) >= Math.PI / 4)
             angle = this._targetAngle;
+        let aimAngle = pc.math.lerpAngle(transform.getAimAngle(), this._targetAimAngle, 0.5);
+        if (Math.abs(aimAngle - this._targetAimAngle) >= Math.PI / 4)
+            aimAngle = this._targetAimAngle;
         const velocity = transform.getVelocity();
         const velX = pc.math.lerp(velocity.x, this._targetVelocity.x, 0.8);
         const velY = pc.math.lerp(velocity.y, this._targetVelocity.y, 0.8);
         transform.setPosition(x, y);
         transform.setAngle(angle);
+        transform.setAimAngle(aimAngle);
         transform.setVelocity(velX, velY);
-        //console.log(velX, velY)
-        //transform.setAngularVelocity(0);
+    }
+    syncHost() {
+        /*
+        const transform = this.entity.transform;
+        const position = transform.getPosition();
+
+        const distance = this._targetPosition.distance(position);
+
+        if(distance > 80) {
+            transform.setPosition(this._targetPosition.x, this._targetPosition.y);
+        }
+        */
     }
     preupdate(dt) {
         super.preupdate(dt);
@@ -13436,6 +13493,10 @@ class SyncComponent extends component_1.Component {
     setAngle(angle) {
         this._lastUpdated = Date.now();
         this._targetAngle = angle;
+    }
+    setAimAngle(angle) {
+        this._lastUpdated = Date.now();
+        this._targetAimAngle = angle;
     }
     setVelocity(x, y) {
         this._lastUpdated = Date.now();
@@ -13508,7 +13569,7 @@ class TransformComponent extends component_1.Component {
         this.data.angle = angle;
     }
     getAimAngle() {
-        return this.data.angle;
+        return this.data.aimAngle;
     }
     setAimAngle(angle) {
         this.data.aimAngle = angle;
@@ -13731,6 +13792,8 @@ class Entity {
             const transform = this.transform;
             const angle = transform.getAngle();
             const toSyncAngle = transformData.angle != undefined ? transformData.angle : angle;
+            const aimAngle = transform.getAimAngle();
+            const toSyncAimAngle = transformData.aimAngle != undefined ? transformData.aimAngle : aimAngle;
             const position = transform.getPosition();
             const toSyncPosition = {
                 x: transformData.x != undefined ? transformData.x : position.x,
@@ -13748,9 +13811,11 @@ class Entity {
                 transform.setPosition(position.x, position.y);
                 transform.setVelocity(velocity.x, velocity.y);
                 transform.setAngle(angle);
+                transform.setAimAngle(aimAngle);
                 syncComponent.setPosition(toSyncPosition.x, toSyncPosition.y);
                 syncComponent.setVelocity(toSyncVelocity.x, toSyncVelocity.y);
                 syncComponent.setAngle(toSyncAngle);
+                syncComponent.setAimAngle(toSyncAimAngle);
             }
         }
         //
@@ -13870,7 +13935,7 @@ class EntityChar extends entity_1.Entity {
         const sprite = this.addComponent(new spriteComponent_1.SpriteComponent());
         const collision = this.addComponent(new collisionComponent_1.CollisionComponent());
         //collision.options.frictionAir = 0.2;
-        collision.addCircle('default', 0, 0, 30);
+        collision.addCircle('default', 0, 0, 20);
     }
 }
 exports.EntityChar = EntityChar;
@@ -14089,6 +14154,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.Input = void 0;
 const pc = __importStar(__webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs"));
+const render_1 = __webpack_require__(/*! ../client/render */ "./src/client/render.ts");
 const entity_1 = __webpack_require__(/*! ./entity/entity */ "./src/shared/entity/entity.ts");
 const eventHandler_1 = __webpack_require__(/*! ./eventHandler */ "./src/shared/eventHandler.ts");
 class Input {
@@ -14101,9 +14167,17 @@ class Input {
         app.mouse.on(pc.EVENT_MOUSEMOVE, this.onMouseMove, this);
         app.mouse.on(pc.EVENT_MOUSEDOWN, this.onMouseDown, this);
         app.mouse.on(pc.EVENT_MOUSEUP, this.onMouseUp, this);
-        this.events.on("changed", (input) => {
-            console.log("tested", input);
-        });
+    }
+    static getAimAngle() {
+        if (!render_1.Render.app)
+            return 0;
+        var graphicsDevice = render_1.Render.app.graphicsDevice;
+        var screenCenter = new pc.Vec2(graphicsDevice.width / 2, graphicsDevice.height / 2);
+        var direction = new pc.Vec2();
+        direction.sub2(Input.mousePosition, screenCenter);
+        direction.normalize();
+        var angle = Math.atan2(direction.y, direction.x);
+        return angle;
     }
     static updateMousePosition(event) {
         this._mousePosition.set(event.x, event.y);
@@ -14131,6 +14205,7 @@ class Input {
         let inputData = {
             h: this.getHorizontal(),
             v: this.getVertical(),
+            aa: this.getAimAngle()
             //mx: this.mousePosition.x,
             //my: this.mousePosition.y
         };

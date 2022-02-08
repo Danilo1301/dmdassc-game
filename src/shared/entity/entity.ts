@@ -141,6 +141,10 @@ export class Entity {
             const angle = transform.getAngle();
             const toSyncAngle = transformData.angle != undefined ? transformData.angle : angle;
     
+            const aimAngle = transform.getAimAngle();
+            const toSyncAimAngle = transformData.aimAngle != undefined ? transformData.aimAngle : aimAngle;
+    
+
             const position = transform.getPosition();
             const toSyncPosition = {
                 x: transformData.x != undefined ? transformData.x : position.x,
@@ -160,13 +164,17 @@ export class Entity {
             const syncComponent = this.getComponent(SyncComponent);
     
             if(syncComponent) {
+                
                 transform.setPosition(position.x, position.y);
                 transform.setVelocity(velocity.x, velocity.y);
                 transform.setAngle(angle);
+                transform.setAimAngle(aimAngle);
+                
                 
                 syncComponent.setPosition(toSyncPosition.x, toSyncPosition.y);
                 syncComponent.setVelocity(toSyncVelocity.x, toSyncVelocity.y);
                 syncComponent.setAngle(toSyncAngle);
+                syncComponent.setAimAngle(toSyncAimAngle);
             }
         }
 

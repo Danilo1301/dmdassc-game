@@ -1,7 +1,8 @@
 import Matter from 'matter-js';
 import * as pc from 'playcanvas';
 import { Render } from '../../client/render';
-import { UI, UIText } from '../../client/ui/ui';
+import { UI } from '../../client/ui/ui';
+import { UIText } from '../../client/ui/uiText';
 import { Entity } from "../entity/entity";
 import { WorldSyncType } from '../world';
 import { CollisionComponent } from './collisionComponent';
@@ -30,14 +31,54 @@ export class DebugComponent extends Component {
         this._textLines.set(line, text);
     }
 
+    private getLineEndPoint(start: pc.Vec3, angle: number, distance: number) {
+        return new pc.Vec3(
+            start.x + (Math.cos(angle) * distance),
+            0,
+            start.z + (Math.sin(angle) * distance)
+        )
+    }
+
+    private drawAimDirLine() {
+        var app = Render.app;
+        var position =  this.entity.pcEntity.getPosition();
+
+        var distance = 30;
+        var angle = this.entity.transform.getAimAngle();
+        var color = pc.Color.BLUE;
+        var start = new pc.Vec3(position.x, 0, position.z);
+        var end = this.getLineEndPoint(start, angle, distance * 0.01);
+
+        //var worldLayer = app.scene.layers.getLayerById(pc.LAYERID_WORLD);
+        app.drawLine(start, end, color, false, undefined);
+    }
+
+    private drawDirLine() {
+        var app = Render.app;
+        var position =  this.entity.pcEntity.getPosition();
+
+        var distance = 30;
+        var angle = this.entity.transform.getAngle();
+        var color = pc.Color.RED;
+        var start = new pc.Vec3(position.x, 0, position.z);
+        var end = this.getLineEndPoint(start, angle, distance * 0.01);
+
+        //var worldLayer = app.scene.layers.getLayerById(pc.LAYERID_WORLD);
+        app.drawLine(start, end, color, false, undefined);
+    }
+
+
     public render(dt: number): void {
 
         if(!Render.app) return;
 
+        this.drawDirLine();
+        this.drawAimDirLine();
+
         if(!this._uitext) {
 
             this._uitext = UI.addText(0, 0, '');
-            this._uitext.entity.element.fontSize = 7;
+            this._uitext.entity.element.fontSize = 10;
         }
 
 
@@ -77,6 +118,8 @@ export class DebugComponent extends Component {
     public destroy(): void {
         super.destroy();
 
-        this._uitext?.setPosition(100, 0)
+        //this._uitext?.setPosition(100, 0);
+        this._uitext?.destroy();
+        this._uitext = undefined;
     }
 }

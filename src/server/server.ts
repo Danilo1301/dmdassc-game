@@ -144,8 +144,8 @@ export class Server {
 
         const player = world.spawnEntity(EntityPlayer);
         const syncComponent = player.addComponent(new SyncComponent());
-        syncComponent.positionLerp = 0.3;
-        syncComponent.syncType = SyncType.SERVER_SYNC;
+        syncComponent.positionLerp = 0.8;
+        syncComponent.syncType = SyncType.CLIENT_SYNC;
 
         client.checkStreamedEntities();
         client.setPlayer(player);

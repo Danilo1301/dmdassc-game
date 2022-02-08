@@ -1,29 +1,6 @@
 import * as pc from 'playcanvas'
 import { Render } from '../render';
-
-export class UIText {
-    public get entity() { return this._entity; }
-
-    private _entity: pc.Entity;
-
-    constructor(x: number, y: number, text: string, fontAsset) {
-        const entity = new pc.Entity('ui-text');
-        entity.addComponent("element", {
-            //anchor: new pc.Vec4(0.5, 0.5, 0.5, 0.5), // centered anchor
-            fontAsset: fontAsset,
-            fontSize: 10,
-            //pivot: new pc.Vec2(0.5, 0.5),            // centered pivot
-            text: text,
-            type: pc.ELEMENTTYPE_TEXT
-        });
-
-        this._entity = entity;
-    }
-
-    public setPosition(x: number, y: number) {
-        this.entity.setLocalPosition(x, y, 0);
-    }
-}
+import { UIText } from './uiText';
 
 export class UI {
     public static get screen() { return this._screen; }

@@ -38,7 +38,6 @@ export class Network {
         })
 
         Input.events.on("changed", (changed: InputData) => {
-
             if(changed == undefined) return;
 
             this.sendPacket<IPacketData_InputData>(PacketType.INPUT_DATA, {d: changed});
@@ -68,7 +67,7 @@ export class Network {
     public sendPlayerData(entity: Entity) {
 
         const position = entity.transform.getPosition();
-
+        
         this.sendPacket<IPacketData_InputData>(PacketType.INPUT_DATA, {d: {
             x: position.x,
             y: position.y

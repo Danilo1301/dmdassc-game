@@ -22,6 +22,6 @@ export class EntityChar extends Entity {
 
         const collision = this.addComponent(new CollisionComponent());
         //collision.options.frictionAir = 0.2;
-        collision.addCircle('default', 0, 0, 30);
+        collision.addCircle('default', 0, 0, 20);
     }
 }

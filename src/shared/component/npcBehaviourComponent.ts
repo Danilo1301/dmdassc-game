@@ -30,7 +30,7 @@ export class NPCBehaviourComponent extends Component {
     private processNewPosition(dt: number) {
         this._newPositionTime -= dt;
         if(this._newPositionTime <= 0) {
-            this._newPositionTime = Math.random()*5;
+            this._newPositionTime = Math.random()*10;
 
             const range = 2000;
 

@@ -122,7 +122,13 @@ export class Gameface {
         this.player = entity;
 
         this.player.getComponent(InputHandlerComponent)?.setEnabled(true);
-        this.player.getComponent(SyncComponent)?.dontSync();
+        //this.player.getComponent(SyncComponent)?.dontSync();
+
+        const syncComponent = this.player.getComponent(SyncComponent);
+
+        if(syncComponent) {
+            syncComponent.syncType = SyncType.DONT_SYNC;
+        }
 
         console.warn("SETPLAYER")
     }

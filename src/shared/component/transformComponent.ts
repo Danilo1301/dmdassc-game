@@ -37,7 +37,7 @@ export class TransformComponent extends Component {
     }
 
     public getAimAngle() {
-        return this.data.angle;
+        return this.data.aimAngle;
     }
 
     public setAimAngle(angle: number) {

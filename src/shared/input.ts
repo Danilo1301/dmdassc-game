@@ -1,14 +1,16 @@
 import * as pc from 'playcanvas'
+import { Render } from '../client/render';
 import { DataWatcher } from './entity/entity';
 import { EventHandler } from './eventHandler';
 
 export interface InputData {
     h?: number
     v?: number
-    mx?: number
-    my?: number
+    //mx?: number
+    //my?: number
     x?: number
     y?: number
+    aa?: number
 }
 
 export class Input {
@@ -32,12 +34,22 @@ export class Input {
         app.mouse.on(pc.EVENT_MOUSEMOVE, this.onMouseMove, this);
         app.mouse.on(pc.EVENT_MOUSEDOWN, this.onMouseDown, this);
         app.mouse.on(pc.EVENT_MOUSEUP, this.onMouseUp, this);
-
-        this.events.on("changed", (input) => {
-            console.log("tested", input)
-        })
     }
 
+    public static getAimAngle() {
+        if(!Render.app) return 0;
+
+        var graphicsDevice = Render.app.graphicsDevice;
+        var screenCenter = new pc.Vec2(graphicsDevice.width / 2, graphicsDevice.height / 2)
+
+        var direction = new pc.Vec2();
+        direction.sub2(Input.mousePosition, screenCenter);
+        direction.normalize();
+
+        var angle = Math.atan2(direction.y, direction.x);
+
+        return angle;
+    }
     
     private static updateMousePosition(event: MouseEvent) {
         this._mousePosition.set(event.x, event.y)
@@ -74,6 +86,7 @@ export class Input {
         let inputData: InputData = {
             h: this.getHorizontal(),
             v: this.getVertical(),
+            aa: this.getAimAngle()
             //mx: this.mousePosition.x,
             //my: this.mousePosition.y
         }

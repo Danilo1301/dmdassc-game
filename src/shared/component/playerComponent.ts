@@ -1,6 +1,8 @@
 import Matter from 'matter-js';
 import * as pc from 'playcanvas';
+import { Render } from '../../client/render';
 import { Entity } from "../entity/entity";
+import { Input } from '../input';
 import { WorldSyncType } from '../world';
 import { CollisionComponent } from './collisionComponent';
 import { Component } from "./component";
@@ -42,6 +44,9 @@ export class PlayerComponent extends Component {
         super.update(dt);
 
         this.entity.getComponent(DebugComponent)?.setLineText('playername', `${this.data.name}`)
-        this.entity.getComponent(DebugComponent)?.setLineText('playercolor', `${this.data.color}`)
+
+        this.entity.transform.setAngle(this.entity.transform.getAimAngle())
+
+        //this.entity.getComponent(DebugComponent)?.setLineText('playercolor', `${this.data.color}`)
     }
 }

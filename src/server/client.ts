@@ -116,7 +116,18 @@ export class Client {
                     y: packetData.d.y != undefined ? packetData.d.y : currentPos.y
                 }
 
+                const aimAngle = packetData.d.aa != undefined ? packetData.d.aa : player.transform.getAimAngle();
+                
                 player.getComponent(SyncComponent)!.setPosition(newPosition.x, newPosition.y);
+                player.getComponent(SyncComponent)!.setAimAngle(aimAngle);
+
+
+
+
+                /*
+                
+                player.transform.setAimAngle(aimAngle)
+                */
             }
             //console.log(packet)
 
