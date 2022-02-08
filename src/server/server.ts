@@ -7,6 +7,7 @@ import { Component } from '../shared/component/component';
 import { IPacketData_ComponentEvent, IPacketData_EntityData, PacketType } from '../shared/packet';
 import { EntityPlayer } from '../shared/entity/entityPlayer';
 import { SyncComponent, SyncType } from '../shared/component/syncComponent';
+import { PlayerComponent } from '../shared/component/playerComponent';
 
 export class Server {
     public get id() { return this._id; }
@@ -146,6 +147,8 @@ export class Server {
         const syncComponent = player.addComponent(new SyncComponent());
         syncComponent.positionLerp = 0.8;
         syncComponent.syncType = SyncType.CLIENT_SYNC;
+
+        player.getComponent(PlayerComponent)!.data.name = `Player`;
 
         client.checkStreamedEntities();
         client.setPlayer(player);

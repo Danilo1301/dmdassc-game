@@ -94,14 +94,14 @@ export class EquipItemComponent extends Component {
 
 
         if(event == "EQUIP") {
-            console.log("equip!")
+            //console.log("equip!")
 
             this.equipGun();
         }
 
         if(event == "USE") {
 
-            console.log("use lol")
+            //console.log("use lol")
 
             if(Render.app) {
                 const position = this.entity.transform.getPosition();

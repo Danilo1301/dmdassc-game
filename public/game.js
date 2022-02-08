@@ -12189,6 +12189,8 @@ class Network {
             console.log("received component event packet");
             const packetData = packet.data;
             const player = gameface_1.Gameface.Instance.player;
+            if (!player)
+                return;
             const world = player.world;
             const entity = world.getEntity(packetData.entity);
             if (!entity) {
@@ -13181,11 +13183,11 @@ class EquipItemComponent extends component_1.Component {
             //this.broadcastComponentEvent('EQUIP', data, fromClient);
         }
         if (event == "EQUIP") {
-            console.log("equip!");
+            //console.log("equip!")
             this.equipGun();
         }
         if (event == "USE") {
-            console.log("use lol");
+            //console.log("use lol")
             if (render_1.Render.app) {
                 const position = this.entity.transform.getPosition();
                 render_1.Render.createGunFlash(position.x, position.y);
@@ -14490,12 +14492,32 @@ export class Packet {
 
 "use strict";
 
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.World = exports.WorldSyncType = void 0;
 const matter_js_1 = __importDefault(__webpack_require__(/*! matter-js */ "./node_modules/matter-js/build/matter.js"));
+const pc = __importStar(__webpack_require__(/*! playcanvas */ "./node_modules/playcanvas/build/playcanvas.mjs"));
 const worldEvent_1 = __webpack_require__(/*! ./worldEvent */ "./src/shared/worldEvent.ts");
 const gameface_1 = __webpack_require__(/*! ../client/gameface */ "./src/client/gameface.ts");
 const packet_1 = __webpack_require__(/*! ./packet */ "./src/shared/packet.ts");
@@ -14506,6 +14528,7 @@ const playerComponent_1 = __webpack_require__(/*! ./component/playerComponent */
 const entityObject_1 = __webpack_require__(/*! ./entity/entityObject */ "./src/shared/entity/entityObject.ts");
 const eventHandler_1 = __webpack_require__(/*! ./eventHandler */ "./src/shared/eventHandler.ts");
 const movementComponent_1 = __webpack_require__(/*! ./component/movementComponent */ "./src/shared/component/movementComponent.ts");
+const equipItemComponent_1 = __webpack_require__(/*! ./component/equipItemComponent */ "./src/shared/component/equipItemComponent.ts");
 let testu = 0;
 let testd = 0;
 var WorldSyncType;
@@ -14626,11 +14649,26 @@ class World {
         }, 1000);
     }
     spawnEntities() {
+        const keepInCenter = (entity) => {
+            setInterval(() => {
+                const distance = entity.transform.getPosition().distance(new pc.Vec2());
+                if (distance > 700) {
+                    entity.transform.setPosition(0, 0);
+                }
+            }, 2000);
+        };
         for (let i = 0; i < 10; i++) {
-            this.spawnObject();
+            const object = this.spawnObject();
+            keepInCenter(object);
         }
         for (let i = 0; i < 40; i++) {
             const npc = this.spawnNpc(Math.random() * 100 - 50, Math.random() * 100 - 50);
+            if (i < 8) {
+                const equipItemComponent = npc.getComponent(equipItemComponent_1.EquipItemComponent);
+                setInterval(() => {
+                    equipItemComponent.tryUse();
+                }, Math.random() * 800 + 300);
+            }
             setInterval(() => {
                 npc.getComponent(playerComponent_1.PlayerComponent).data.name = "NPC " + i;
                 npc.getComponent(playerComponent_1.PlayerComponent).data.color++;
@@ -14639,7 +14677,8 @@ class World {
         }
     }
     spawnObject() {
-        const npc = this.spawnEntity(entityObject_1.EntityObject);
+        const obj = this.spawnEntity(entityObject_1.EntityObject);
+        return obj;
     }
     spawnPlayer() {
         const player = this.spawnEntity(entityPlayer_1.EntityPlayer);

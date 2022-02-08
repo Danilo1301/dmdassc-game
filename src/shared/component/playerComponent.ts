@@ -63,4 +63,6 @@ export class PlayerComponent extends Component {
         
         //this.entity.getComponent(DebugComponent)?.setLineText('playercolor', `${this.data.color}`)
     }
+
+    
 }

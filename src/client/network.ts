@@ -170,7 +170,9 @@ export class Network {
 
             const packetData: IPacketData_ComponentEvent = packet.data;
 
-            const player = Gameface.Instance.player!;
+            const player = Gameface.Instance.player;
+
+            if(!player) return;
 
             const world = player.world;
             const entity = world.getEntity(packetData.entity);

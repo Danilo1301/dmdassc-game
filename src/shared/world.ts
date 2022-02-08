@@ -14,6 +14,7 @@ import { PlayerComponent } from "./component/playerComponent";
 import { EntityObject } from "./entity/entityObject";
 import { EventHandler } from "./eventHandler";
 import { MovementComponent } from "./component/movementComponent";
+import { EquipItemComponent } from "./component/equipItemComponent";
 
 let testu = 0;
 let testd = 0;
@@ -180,13 +181,36 @@ export class World {
 
     private spawnEntities() {
         
+        const keepInCenter = (entity: Entity) => {
+
+            setInterval(() => {
+
+                const distance = entity.transform.getPosition().distance(new pc.Vec2())
+                
+                if(distance > 700) {
+                    entity.transform.setPosition(0, 0);
+                }
+            }, 2000);
+        }
+
         for (let i = 0; i < 10; i++) {
-            this.spawnObject()
+            const object = this.spawnObject();
+
+            keepInCenter(object);
         }
 
         for (let i = 0; i < 40; i++) {
             const npc = this.spawnNpc(Math.random()*100-50, Math.random()*100-50);
 
+            if(i < 8) {
+
+                const equipItemComponent = npc.getComponent(EquipItemComponent)!;
+
+                setInterval(() => {
+                    equipItemComponent.tryUse();
+                }, Math.random()*800+300)
+
+            }
            
             setInterval(() => {
                 npc.getComponent(PlayerComponent)!.data.name = "NPC " + i;
@@ -199,8 +223,8 @@ export class World {
     }
 
     public spawnObject() {
-        const npc = this.spawnEntity(EntityObject);
-    
+        const obj = this.spawnEntity(EntityObject);
+        return obj;
     }
 
     public spawnPlayer() {

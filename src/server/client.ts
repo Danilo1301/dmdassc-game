@@ -260,7 +260,7 @@ export class Client {
             const distance: number = playerPosition.distance(entity.transform.getPosition());
 
             let canBeStreamed = false;
-            if(distance < 1000) canBeStreamed = true;
+            if(distance < 800) canBeStreamed = true;
 
             if(canBeStreamed) {
                 if(!this._streamedEntities.includes(entity)) {
