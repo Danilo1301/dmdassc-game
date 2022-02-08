@@ -12605,13 +12605,19 @@ class Render {
 
         window['light'] = light;
         */
+        /*
         const floorEntity = new pc.Entity();
+        
         floorEntity.addComponent("render", {
             type: "plane",
         });
-        floorEntity.setLocalScale(new pc.Vec3(100, 1, 100));
-        floorEntity.render.castShadows = false;
+
+        
+        //floorEntity.setLocalScale(new pc.Vec3(100, 1, 100));
+        //floorEntity.render!.castShadows = false
+
         app.root.addChild(floorEntity);
+         */
         this.test();
     }
     static test() {
@@ -12622,7 +12628,7 @@ class Render {
         app.root.addChild(light);
         lightComponent.type = "point";
         lightComponent.color = new pc.Color(1, 1, 1);
-        lightComponent.range = 10;
+        lightComponent.range = 20;
         lightComponent.intensity = 1;
         lightComponent.shadowBias = 0.2;
         lightComponent.castShadows = true;

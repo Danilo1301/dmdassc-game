@@ -139,19 +139,21 @@ export class Render {
         
 
        
-        const floorEntity = new pc.Entity();
         
         /*
+        const floorEntity = new pc.Entity();
+        
         floorEntity.addComponent("render", {
             type: "plane",
         });
 
-        */
+        
         //floorEntity.setLocalScale(new pc.Vec3(100, 1, 100));
         //floorEntity.render!.castShadows = false
 
         app.root.addChild(floorEntity);
-   
+         */
+
         this.test();
     }
 
@@ -165,7 +167,7 @@ export class Render {
 
         lightComponent.type = "point"
         lightComponent.color = new pc.Color(1, 1, 1);
-        lightComponent.range = 10;
+        lightComponent.range = 20;
         lightComponent.intensity = 1;
         lightComponent.shadowBias = 0.2
         
