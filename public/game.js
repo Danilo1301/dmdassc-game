@@ -13209,7 +13209,7 @@ class NPCBehaviourComponent extends component_1.Component {
         this._newPositionTime -= dt;
         if (this._newPositionTime <= 0) {
             this._newPositionTime = Math.random() * 5;
-            const range = 1300;
+            const range = 2000;
             this._targetPosition.x = Math.random() * range - (range / 2);
             this._targetPosition.y = Math.random() * range - (range / 2);
         }
@@ -14319,6 +14319,7 @@ const npcBehaviourComponent_1 = __webpack_require__(/*! ./component/npcBehaviour
 const playerComponent_1 = __webpack_require__(/*! ./component/playerComponent */ "./src/shared/component/playerComponent.ts");
 const entityObject_1 = __webpack_require__(/*! ./entity/entityObject */ "./src/shared/entity/entityObject.ts");
 const eventHandler_1 = __webpack_require__(/*! ./eventHandler */ "./src/shared/eventHandler.ts");
+const movementComponent_1 = __webpack_require__(/*! ./component/movementComponent */ "./src/shared/component/movementComponent.ts");
 let testu = 0;
 let testd = 0;
 var WorldSyncType;
@@ -14447,6 +14448,7 @@ class World {
             setInterval(() => {
                 npc.getComponent(playerComponent_1.PlayerComponent).data.name = "NPC " + i;
                 npc.getComponent(playerComponent_1.PlayerComponent).data.color++;
+                npc.getComponent(movementComponent_1.MovementComponent).speed = 2;
             }, 1000);
         }
     }

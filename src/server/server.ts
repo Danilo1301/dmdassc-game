@@ -18,7 +18,7 @@ export class Server {
     private _clients = new Map<string, Client>();
 
     private _sendEntityDataTime: number = 0;
-    private _sendEntityDataIntervalMs: number = 100;
+    private _sendEntityDataIntervalMs: number = 200;
 
     constructor() {
         this._game = new Game();

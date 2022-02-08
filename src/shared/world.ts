@@ -13,6 +13,7 @@ import { NPCBehaviourComponent } from "./component/npcBehaviourComponent";
 import { PlayerComponent } from "./component/playerComponent";
 import { EntityObject } from "./entity/entityObject";
 import { EventHandler } from "./eventHandler";
+import { MovementComponent } from "./component/movementComponent";
 
 let testu = 0;
 let testd = 0;
@@ -190,6 +191,7 @@ export class World {
             setInterval(() => {
                 npc.getComponent(PlayerComponent)!.data.name = "NPC " + i;
                 npc.getComponent(PlayerComponent)!.data.color++
+                npc.getComponent(MovementComponent)!.speed = 2
             }, 1000)
             
         }

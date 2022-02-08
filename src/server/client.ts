@@ -201,6 +201,8 @@ export class Client {
     public trySendEntityData(entity: Entity, data: any) {
         //console.log(`added data from ${entity.id} to list`)
 
+        const instaSend = true;
+
         if(!this._entityToSend.includes(entity)) {
             this._entityToSend.push(entity);
             this._entityDataToSend.push(data);
